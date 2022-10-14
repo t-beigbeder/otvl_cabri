@@ -1,0 +1,358 @@
+package cabridss
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"errors"
+	"fmt"
+	"github.com/google/uuid"
+	"github.com/spf13/afero"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
+	"io"
+	"io/fs"
+	"os"
+	"sort"
+	"strings"
+)
+
+type OlfConfig struct {
+	DssBaseConfig
+	Root string // filesystem root for the OLF DSS
+	Size string // DSS size may be small, medium or large ("s", "m" or "l")
+	// which enables storage of typically 200k, 4M or a huge number of files, with the additional cost of indexing storage
+}
+
+type oDssOlfImpl struct {
+	oDssBaseImpl
+	root string   // filesystem root for the OLF DSS
+	size string   // DSS size "s", "m" or "l"
+	afs  afero.Fs // if not nil mock filesystem
+}
+
+func (odoi *oDssOlfImpl) initialize(config interface{}, lsttime int64, aclusers []string) error {
+	odoi.me = odoi
+	odoi.lsttime = lsttime
+	odoi.aclusers = aclusers
+	olfConfig := config.(OlfConfig)
+	var pc OlfConfig
+	if err := LoadDssConfig(olfConfig.DssBaseConfig, &pc); err != nil {
+		return fmt.Errorf("in Initialize: %w", err)
+	}
+	odoi.repoId = pc.RepoId
+	odoi.repoEncrypted = pc.Encrypted
+	odoi.root = olfConfig.Root
+	odoi.size = pc.Size
+	if err := odoi.setIndex(olfConfig.DssBaseConfig, ""); err != nil {
+		return fmt.Errorf("in Initialize: %w", err)
+	}
+	return nil
+}
+
+func (odoi *oDssOlfImpl) loadMeta(npath string, mTime int64) ([]byte, error) {
+	ht := sha256.Sum256([]byte(npath))
+	mpath := fmt.Sprintf("%s.%s",
+		ufpath.Join(odoi.root, "meta", internal.Sha256ToPath(ht[:], odoi.size)),
+		internal.Int64ToStr16(mTime))
+	mf, err := odoi.getAfs().Open(mpath)
+	if err != nil {
+		return nil, err
+	}
+	defer mf.Close()
+	var b bytes.Buffer
+	_, err = io.Copy(&b, mf)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %v", mpath, err)
+	}
+	return b.Bytes(), nil
+}
+
+func (odoi *oDssOlfImpl) queryMetaTimes(npath string) ([]int64, error) {
+	ht := sha256.Sum256([]byte(npath))
+	mprefix := ufpath.Join(odoi.root, "meta", internal.Sha256ToPath(ht[:], odoi.size))
+	mdir := ufpath.Dir(mprefix)
+	mname := ufpath.Base(mprefix)
+	di, err := odoi.getAfs().Stat(mdir)
+	if err != nil || !di.IsDir() {
+		return nil, fmt.Errorf("no such directory: %s (err %v)", mdir, err)
+	}
+	df, err := odoi.getAfs().Open(mdir)
+	if err != nil {
+		return nil, err
+	}
+	defer df.Close()
+	fil, err := df.Readdir(0)
+	if err != nil {
+		return nil, err
+	}
+	var times []int64
+	for _, fi := range fil {
+		if !strings.HasPrefix(fi.Name(), mname+".") {
+			continue
+		}
+		suffix := ufpath.Ext(fi.Name())
+		scanned, err := internal.Str16ToInt64(suffix[1:])
+		if err != nil {
+			return nil, fmt.Errorf("invalid entry %s in %s (error %v)", fi.Name(), mdir, err)
+		}
+		times = append(times, scanned)
+	}
+	return times, nil
+}
+
+func (odoi *oDssOlfImpl) storeMeta(npath string, time int64, bs []byte) error {
+	ht := sha256.Sum256([]byte(npath))
+	mpath := fmt.Sprintf("%s.%s",
+		ufpath.Join(odoi.root, "meta", internal.Sha256ToPath(ht[:], odoi.size)),
+		internal.Int64ToStr16(time))
+	if err := odoi.getAfs().MkdirAll(ufpath.Dir(mpath), 0o777); err != nil {
+		return fmt.Errorf("in storeMeta: %w", err)
+	}
+	mf, err := odoi.getAfs().Create(mpath)
+	if err != nil {
+		return fmt.Errorf("in storeMeta: %w", err)
+	}
+	defer mf.Close()
+	n, err := mf.Write(bs)
+	if n != len(bs) || err != nil {
+		_ = odoi.getAfs().Remove(mpath)
+		return fmt.Errorf("in storeMeta: Write %s %d < %d error %v", mpath, n, len(bs), err)
+	}
+	return mf.Close()
+}
+
+func (odoi *oDssOlfImpl) xStoreMeta(npath string, time int64, bs []byte) error {
+	return odoi.index.storeMeta(npath, time, bs)
+}
+
+func (odoi *oDssOlfImpl) removeMeta(npath string, time int64) error {
+	ht := sha256.Sum256([]byte(npath))
+	mpath := fmt.Sprintf("%s.%s",
+		ufpath.Join(odoi.root, "meta", internal.Sha256ToPath(ht[:], odoi.size)),
+		internal.Int64ToStr16(time))
+	if err := odoi.getAfs().Remove(mpath); err != nil {
+		return fmt.Errorf("in removeMeta: %w", err)
+	}
+	return nil
+}
+
+func (odoi *oDssOlfImpl) xRemoveMeta(npath string, time int64) error {
+	return odoi.index.removeMeta(npath, time)
+}
+
+func (odoi *oDssOlfImpl) onCloseContent(npath string, mtime int64, cf afero.File, size int64, sha256 []byte, acl []ACLEntry, smCb storeMetaCallback) error {
+	css, csp := internal.Sha256ToStr32Path(sha256, odoi.size)
+	cpath := ufpath.Join(odoi.root, "content", csp)
+	fi, err := odoi.getAfs().Stat(cpath)
+	if fi != nil && fi.IsDir() {
+		return fmt.Errorf("in onCloseContent: content path %s is a directory", cpath)
+	}
+	if err != nil && !os.IsExist(err) {
+		if err = odoi.getAfs().MkdirAll(ufpath.Dir(cpath), 0o777); err != nil {
+			return fmt.Errorf("in onCloseContent: %w", err)
+		}
+		if err = odoi.getAfs().Rename(cf.Name(), cpath); err != nil {
+			return fmt.Errorf("in onCloseContent: %w", err)
+		}
+	} else {
+		odoi.getAfs().Remove(cf.Name())
+	}
+	sort.Slice(acl, func(i, j int) bool {
+		return acl[i].User < acl[j].User
+	})
+
+	meta := Meta{Path: npath, Mtime: mtime, Size: size, Ch: css, ACL: acl}
+	if err := odoi.metaSetter(meta, smCb); err != nil {
+		return fmt.Errorf("in onCloseContent: %w", err)
+	}
+	return nil
+}
+
+func (odoi *oDssOlfImpl) doGetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
+	cf, err := afero.TempFile(odoi.getAfs(), ufpath.Join(odoi.root, "tmp"), "cw")
+	if err != nil {
+		return nil, fmt.Errorf("in GetContentWriter: %w", err)
+	}
+	lcb := func(err error, size int64, sha256trunc []byte) {
+		if err == nil {
+			err = odoi.onCloseContent(npath, mtime, cf, size, sha256trunc, acl, nil)
+		}
+		if cb != nil {
+			cb(err, size, sha256trunc)
+		}
+	}
+	return &ContentHandle{cb: lcb, cf: cf, h: sha256.New()}, nil
+}
+
+func (odoi *oDssOlfImpl) doGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
+	cpath := ufpath.Join(odoi.root, "content", internal.Str32ToPath(meta.Ch, odoi.size))
+	cf, err := odoi.getAfs().Open(cpath)
+	if err != nil {
+		return nil, fmt.Errorf("in GetContentReader: %w", err)
+	}
+	return cf, nil
+}
+
+func (odoi *oDssOlfImpl) queryContent(ch string) (bool, error) {
+	cpath := ufpath.Join(odoi.root, "content", internal.Str32ToPath(ch, odoi.size))
+	_, err := odoi.getAfs().Stat(cpath)
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (odoi *oDssOlfImpl) dumpIndex() string { return odoi.index.Dump() }
+
+func (odoi *oDssOlfImpl) setAfs(tfs afero.Fs) { odoi.afs = tfs }
+
+func (odoi *oDssOlfImpl) getAfs() afero.Fs {
+	if odoi.afs != nil {
+		return odoi.afs
+	}
+	return appFs
+}
+
+func (odoi *oDssOlfImpl) scanMetaDir(path string, sti StorageInfo, errs *ErrorCollector) {
+	pathErr := func(path string, err error) {
+		sti.Path2Error[path] = err
+		errs.Collect(err)
+	}
+	df, err := odoi.getAfs().Open(path)
+	if err != nil {
+		pathErr(path, err)
+		return
+	}
+	defer df.Close()
+	fil, err := df.Readdir(0)
+	if err != nil {
+		pathErr(path, err)
+		return
+	}
+	for _, fi := range fil {
+		cPath := ufpath.Join(path, fi.Name())
+		if fi.IsDir() {
+			odoi.scanMetaDir(cPath, sti, errs)
+			continue
+		}
+		if fi.Size() >= MAX_META_SIZE {
+			pathErr(cPath, fmt.Errorf("%s size %d", cPath, fi.Size()))
+			continue
+		}
+		bs := make([]byte, fi.Size())
+		cdf, err := odoi.getAfs().Open(cPath)
+		if err != nil {
+			pathErr(cPath, err)
+			return
+		}
+		n, err := cdf.Read(bs)
+		cdf.Close()
+		if n != int(fi.Size()) || err != nil {
+			pathErr(cPath, fmt.Errorf("%s read %d err %v", cPath, n, err))
+			continue
+		}
+		sti.Path2Meta[cPath] = bs
+	}
+	return
+}
+
+func (odoi *oDssOlfImpl) scanContentDir(path string, sti StorageInfo, errs *ErrorCollector) {
+	pathErr := func(path string, err error) {
+		sti.Path2Error[path] = err
+		errs.Collect(err)
+	}
+	df, err := odoi.getAfs().Open(path)
+	if err != nil {
+		pathErr(path, err)
+		return
+	}
+	defer df.Close()
+	fil, err := df.Readdir(0)
+	if err != nil {
+		pathErr(path, err)
+		return
+	}
+	for _, fi := range fil {
+		cPath := ufpath.Join(path, fi.Name())
+		if fi.IsDir() {
+			odoi.scanContentDir(cPath, sti, errs)
+			continue
+		}
+		relPath := cPath[strings.LastIndex(cPath, "/content/")+len("/content") : len(cPath)]
+		cch := strings.Join(strings.Split(relPath, "/"), "")
+		sti.Path2Content[cPath] = cch
+	}
+	return
+}
+
+func (odoi *oDssOlfImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector) {
+	odoi.scanMetaDir(ufpath.Join(odoi.root, "meta"), sti, errs)
+	odoi.scanContentDir(ufpath.Join(odoi.root, "content"), sti, errs)
+}
+
+func newOlfProxy() oDssProxy {
+	return &oDssOlfImpl{}
+}
+
+// NewOlfDss opens an "object-storage-like files" DSS (data storage system)
+// config provides the object store specification
+// lsttime if not zero is the upper time of entries retrieved in it
+// aclusers if not nil is a List of ACL users for access check
+// returns a pointer to the ready to use DSS or an error if any occur
+// If lsttime is not zero, access will be read-only
+func NewOlfDss(config OlfConfig, lsttime int64, aclusers []string) (HDss, error) {
+	err := checkDir(config.Root)
+	if err != nil {
+		return nil, fmt.Errorf("in NewOlfDss: %w", err)
+	}
+	err = checkDir(ufpath.Join(config.Root, "meta"))
+	if err != nil {
+		return nil, fmt.Errorf("in NewOlfDss: %w", err)
+	}
+	err = checkDir(ufpath.Join(config.Root, "content"))
+	if err != nil {
+		return nil, fmt.Errorf("in NewOlfDss: %w", err)
+	}
+	proxy := newOlfProxy()
+	if err := proxy.initialize(config, lsttime, aclusers); err != nil {
+		return nil, fmt.Errorf("in NewOlfDss: %w", err)
+	}
+	return &ODss{proxy: proxy}, nil
+}
+
+// CreateOlfDss creates an "object-storage-like files" DSS data storage system
+// config provides the object store specification
+// returns a pointer to the ready to use DSS or an error if any occur
+func CreateOlfDss(config OlfConfig) (HDss, error) {
+	root := config.Root
+	size := config.Size
+	err := checkDir(root)
+	if err != nil {
+		return nil, fmt.Errorf("in CreateOlfDss: %w", err)
+	}
+	if size != "s" && size != "m" && size != "l" {
+		return nil, fmt.Errorf("in CreateOlfDss: incorrect size type %s", size)
+	}
+	if config.LocalPath == "" {
+		return nil, fmt.Errorf("in CreateOlfDss: please provide a LocalPath")
+	}
+	config.RepoId = uuid.New().String()
+	SaveDssConfig(config.DssBaseConfig, config)
+
+	err = os.Mkdir(ufpath.Join(root, "meta"), 0o777)
+	if err != nil {
+		return nil, fmt.Errorf("in CreateOlfDss: %w", err)
+	}
+	err = os.Mkdir(ufpath.Join(root, "content"), 0o777)
+	if err != nil {
+		return nil, fmt.Errorf("in CreateOlfDss: %w", err)
+	}
+	err = os.Mkdir(ufpath.Join(root, "tmp"), 0o777)
+	if err != nil {
+		return nil, fmt.Errorf("in CreateOlfDss: %w", err)
+	}
+	return NewOlfDss(config, 0, nil)
+}

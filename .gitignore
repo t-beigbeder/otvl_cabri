@@ -1,0 +1,11 @@
+# project
+tmp/
+
+# goland
+/.idea
+/.run
+
+# eclipse
+/.settings
+/.project
+/.pydevproject
