@@ -68,7 +68,7 @@ func sStoreMeta(c echo.Context) error {
 	if err != nil {
 		return NewServerErr("sStoreMeta", err)
 	}
-	return c.JSON(http.StatusNoContent, nil)
+	return c.JSON(http.StatusOK, nil)
 }
 
 func sXStoreMeta(c echo.Context) error {
@@ -81,7 +81,7 @@ func sXStoreMeta(c echo.Context) error {
 	if err != nil {
 		return NewServerErr("sXStoreMeta", err)
 	}
-	return c.JSON(http.StatusNoContent, nil)
+	return c.JSON(http.StatusOK, nil)
 }
 
 func sRemoveMeta(c echo.Context) error {
@@ -94,7 +94,7 @@ func sRemoveMeta(c echo.Context) error {
 	if err != nil {
 		return NewServerErr("sRemoveMeta", err)
 	}
-	return c.JSON(http.StatusNoContent, nil)
+	return c.JSON(http.StatusOK, nil)
 }
 
 func sXRemoveMeta(c echo.Context) error {
@@ -107,7 +107,7 @@ func sXRemoveMeta(c echo.Context) error {
 	if err != nil {
 		return NewServerErr("sXRemoveMeta", err)
 	}
-	return c.JSON(http.StatusNoContent, nil)
+	return c.JSON(http.StatusOK, nil)
 }
 
 func sOnCloseContent(c echo.Context) error {

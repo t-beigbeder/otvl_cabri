@@ -181,7 +181,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestOlfMultiHistory" ||
 			t.Name() == "TestNewWebDssServer" ||
 			t.Name() == "TestWebDssStoreMeta" ||
-			t.Name() == "TestNewWebDssClientOlf1" ||
+			t.Name() == "TestNewWebDssClientOlf" ||
 			t.Name() == "TestNewWebDssClientObs" ||
 			t.Name() == "TestNewWebDssApiClientOlf1" ||
 			t.Name() == "TestNewWebDssApiClientObs" ||
