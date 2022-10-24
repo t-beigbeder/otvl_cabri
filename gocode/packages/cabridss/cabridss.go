@@ -34,14 +34,16 @@ type DssBaseConfig struct {
 }
 
 type Meta struct {
-	Path     string     `json:"path"`     // full path for data content
-	Mtime    int64      `json:"mtime"`    // last modification POSIX time
-	Size     int64      `json:"size"`     // content size
-	Ch       string     `json:"ch"`       // content truncated SHA256 checksum
-	IsNs     bool       `json:"isNs"`     // is it a namespace, if true has children
-	Children []string   `json:"children"` // namespace children, sorted by name
-	ACL      []ACLEntry `json:"acl"`      // access control List, sorted by user
-	Itime    int64      `json:"itime"`    // index time
+	Path     string     `json:"path"`             // full path for data content
+	Mtime    int64      `json:"mtime"`            // last modification POSIX time
+	Size     int64      `json:"size"`             // content size
+	Ch       string     `json:"ch"`               // content truncated SHA256 checksum
+	IsNs     bool       `json:"isNs"`             // is it a namespace, if true has children
+	Children []string   `json:"children"`         // namespace children, sorted by name
+	ACL      []ACLEntry `json:"acl"`              // access control List, sorted by user
+	Itime    int64      `json:"itime"`            // index time
+	Empath   string     `json:"empath,omitempty"` // encrypted path of the metadata if DSS encrypted
+	Ecpath   string     `json:"ecpath,omitempty"` // encrypted path of the content if DSS encrypted
 }
 
 type IMeta interface {
@@ -144,6 +146,7 @@ func (ch *ContentHandle) Close() (err error) {
 // Any  Dss should implement this interface.
 type Dss interface {
 	// Mkns creates a namespace in the Dss, return an error if any happens
+	//
 	// npath is the full namespace without leading or trailing slash
 	// mtime is the last modification POSIX time
 	// children are the children names, a trailing slash denotes a namespace, else regular content
@@ -151,6 +154,7 @@ type Dss interface {
 	Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error
 
 	// Updatens updates a namespace in the Dss, return an error if any happens
+	//
 	// npath is the full namespace without leading or trailing slash
 	// mtime is the last modification POSIX time
 	// children are the children names, a trailing slash denotes a namespace, else regular content
@@ -158,41 +162,52 @@ type Dss interface {
 	Updatens(npath string, mtime int64, children []string, acl []ACLEntry) error
 
 	// Lsns lists a namespace's content, return it or an error if any happens
+	//
 	// npath is the full namespace without leading or trailing slash
+	//
 	// returns:
 	// - children names, a trailing slash denotes a namespace, else regular content
 	// - err error if any happens
 	Lsns(npath string) (children []string, err error)
 
 	// IsDuplicate checks if content's checksum ch already exists in DSS
+	//
 	// returns duplicate status and an error if any happens
 	IsDuplicate(ch string) (bool, error)
 
 	// GetContentWriter creates content for writing
+	//
 	// npath is the full namespace + name without leading slash
 	// mtime is the last modification POSIX time
 	// acl is the access control List to the content
 	// cb if not nil is a callback called when writer is closed
+	//
 	// returns:
 	// - a writer to provide the content
 	// - err error if any happens
 	GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error)
 
 	// GetContentReader opens content for reading
+	//
 	// npath is the full namespace + name without leading slash
+	//
 	// returns:
 	// - a reader to retrieve the content
 	// - err error if any happens
 	GetContentReader(npath string) (io.ReadCloser, error)
 
 	// Remove removes a namespace (and recursively its children) or some content
+	//
 	// npath is the full namespace + name without leading slash, trailing slash indicates it is a namespace
+	//
 	// returns:
 	// - err error if any happens
 	Remove(npath string) error
 
 	// GetMeta gets a namespace or some content metadata
+	//
 	// npath is the full namespace + name without leading slash, trailing slash indicates it is a namespace
+	//
 	// returns:
 	// - the metadata
 	// - err error if any happens
@@ -259,15 +274,19 @@ type HDss interface {
 	Dss
 
 	// GetHistory gets the history of the npath entry as a map of entry state sorted by time
+	//
 	// npath is the full namespace + name without leading slash, trailing slash indicates it is a namespace
 	// recursive requests the service to recursively get the history of all namespace children
+	//
 	// returns:
 	// - the history (inclusive times when the entry is visible) for all entries
 	// - err error if any happens
 	GetHistory(npath string, recursive bool) (map[string][]HistoryInfo, error)
 
 	// RemoveHistory removes history entries for a given time period
+	//
 	// it must be noted that removing a parent history may cause children to be removed for a larger period of time
+	//
 	// npath is the full namespace + name without leading slash, trailing slash indicates it is a namespace
 	// recursive requests the service to recursively remove the history of all namespace children,
 	// evaluate don't remove, just report work to be done
@@ -289,7 +308,7 @@ type HDss interface {
 	// IsEncrypted tells if repository is encrypted
 	IsEncrypted() bool
 
-	// IsRepoEncrypted tells if repository configuration is encrypted
+	// IsRepoEncrypted tells if repository configuration is set to encrypted
 	IsRepoEncrypted() bool
 
 	// AuditIndex compares the DSS index with meta and content actually stored

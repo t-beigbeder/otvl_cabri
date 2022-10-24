@@ -121,7 +121,7 @@ func (odoi *oDssOlfImpl) storeMeta(npath string, time int64, bs []byte) error {
 	return mf.Close()
 }
 
-func (odoi *oDssOlfImpl) xStoreMeta(npath string, time int64, bs []byte) error {
+func (odoi *oDssOlfImpl) xStoreMeta(npath string, time int64, bs []byte, acl []ACLEntry) error {
 	return odoi.index.storeMeta(npath, time, bs)
 }
 

@@ -19,6 +19,11 @@ func GenIdentity(alias string) (IdentityConfig, error) {
 	return IdentityConfig{alias, xi.Recipient().String(), xi.String()}, nil
 }
 
+// EncryptMsg encrypts a msg to one or more X25519 srs recipients encoded as strings.
+//
+// Every recipient will be able to decrypt the result.
+//
+// It returns the encrypted content as json encoded bytes.
 func EncryptMsg(msg string, srs ...string) ([]byte, error) {
 	bsa := bytes.Buffer{}
 	var rs []age.Recipient
@@ -48,6 +53,12 @@ func EncryptMsg(msg string, srs ...string) ([]byte, error) {
 	return bsb, nil
 }
 
+// DecryptMsg decrypts jbs encrypted content to one or more sids X25519 identities encoded as strings.
+// It returns the message in cleartext
+//
+// jbs are the json encoded bytes
+//
+// All identities will be tried until one successfully decrypts the content.
 func DecryptMsg(jbs []byte, sids ...string) (string, error) {
 	var bs []byte
 	err := json.Unmarshal(jbs, &bs)
@@ -73,6 +84,12 @@ func DecryptMsg(jbs []byte, sids ...string) (string, error) {
 	return string(bss), nil
 }
 
+// Encrypt encrypts a file to one or more X25519 srs recipients encoded as strings.
+//
+// Writes to the returned WriteCloser are encrypted and written to dst as an age file.
+// Every recipient will be able to decrypt the file.
+//
+// The caller must call Close on the WriteCloser when done for the last chunk to be encrypted and flushed to dst.
 func Encrypt(dst io.Writer, srs ...string) (io.WriteCloser, error) {
 	var rs []age.Recipient
 	for _, sr := range srs {
@@ -85,6 +102,10 @@ func Encrypt(dst io.Writer, srs ...string) (io.WriteCloser, error) {
 	return age.Encrypt(dst, rs...)
 }
 
+// Decrypt decrypts a file encrypted to one or more sids X25519 identities encoded as strings.
+//
+// It returns a Reader reading the decrypted plaintext of the age file read from src.
+// All identities will be tried until one successfully decrypts the file.
 func Decrypt(src io.Reader, sids ...string) (io.Reader, error) {
 	var ids []age.Identity
 	for _, sid := range sids {

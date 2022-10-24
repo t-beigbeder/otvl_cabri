@@ -92,7 +92,7 @@ func (odoi *oDssObjImpl) storeMeta(npath string, time int64, bs []byte) error {
 	return odoi.is3.Put(fmt.Sprintf("meta-%s.%s", internal.NameToHashStr32(npath), internal.Int64ToStr16(time)), bs)
 }
 
-func (odoi *oDssObjImpl) xStoreMeta(npath string, time int64, bs []byte) error {
+func (odoi *oDssObjImpl) xStoreMeta(npath string, time int64, bs []byte, acl []ACLEntry) error {
 	return odoi.index.storeMeta(npath, time, bs)
 }
 

@@ -70,7 +70,8 @@ func (edi *eDssImpl) doGetMetaAt(npath string, time int64) (Meta, error) {
 	return meta, nil
 }
 
-func (edi *eDssImpl) apiMetaArgs(npath string, time int64, bs []byte, acl []ACLEntry) (anpath string, atime int64, abs []byte, err error) {
+func (edi *eDssImpl) apiMetaArgs(npath string, time int64, bs []byte, acl []ACLEntry) (isEncrypted bool, anpath string, atime int64, abs []byte, err error) {
+	isEncrypted = true
 	anpath = uuid.New().String()
 	atime = 0
 	if abs, err = EncryptMsg(string(bs), Users(acl)...); err != nil {

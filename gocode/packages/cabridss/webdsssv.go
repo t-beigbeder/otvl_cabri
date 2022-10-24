@@ -77,7 +77,7 @@ func sXStoreMeta(c echo.Context) error {
 		return NewServerErr("sXStoreMeta", err)
 	}
 	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
-	err := aXStoreMeta(sm.Npath, sm.Time, sm.Bs, dss)
+	err := aXStoreMeta(sm.Npath, sm.Time, sm.Bs, sm.ACL, dss)
 	if err != nil {
 		return NewServerErr("sXStoreMeta", err)
 	}
@@ -141,7 +141,7 @@ func sOnCloseContent(c echo.Context) error {
 		if err == nil {
 			cbErr = oDss.proxy.onCloseContent(args.Npath, args.Mtime, cf, size, sha256trunc, args.ACL, func(npath string, time int64, bs []byte) error {
 				cbOut = mOnCloseContentOut{Npath: npath, Time: time, Bs: bs}
-				if err = oDss.proxy.xStoreMeta(npath, time, bs); err != nil {
+				if err = oDss.proxy.xStoreMeta(npath, time, bs, args.ACL); err != nil {
 					return fmt.Errorf("in onCloseContent: %w", err)
 				}
 				return oDss.proxy.storeMeta(npath, time, bs)

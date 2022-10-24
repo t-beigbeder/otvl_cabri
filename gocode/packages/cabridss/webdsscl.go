@@ -30,9 +30,10 @@ type mTimes struct {
 }
 
 type mStoreMeta struct {
-	Npath string `json:"npath"`
-	Time  int64  `json:"time,string"`
-	Bs    []byte `json:"bs,string"`
+	Npath string     `json:"npath"`
+	Time  int64      `json:"time,string"`
+	Bs    []byte     `json:"bs,string"`
+	ACL   []ACLEntry `json:"acl"`
 }
 
 type mRemoveMeta struct {
@@ -127,7 +128,7 @@ func aStoreMeta(npath string, time int64, bs []byte, dss HDss) error {
 	return dss.(*ODss).proxy.storeMeta(npath, time, bs)
 }
 
-func aXStoreMeta(npath string, time int64, bs []byte, dss HDss) error {
+func aXStoreMeta(npath string, time int64, bs []byte, acl []ACLEntry, dss HDss) error {
 	return dss.GetIndex().storeMeta(npath, time, bs)
 }
 
@@ -258,13 +259,13 @@ func cStoreMeta(apc WebApiClient, npath string, time int64, bs []byte) error {
 	return nil
 }
 
-func cXStoreMeta(apc WebApiClient, npath string, time int64, bs []byte) error {
+func cXStoreMeta(apc WebApiClient, npath string, time int64, bs []byte, acl []ACLEntry) error {
 	wdc := apc.GetConfig().(webDssClientConfig)
 	var err error
 	if wdc.LibApi {
-		err = aXStoreMeta(npath, time, bs, wdc.libDss)
+		err = aXStoreMeta(npath, time, bs, acl, wdc.libDss)
 	} else {
-		_, err = apc.SimpleDoAsJson(http.MethodPost, apc.Url()+"xStoreMeta", mStoreMeta{Npath: npath, Time: time, Bs: bs}, nil)
+		_, err = apc.SimpleDoAsJson(http.MethodPost, apc.Url()+"xStoreMeta", mStoreMeta{Npath: npath, Time: time, Bs: bs, ACL: acl}, nil)
 	}
 	if err != nil {
 		return fmt.Errorf("in cXStoreMeta: %v", err)

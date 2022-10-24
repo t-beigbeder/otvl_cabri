@@ -156,8 +156,8 @@ func (wdi *webDssImpl) storeMeta(npath string, time int64, bs []byte) error {
 	return nil
 }
 
-func (wdi *webDssImpl) xStoreMeta(npath string, time int64, bs []byte) error {
-	if err := cXStoreMeta(wdi.apc, npath, time, bs); err != nil {
+func (wdi *webDssImpl) xStoreMeta(npath string, time int64, bs []byte, acl []ACLEntry) error {
+	if err := cXStoreMeta(wdi.apc, npath, time, bs, acl); err != nil {
 		return fmt.Errorf("in xStoreMeta: %v", err)
 	}
 	return wdi.index.storeMeta(npath, time, bs)
@@ -232,7 +232,7 @@ func (wdi *webDssImpl) onLibCloseContent(npath string, mtime int64, cf afero.Fil
 		proxy := wdc.libDss.(*ODss).proxy
 		cbErr = proxy.onCloseContent(npath, mtime, scf, size, sha256trunc, acl, func(npath string, time int64, bs []byte) error {
 			cbOut = mOnCloseContentOut{Npath: npath, Time: time, Bs: bs}
-			if err = proxy.xStoreMeta(npath, time, bs); err != nil {
+			if err = proxy.xStoreMeta(npath, time, bs, acl); err != nil {
 				return fmt.Errorf("in onLibCloseContent: %w", err)
 			}
 			return proxy.storeMeta(npath, time, bs)
@@ -271,7 +271,7 @@ func (wdi *webDssImpl) doGetContentWriter(npath string, mtime int64, acl []ACLEn
 	lcb := func(err error, size int64, sha256trunc []byte) {
 		if err == nil {
 			err = wdi.onCloseContent(npath, mtime, cf, size, sha256trunc, acl, func(npath string, time int64, bs []byte) error {
-				if err = wdi.xStoreMeta(npath, time, bs); err != nil {
+				if err = wdi.xStoreMeta(npath, time, bs, acl); err != nil {
 					return fmt.Errorf("in doGetContentWriter: %w", err)
 				}
 				return nil

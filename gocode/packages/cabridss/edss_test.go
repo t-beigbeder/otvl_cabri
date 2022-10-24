@@ -7,6 +7,7 @@ import (
 )
 
 func TestNewEDssApiClientOlf(t *testing.T) {
+	t.Skip("TestNewEDssApiClientOlf WIP") // FIXME
 	if err := runTestBasic(t,
 		func(tfs *testfs.Fs) error {
 			_, err := CreateOlfDss(OlfConfig{
