@@ -4,61 +4,61 @@ go 1.18
 
 require (
 	filippo.io/age v1.0.0
-	github.com/aws/aws-sdk-go v1.44.98
+	github.com/aws/aws-sdk-go v1.44.121
 	github.com/google/uuid v1.3.0
-	github.com/labstack/echo/v4 v4.9.0
+	github.com/labstack/echo/v4 v4.9.1
 	github.com/muesli/coral v1.0.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/spf13/afero v1.9.2
 	github.com/tidwall/buntdb v1.2.10
-	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
+	golang.org/x/crypto v0.1.0
 )
 
 require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/labstack/gommon v0.3.1 // indirect
+	github.com/labstack/gommon v0.4.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.8.0 // indirect
-	github.com/tidwall/btree v1.4.3 // indirect
+	github.com/tidwall/btree v1.4.4 // indirect
 	github.com/tidwall/gjson v1.14.3 // indirect
 	github.com/tidwall/grect v0.1.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/rtred v0.1.2 // indirect
 	github.com/tidwall/tinyqueue v0.1.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasttemplate v1.2.1 // indirect
-	golang.org/x/net v0.0.0-20220909164309-bea034e7d591 // indirect
-	golang.org/x/sys v0.0.0-20220913175220-63ea55921009 // indirect
-	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
-	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
+	github.com/valyala/fasttemplate v1.2.2 // indirect
+	golang.org/x/net v0.1.0 // indirect
+	golang.org/x/sys v0.1.0 // indirect
+	golang.org/x/term v0.1.0 // indirect
+	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/time v0.1.0 // indirect
 )
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss => ./packages/cabridss
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrisync => ./packages/cabrisync
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabritbx => ./packages/cabritbx
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabriui => ./packages/cabriui
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/em4ht => ./packages/em4ht
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/internal => ./packages/internal
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/joule => ./packages/joule
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/mockfs => ./packages/mockfs
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber => ./packages/plumber
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs => ./packages/testfs
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath => ./packages/ufpath
-
-replace github.com/t-beigbeder/otvl_cabri/gocode/cabri/cmd => ./cabri/cmd
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss => ./packages/cabridss
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrisync => ./packages/cabrisync
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabritbx => ./packages/cabritbx
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabriui => ./packages/cabriui
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/em4ht => ./packages/em4ht
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/internal => ./packages/internal
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/joule => ./packages/joule
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/mockfs => ./packages/mockfs
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber => ./packages/plumber
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs => ./packages/testfs
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath => ./packages/ufpath
+//
+//replace github.com/t-beigbeder/otvl_cabri/gocode/cabri/cmd => ./cabri/cmd
