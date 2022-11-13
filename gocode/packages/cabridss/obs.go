@@ -1,7 +1,6 @@
 package cabridss
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
@@ -9,7 +8,6 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"io"
 	"os"
-	"sort"
 )
 
 type ObsConfig struct {
@@ -104,44 +102,43 @@ func (odoi *oDssObjImpl) xRemoveMeta(npath string, time int64) error {
 	return odoi.index.removeMeta(npath, time)
 }
 
-func (odoi *oDssObjImpl) onCloseContent(npath string, mtime int64, cf afero.File, size int64, sha256 []byte, acl []ACLEntry, smCb storeMetaCallback) error {
-	defer os.Remove(cf.Name())
-	cName := fmt.Sprintf("content-%s", internal.Sha256ToStr32(sha256))
+func (odoi *oDssObjImpl) pushContent(size int64, ch string, mbs []byte, cf afero.File) error {
+	cName := fmt.Sprintf("content-%s", ch)
 	lr, _ := odoi.is3.List(cName)
 	if len(lr) == 0 {
 		r, err := os.Open(cf.Name())
 		if err != nil {
-			return fmt.Errorf("in onCloseContent: %w", err)
+			return fmt.Errorf("in pushContent: %w", err)
 		}
 		defer r.Close()
 		if err = odoi.is3.Upload(cName, r); err != nil {
-			return fmt.Errorf("in onCloseContent: %w", err)
+			return fmt.Errorf("in pushContent: %w", err)
 		}
-	}
-	sort.Slice(acl, func(i, j int) bool {
-		return acl[i].User < acl[j].User
-	})
-	meta := Meta{Path: npath, Mtime: mtime, Size: size, Ch: internal.Sha256ToStr32(sha256), ACL: acl}
-	if err := odoi.metaSetter(meta, smCb); err != nil {
-		return fmt.Errorf("in onCloseContent: %w", err)
 	}
 	return nil
 }
 
-func (odoi *oDssObjImpl) doGetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
-	cf, err := os.CreateTemp("", "cw")
-	if err != nil {
-		return nil, fmt.Errorf("in GetContentWriter: %w", err)
-	}
-	lcb := func(err error, size int64, sha256trunc []byte) {
-		if err == nil {
-			err = odoi.onCloseContent(npath, mtime, cf, size, sha256trunc, acl, nil)
+func (odoi *oDssObjImpl) spGetContentWriter(cwcbs contentWriterCbs) (io.WriteCloser, error) {
+	return NewTempFileWriteCloserWithCb(odoi.getAfs(), "", "cw", func(err error, size int64, ch string, wcwc *WriteCloserWithCb) error {
+		if err != nil {
+			return fmt.Errorf("in spGetContentWriter %w", err)
 		}
-		if cb != nil {
-			cb(err, size, sha256trunc)
+		mbs, err := cwcbs.getMetaBytes(err, size, ch)
+		if err != nil {
+			return fmt.Errorf("in spGetContentWriter %w", err)
 		}
-	}
-	return &ContentHandle{cb: lcb, cf: cf, h: sha256.New()}, nil
+		if err = odoi.pushContent(size, ch, mbs, wcwc.Underlying.(afero.File)); err != nil {
+			return fmt.Errorf("in spGetContentWriter %w", err)
+		}
+		meta, err := odoi.decodeMeta(mbs)
+		if err != nil {
+			return fmt.Errorf("in spGetContentWriter %w", err)
+		}
+		if err = odoi.me.storeAndIndexMeta(RemoveSlashIfNsIf(meta.Path, meta.IsNs), meta.Itime, mbs); err != nil {
+			return fmt.Errorf("in spGetContentWriter %w", err)
+		}
+		return nil
+	})
 }
 
 func (odoi *oDssObjImpl) doGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
@@ -160,11 +157,13 @@ func (odoi *oDssObjImpl) queryContent(ch string) (bool, error) {
 	return true, nil
 }
 
+func (odoi *oDssObjImpl) spClose() error { return nil }
+
 func (odoi *oDssObjImpl) dumpIndex() string { return odoi.index.Dump() }
 
 func (odoi *oDssObjImpl) setAfs(tfs afero.Fs) { panic("inconsistent") }
 
-func (odoi *oDssObjImpl) getAfs() afero.Fs { panic("inconsistent") }
+func (odoi *oDssObjImpl) getAfs() afero.Fs { return appFs }
 
 func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
 	pathErr := func(path string, err error) {

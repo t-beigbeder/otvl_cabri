@@ -42,8 +42,8 @@ type Meta struct {
 	Children []string   `json:"children"`         // namespace children, sorted by name
 	ACL      []ACLEntry `json:"acl"`              // access control List, sorted by user
 	Itime    int64      `json:"itime"`            // index time
-	Empath   string     `json:"empath,omitempty"` // encrypted path of the metadata if DSS encrypted
-	Ecpath   string     `json:"ecpath,omitempty"` // encrypted path of the content if DSS encrypted
+	Empath   string     `json:"empath,omitempty"` // path of the encrypted metadata if DSS encrypted
+	Ecpath   string     `json:"ecpath,omitempty"` // path of the encrypted content if DSS encrypted
 }
 
 type IMeta interface {
@@ -64,7 +64,7 @@ type MetaMockCbs struct {
 	MockUnmarshal func(data []byte, v interface{}) error
 }
 
-type WriteCloserCb func(err error, size int64, sha256trunc []byte)
+type WriteCloserCb func(err error, size int64, ch string)
 
 type ContentHandle struct {
 	cb      WriteCloserCb
@@ -136,7 +136,7 @@ func (ch *ContentHandle) Close() (err error) {
 		os.Remove(ch.cf.Name())
 	}
 	if ch.cb != nil {
-		ch.cb(err, ch.written, ch.h.Sum(nil))
+		ch.cb(err, ch.written, internal.Sha256ToStr32(ch.h.Sum(nil)))
 	}
 	return err
 }

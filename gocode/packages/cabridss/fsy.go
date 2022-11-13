@@ -137,7 +137,7 @@ func (fsy FsyDss) Lsns(npath string) ([]string, error) {
 }
 
 func (fsy FsyDss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
-	lcb := func(err error, size int64, sha256trunc []byte) {
+	lcb := func(err error, size int64, ch string) {
 		if err == nil {
 			cpath := ufpath.Join(fsy.root, npath)
 			err = fsy.GetAfs().Chtimes(cpath, time.Now(), time.Unix(mtime, 0))
@@ -148,7 +148,7 @@ func (fsy FsyDss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb
 			}
 		}
 		if cb != nil {
-			cb(err, size, sha256trunc)
+			cb(err, size, ch)
 		}
 	}
 	err := checkMkcontentArgs(npath, acl)

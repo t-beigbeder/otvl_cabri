@@ -49,16 +49,15 @@ func runTestBasicBck(t *testing.T, tfsPath string, dss Dss) error {
 	}
 	defer fi.Close()
 
-	fo, err := dss.GetContentWriter("d1é/a.txt", time.Now().Unix(), nil, func(err error, size int64, sha256trunc []byte) {
+	fo, err := dss.GetContentWriter("d1é/a.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
 		if err != nil {
 			t.Log(err)
 		}
 		if size != 241 {
 			t.Logf("size %d != 241", size)
 		}
-		hs := internal.Sha256ToStr32(sha256trunc)
-		if hs != "484f617a695613aac4b346237aa01548" {
-			t.Logf("%s != %s", hs, "484f617a695613aac4b346237aa01548")
+		if ch != "484f617a695613aac4b346237aa01548" {
+			t.Logf("%s != %s", ch, "484f617a695613aac4b346237aa01548")
 		}
 	})
 	if err != nil {
@@ -127,7 +126,7 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	}
 	defer dss.Close()
 
-	if err := dss.Mkns("", 0, []string{"d1é/"}, nil); err != nil {
+	if err := dss.Mkns("", 0, []string{"d1é/", "d2/"}, nil); err != nil {
 		return err
 	}
 	cs, err := dss.Lsns("")
@@ -140,13 +139,16 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	if err := dss.Mkns("d1é", 0, []string{"a.txt"}, nil); err != nil {
 		return err
 	}
+	if err := dss.Mkns("d2", 0, []string{"a.txt"}, nil); err != nil {
+		return err
+	}
 	fi, err := os.Open(ufpath.Join(tfs.Path(), "a.txt"))
 	if err != nil {
 		return err
 	}
 	defer fi.Close()
 
-	fo, err := dss.GetContentWriter("d1é/a.txt", time.Now().Unix(), nil, func(err error, size int64, sha256trunc []byte) {
+	fo, err := dss.GetContentWriter("d1é/a.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
 		if err != nil {
 			t.Log(err)
 		}
@@ -156,11 +158,31 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 		if size != 241 {
 			t.Logf("size %d != 241", size)
 		}
-		hs := internal.Sha256ToStr32(sha256trunc)
-		if hs != "484f617a695613aac4b346237aa01548" {
-			t.Logf("%s != %s", hs, "484f617a695613aac4b346237aa01548")
+		if ch != "484f617a695613aac4b346237aa01548" {
+			t.Logf("%s != %s", ch, "484f617a695613aac4b346237aa01548")
 		}
 	})
+	if err != nil {
+		t.Log(err)
+		return err
+	}
+	if _, err = io.Copy(fo, fi); err != nil {
+		t.Log(err)
+		return err
+	}
+	if err = fo.Close(); err != nil {
+		t.Log(err)
+		return err
+	}
+
+	fi.Close()
+	fi, err = os.Open(ufpath.Join(tfs.Path(), "a.txt"))
+	if err != nil {
+		return err
+	}
+	defer fi.Close()
+
+	fo, err = dss.GetContentWriter("d2/a.txt", time.Now().Unix(), nil, nil)
 	if err != nil {
 		t.Log(err)
 		return err
@@ -214,6 +236,35 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	}
 	if meta.GetSize() != 0 || meta.GetCh() != "e3b0c44298fc1c149afbf4c8996fb924" {
 		return fmt.Errorf("meta %v", meta)
+	}
+	// check client index if relevant
+	_, ok := dss.GetIndex().(*nIndex)
+	if !ok {
+		ts, err, ok := dss.GetIndex().queryMetaTimes("d2/a.txt")
+		if err != nil || len(ts) == 0 || !ok {
+			return fmt.Errorf("ts %v err %v ok %v", ts, err, ok)
+		}
+	}
+
+	// check index persistency
+	if err = dss.Close(); err != nil {
+		return err
+	}
+	dss, err = newDssCb(tfs)
+	if err != nil {
+		return err
+	}
+	defer dss.Close()
+	meta, err = dss.GetMeta("d2/a.txt", true)
+	if err != nil {
+		return err
+	}
+	_, ok = dss.GetIndex().(*nIndex)
+	if !ok {
+		ts, err, ok := dss.GetIndex().queryMetaTimes("d2/a.txt")
+		if err != nil || len(ts) == 0 || !ok {
+			return fmt.Errorf("ts %v err %v ok %v", ts, err, ok)
+		}
 	}
 	return nil
 }

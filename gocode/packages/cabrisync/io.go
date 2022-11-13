@@ -3,7 +3,6 @@ package cabrisync
 import (
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
-	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"io"
 )
 
@@ -123,10 +122,9 @@ func (syc *syncCtx) crUpContent(isRTL bool) error {
 	var closeErr error
 	out, err := tgt.dss.GetContentWriter(
 		tgt.fullPath(), ori.meta.GetMtime(), syc.mapACL(ori.meta.GetAcl()),
-		func(err error, size int64, sha256trunc []byte) {
-			tch := internal.Sha256ToStr32(sha256trunc)
-			if err != nil || size != ori.meta.GetSize() || (ori.meta.GetChUnsafe() != "" && tch != ori.meta.GetChUnsafe()) {
-				closeErr = fmt.Errorf("%s error %w size %d ch %s", tErrPrefix, err, size, tch)
+		func(err error, size int64, ch string) {
+			if err != nil || size != ori.meta.GetSize() || (ori.meta.GetChUnsafe() != "" && ch != ori.meta.GetChUnsafe()) {
+				closeErr = fmt.Errorf("%s error %w size %d ch %s", tErrPrefix, err, size, ch)
 			}
 		})
 	if err != nil {

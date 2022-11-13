@@ -41,19 +41,10 @@ type mRemoveMeta struct {
 	Time  int64  `json:"time,string"`
 }
 
-type mOnCloseContentIn struct {
-	Npath string     `json:"npath"`
-	Mtime int64      `json:"mtime,string"`
-	Size  int64      `json:"size"`
-	Ch    string     `json:"ch"`
-	ACL   []ACLEntry `json:"acl"`
-}
-
-type mOnCloseContentOut struct {
-	mError
-	Npath string `json:"npath"`
-	Time  int64  `json:"time,string"`
-	Bs    []byte `json:"bs,string"`
+type mPushContentIn struct {
+	Size int64  `json:"size"`
+	Ch   string `json:"ch"`
+	Mbs  []byte `json:"bs,string"`
 }
 
 type mLoadMetaIn struct {

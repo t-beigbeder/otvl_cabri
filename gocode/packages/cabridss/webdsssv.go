@@ -1,14 +1,12 @@
 package cabridss
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -110,56 +108,45 @@ func sXRemoveMeta(c echo.Context) error {
 	return c.JSON(http.StatusOK, nil)
 }
 
-func sOnCloseContent(c echo.Context) error {
+func sPushContent(c echo.Context) error {
 	req := c.Request()
 	slja := make([]byte, 16)
 	if n, err := req.Body.Read(slja); n != 16 || err != nil {
-		return NewServerErr("sStoreMeta", fmt.Errorf("%d %v", n, err))
+		return NewServerErr("sPushContent", fmt.Errorf("%d %v", n, err))
 	}
 	lja, err := internal.Str16ToInt64(string(slja))
 	if err != nil {
-		return NewServerErr("sStoreMeta", err)
+		return NewServerErr("sPushContent", err)
 	}
 	jsonArgs := make([]byte, lja)
 	if n, err := req.Body.Read(jsonArgs); n != len(jsonArgs) || err != nil {
-		return NewServerErr("sStoreMeta", fmt.Errorf("%d %v", n, err))
+		return NewServerErr("sPushContent", fmt.Errorf("%d %v", n, err))
 	}
-	args := mOnCloseContentIn{}
+	args := mPushContentIn{}
 	err = json.Unmarshal(jsonArgs, &args)
 	if err != nil {
-		return NewServerErr("sStoreMeta", err)
+		return NewServerErr("sPushContent", err)
 	}
-
-	cf, err := os.CreateTemp("", "scw")
 	if err != nil {
-		return NewServerErr("sStoreMeta", err)
+		return NewServerErr("sPushContent", err)
 	}
 	oDss := GetCustomConfig(c).(WebDssServerConfig).Dss.(*ODss)
-	var cbErr error
-	var cbOut mOnCloseContentOut
-	lcb := func(err error, size int64, sha256trunc []byte) {
-		if err == nil {
-			cbErr = oDss.proxy.onCloseContent(args.Npath, args.Mtime, cf, size, sha256trunc, args.ACL, func(npath string, time int64, bs []byte) error {
-				cbOut = mOnCloseContentOut{Npath: npath, Time: time, Bs: bs}
-				if err = oDss.proxy.xStoreMeta(npath, time, bs, args.ACL); err != nil {
-					return fmt.Errorf("in onCloseContent: %w", err)
-				}
-				return oDss.proxy.storeMeta(npath, time, bs)
-			})
-		}
+	wter, err := oDss.proxy.spGetContentWriter(contentWriterCbs{
+		getMetaBytes: func(iErr error, size int64, ch string) (mbs []byte, oErr error) {
+			return args.Mbs, nil
+		},
+	})
+	if err != nil {
+		return NewServerErr("sPushContent", err)
 	}
-	wter := &ContentHandle{cb: lcb, cf: cf, h: sha256.New()}
 	n, err := io.Copy(wter, req.Body)
 	if err != nil || n != args.Size {
-		return NewServerErr("sStoreMeta", fmt.Errorf("%v %d %d", err, n, args.Size))
+		return NewServerErr("sPushContent", fmt.Errorf("%v %d %d", err, n, args.Size))
 	}
 	if err = wter.Close(); err != nil {
-		return NewServerErr("sStoreMeta", err)
+		return NewServerErr("sPushContent", err)
 	}
-	if cbErr != nil {
-		return NewServerErr("sStoreMeta", cbErr)
-	}
-	return c.JSON(http.StatusOK, &cbOut)
+	return c.JSON(http.StatusOK, &mError{})
 }
 
 func sLoadMeta(c echo.Context) error {
@@ -228,7 +215,7 @@ func WebDssServerConfigurator(e *echo.Echo, root string, config interface{}) err
 	e.POST(root+"xStoreMeta", sXStoreMeta)
 	e.DELETE(root+"removeMeta", sRemoveMeta)
 	e.DELETE(root+"xRemoveMeta", sXRemoveMeta)
-	e.POST(root+"onCloseContent", sOnCloseContent)
+	e.POST(root+"pushContent", sPushContent)
 	e.POST(root+"loadMeta", sLoadMeta)
 	e.POST(root+"doGetContentReader", sDoGetContentReader)
 	e.GET(root+"queryContent/:ch", sQueryContent)

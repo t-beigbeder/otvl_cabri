@@ -134,11 +134,11 @@ func (b bfcl) Close() error {
 
 func TestNewWriteCloserWithCb(t *testing.T) {
 	bsa := bfcl{}
-	wcwc := NewWriteCloserWithCb(&bsa, func(err error) error {
-		if err == nil {
+	wcwc := NewWriteCloserWithCb(&bsa, func(err error, size int64, ch string, wcwc *WriteCloserWithCb) error {
+		if err == nil && size == 24 && ch == "6b33a33017f120c522a983001abf6967" {
 			return nil
 		}
-		return fmt.Errorf("in TestNewWriteCloserWithCb cb: %v", err)
+		return fmt.Errorf("in TestNewWriteCloserWithCb cb: %v %d, %s", err, size, ch)
 	})
 	if _, err := wcwc.Write([]byte("TestNewWriteCloserWithCb")); err != nil {
 		t.Fatal(err)
@@ -147,7 +147,7 @@ func TestNewWriteCloserWithCb(t *testing.T) {
 		t.Fatal(err)
 	}
 	bsa = bfcl{}
-	wcwc = NewWriteCloserWithCb(&bsa, func(err error) error {
+	wcwc = NewWriteCloserWithCb(&bsa, func(err error, size int64, ch string, wcwc *WriteCloserWithCb) error {
 		return fmt.Errorf("in TestNewWriteCloserWithCb cb: %v", err)
 	})
 	if _, err := wcwc.Write([]byte("TestNewWriteCloserWithCb")); err != nil {
@@ -156,6 +156,24 @@ func TestNewWriteCloserWithCb(t *testing.T) {
 	var err error
 	if err = wcwc.Close(); err == nil {
 		t.Fatal("should fail with error")
+	}
+	wcwc, err = NewTempFileWriteCloserWithCb(appFs, "/tmp", "ntfwcwc", func(err error, size int64, ch string, me *WriteCloserWithCb) error {
+		if err != nil || size != 24 || ch != "6b33a33017f120c522a983001abf6967" {
+			return fmt.Errorf("in TestNewWriteCloserWithCb cb: %v %d, %s", err, size, ch)
+		}
+		if st, err := appFs.Stat(me.Underlying.(afero.File).Name()); err != nil || st.Size() != 24 {
+			return fmt.Errorf("in TestNewWriteCloserWithCb cb: %+v %v", st, err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wcwc.Write([]byte("TestNewWriteCloserWithCb")); err != nil {
+		t.Fatal(err)
+	}
+	if err := wcwc.Close(); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -181,7 +199,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestOlfMultiHistory" ||
 			t.Name() == "TestNewWebDssServer" ||
 			t.Name() == "TestWebDssStoreMeta" ||
-			t.Name() == "TestNewWebDssClientOlf" ||
+			t.Name() == "TestNewWebDssClientOlf1" ||
 			t.Name() == "TestNewWebDssClientObs" ||
 			t.Name() == "TestNewWebDssApiClientOlf1" ||
 			t.Name() == "TestNewWebDssApiClientObs" ||

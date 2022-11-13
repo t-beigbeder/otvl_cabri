@@ -1,7 +1,6 @@
 package cabridss
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v4"
@@ -177,111 +176,110 @@ func (wdi *webDssImpl) xRemoveMeta(npath string, time int64) error {
 	return wdi.index.removeMeta(npath, time)
 }
 
-func (wdi *webDssImpl) onWebCloseContent(npath string, mtime int64, cf afero.File, size int64, sha256 []byte, acl []ACLEntry, smCb storeMetaCallback) error {
-	jsonArgs, err := json.Marshal(mOnCloseContentIn{Npath: npath, Mtime: mtime, Size: size, Ch: internal.Sha256ToStr32(sha256), ACL: acl})
+func (wdi *webDssImpl) webPushContent(size int64, ch string, mbs []byte, cf afero.File) error {
+	jsonArgs, err := json.Marshal(mPushContentIn{Size: size, Ch: ch, Mbs: mbs})
 	if err != nil {
-		return fmt.Errorf("in onWebCloseContent: %v", err)
+		return fmt.Errorf("in webPushContent: %w", err)
 	}
 	lja := internal.Int64ToStr16(int64(len(jsonArgs)))
 	file, err := os.Open(cf.Name())
 	if err != nil {
-		return fmt.Errorf("in onWebCloseContent: %v", err)
+		return fmt.Errorf("in webPushContent: %w", err)
 	}
 	hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), file: file}
 	copy(hdler.header, lja)
 	copy(hdler.header[16:], jsonArgs)
-	req, err := http.NewRequest(http.MethodPost, wdi.apc.Url()+"onCloseContent", nil)
+	req, err := http.NewRequest(http.MethodPost, wdi.apc.Url()+"pushContent", nil)
 	req.Body = &hdler
 	req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
 	resp, err := wdi.apc.(*apiClient).client.Do(req)
-	if err = NewClientErr("onWebCloseContent", resp, err, nil); err != nil {
+	if err = NewClientErr("webPushContent", resp, err, nil); err != nil {
 		return err
 	}
 	bs, err := io.ReadAll(resp.Body)
-	var occo mOnCloseContentOut
-	if err = json.Unmarshal(bs, &occo); err != nil {
-		return fmt.Errorf("in onWebCloseContent: %v", err)
+	var pco mError
+	if err = json.Unmarshal(bs, &pco); err != nil {
+		return fmt.Errorf("in webPushContent: %v", err)
 	}
-	if occo.Error != "" {
-		return fmt.Errorf("in onWebCloseContent: %s", occo.Error)
-	}
-	if err = smCb(occo.Npath, occo.Time, occo.Bs); err != nil {
-		return fmt.Errorf("in onWebCloseContent: %v", err)
+	if pco.Error != "" {
+		return fmt.Errorf("in webPushContent: %s", pco.Error)
 	}
 	return nil
 }
 
-func (wdi *webDssImpl) onLibCloseContent(npath string, mtime int64, cf afero.File, size int64, sha256trunc []byte, acl []ACLEntry, smCb storeMetaCallback) error {
+func (wdi *webDssImpl) libPushContent(size int64, ch string, mbs []byte, cf afero.File) error {
 	wdc := wdi.apc.GetConfig().(webDssClientConfig)
-	scf, err := os.CreateTemp("", "scw")
-	if err != nil {
-		return fmt.Errorf("in onLibCloseContent: %v", err)
-	}
 	ccf, err := os.Open(cf.Name())
 	if err != nil {
-		return fmt.Errorf("in onLibCloseContent: %v", err)
+		return fmt.Errorf("in libPushContent: %v", err)
 	}
 	defer ccf.Close()
-
-	var cbErr error
-	var cbOut mOnCloseContentOut
-	lcb := func(err error, size int64, sha256trunc []byte) {
-		if err != nil {
-			return
-		}
-		proxy := wdc.libDss.(*ODss).proxy
-		cbErr = proxy.onCloseContent(npath, mtime, scf, size, sha256trunc, acl, func(npath string, time int64, bs []byte) error {
-			cbOut = mOnCloseContentOut{Npath: npath, Time: time, Bs: bs}
-			if err = proxy.xStoreMeta(npath, time, bs, acl); err != nil {
-				return fmt.Errorf("in onLibCloseContent: %w", err)
-			}
-			return proxy.storeMeta(npath, time, bs)
-		})
-	}
-	wter := &ContentHandle{cb: lcb, cf: scf, h: sha256.New()}
+	proxy := wdc.libDss.(*ODss).proxy
+	wter, err := proxy.spGetContentWriter(contentWriterCbs{
+		getMetaBytes: func(iErr error, size int64, ch string) ([]byte, error) {
+			return mbs, nil
+		},
+	})
 	n, err := io.Copy(wter, ccf)
 	if err != nil || n != size {
-		return fmt.Errorf("in onLibCloseContent: %v %d %d", err, n, size)
+		return fmt.Errorf("in libPushContent: %v %d %d", err, n, size)
 	}
 	if err = wter.Close(); err != nil {
-		return fmt.Errorf("in onLibCloseContent: %w", err)
-	}
-	if cbErr != nil {
-		return fmt.Errorf("in onLibCloseContent: %w", cbErr)
-	}
-	if err = smCb(npath, cbOut.Time, cbOut.Bs); err != nil {
-		return fmt.Errorf("in onLibCloseContent: %v", err)
+		return fmt.Errorf("in libPushContent: %w", err)
 	}
 	return nil
 }
 
-func (wdi *webDssImpl) onCloseContent(npath string, mtime int64, cf afero.File, size int64, sha256 []byte, acl []ACLEntry, smCb storeMetaCallback) error {
-	defer os.Remove(cf.Name())
+func (wdi *webDssImpl) pushContent(size int64, ch string, mbs []byte, cf afero.File) error {
+	var err error
 	if wdi.libApi {
-		return wdi.onLibCloseContent(npath, mtime, cf, size, sha256, acl, smCb)
+		err = wdi.libPushContent(size, ch, mbs, cf)
+	} else {
+		err = wdi.webPushContent(size, ch, mbs, cf)
+
 	}
-	return wdi.onWebCloseContent(npath, mtime, cf, size, sha256, acl, smCb)
+	if err != nil {
+		return err
+	}
+	meta, err := wdi.decodeMeta(mbs)
+	if err != nil {
+		return fmt.Errorf("in spGetContentWriter: %w", err)
+	}
+	return wdi.index.storeMeta(meta.Path, meta.Itime, mbs)
 }
 
-func (wdi *webDssImpl) doGetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
-	cf, err := os.CreateTemp("", "ccw")
-	if err != nil {
-		return nil, fmt.Errorf("in doGetContentWriter: %w", err)
-	}
-	lcb := func(err error, size int64, sha256trunc []byte) {
-		if err == nil {
-			err = wdi.onCloseContent(npath, mtime, cf, size, sha256trunc, acl, func(npath string, time int64, bs []byte) error {
-				if err = wdi.xStoreMeta(npath, time, bs, acl); err != nil {
-					return fmt.Errorf("in doGetContentWriter: %w", err)
-				}
-				return nil
-			})
+func (wdi *webDssImpl) spGetContentWriter(cwcbs contentWriterCbs) (io.WriteCloser, error) {
+	return NewTempFileWriteCloserWithCb(wdi.getAfs(), "", "cw", func(err error, size int64, ch string, wcwc *WriteCloserWithCb) error {
+		outError := err
+		defer func() {
+			if cwcbs.closeCb != nil {
+				cwcbs.closeCb(outError, size, ch)
+			}
+		}()
+		if err != nil {
+			outError = fmt.Errorf("in spGetContentWriter: %w", err)
+			return outError
 		}
-		if cb != nil {
-			cb(err, size, sha256trunc)
+		mbs, err := cwcbs.getMetaBytes(err, size, ch)
+		if err != nil {
+			outError = fmt.Errorf("in spGetContentWriter: %w", err)
+			return outError
 		}
-	}
-	return &ContentHandle{cb: lcb, cf: cf, h: sha256.New()}, nil
+		meta, err := wdi.decodeMeta(mbs)
+		if err != nil {
+			outError = fmt.Errorf("in spGetContentWriter: %w", err)
+			return outError
+		}
+		cf := wcwc.Underlying.(afero.File)
+		_ = meta
+		// FIXME: check if upload is required
+		err = wdi.pushContent(size, ch, mbs, cf)
+		if err != nil {
+			outError = fmt.Errorf("in spGetContentWriter: %w", err)
+			return outError
+		}
+		return nil
+	})
 }
 
 func (wdi *webDssImpl) doWebGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
@@ -341,6 +339,15 @@ func (wdi *webDssImpl) queryContent(ch string) (exist bool, err error) {
 	return ex.Exist, nil
 }
 
+func (wdi *webDssImpl) spClose() error {
+	if !wdi.libApi {
+		return nil
+	}
+	wdc := wdi.apc.GetConfig().(webDssClientConfig)
+	proxy := wdc.libDss.(*ODss).proxy
+	return proxy.close()
+}
+
 func (wdi *webDssImpl) dumpIndex() string {
 	rdi, err := cDumpIndex(wdi.apc)
 	if err != nil {
@@ -351,7 +358,7 @@ func (wdi *webDssImpl) dumpIndex() string {
 
 func (wdi *webDssImpl) setAfs(tfs afero.Fs) { panic("inconsistent") }
 
-func (wdi *webDssImpl) getAfs() afero.Fs { panic("inconsistent") }
+func (wdi *webDssImpl) getAfs() afero.Fs { return appFs }
 
 func copyMap[T any](dst map[string]T, src map[string]T) {
 	for k, v := range src {

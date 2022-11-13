@@ -1,10 +1,13 @@
 package cabridss
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"io"
+	"os"
+	"time"
 )
 
 type EDssConfig struct {
@@ -49,6 +52,17 @@ func (edi *eDssImpl) defaultAcl(acl []ACLEntry) []ACLEntry {
 	return nil
 }
 
+func (edi *eDssImpl) secrets(acl []ACLEntry) (res []string) {
+	for _, user := range Users(acl) {
+		for _, id := range edi.apc.GetConfig().(webDssClientConfig).identities {
+			if id.PKey == user {
+				res = append(res, id.Secret)
+			}
+		}
+	}
+	return
+}
+
 func (edi *eDssImpl) doGetMetaTimesFor(npath string) ([]int64, error) {
 	return nil, nil // encrypted meta is only retrieved from local index
 }
@@ -70,21 +84,70 @@ func (edi *eDssImpl) doGetMetaAt(npath string, time int64) (Meta, error) {
 	return meta, nil
 }
 
-func (edi *eDssImpl) apiMetaArgs(npath string, time int64, bs []byte, acl []ACLEntry) (isEncrypted bool, anpath string, atime int64, abs []byte, err error) {
-	isEncrypted = true
-	anpath = uuid.New().String()
-	atime = 0
-	if abs, err = EncryptMsg(string(bs), Users(acl)...); err != nil {
-		err = fmt.Errorf("in apiMetaArgs: %w", err)
-		return
+func (edi *eDssImpl) xStoreMeta(anpath string, atime int64, abs []byte, acl []ACLEntry) error {
+	if err := cXStoreMeta(edi.apc, anpath, atime, abs, acl); err != nil {
+		return fmt.Errorf("in xStoreMeta: %v", err)
 	}
-	return
+	sbs, err := DecryptMsg(abs, edi.secrets(acl)...)
+	if err != nil {
+		return fmt.Errorf("in xStoreMeta: %v", err)
+	}
+	var meta Meta
+	if err := json.Unmarshal([]byte(sbs), &meta); err != nil {
+		return fmt.Errorf("in xStoreMeta: %v", err)
+	}
+	npath := meta.Path
+	if meta.IsNs {
+		npath = RemoveSlashIf(meta.Path)
+	}
+	return edi.index.storeMeta(npath, meta.Itime, []byte(sbs))
+}
+
+func (edi *eDssImpl) getEncodedContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
+	cf, err := os.CreateTemp("", "ccw")
+	if err != nil {
+		return nil, fmt.Errorf("in getEncodedContentWriter: %w", err)
+	}
+	lcb := func(err error, size int64, ch string) {
+		panic("FIXME: to be migrated")
+		//if err == nil {
+		//	err = edi.onCloseContent(npath, mtime, cf, size, ch, acl, func(npath string, time int64, bs []byte) error {
+		//		if err = edi.me.xStoreMeta(npath, time, bs, acl); err != nil {
+		//			return fmt.Errorf("in getEncodedContentWriter: %w", err)
+		//		}
+		//		return nil
+		//	})
+		//}
+		//if cb != nil {
+		//	cb(err, size, ch)
+		//}
+	}
+	return &ContentHandle{cb: lcb, cf: cf, h: sha256.New()}, nil
 }
 
 func (edi *eDssImpl) apiGetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
-	snpath := uuid.New().String()
-	ewc, err := edi.me.doGetContentWriter(snpath, mtime, acl, func(err error, size int64, sha256trunc []byte) {
-		cb(err, size, sha256trunc)
+	// cf oDssBaseImpl.metaSetter
+	//meta := Meta{Path: npath, Mtime: mtime, Size: size, Ch: css, ACL: acl}
+	//time := time.Now().Unix()
+	//_, anpath, atime, abs, err := odbi.me.apiMetaArgs(npath, time, bs, meta.ACL)
+	anpath := uuid.New().String()
+	var (
+		cSize int64
+		cCh   string
+	)
+	iTime := time.Now().Unix()
+	if edi.mockct != 0 {
+		iTime = edi.mockct
+		edi.mockct += 1
+	}
+	cMeta := Meta{
+		Path: npath, Mtime: mtime, Size: cSize, Ch: cCh, ACL: acl,
+		Itime: iTime, Empath: uuid.New().String(), Ecpath: anpath,
+	}
+	_ = cMeta
+	ewc, err := edi.getEncodedContentWriter(anpath, time.Now().Unix(), nil, func(err error, size int64, ch string) {
+		// server, then user stuff
+		cb(err, size, ch)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("in apiGetContentWriter: %w", err)
@@ -93,8 +156,10 @@ func (edi *eDssImpl) apiGetContentWriter(npath string, mtime int64, acl []ACLEnt
 	if err != nil {
 		return nil, fmt.Errorf("in apiGetContentWriter: %w", err)
 	}
-	return NewWriteCloserWithCb(wc, func(err error) error {
+	return NewWriteCloserWithCb(wc, func(err error, size int64, ch string, wcwc *WriteCloserWithCb) error {
 		if err == nil {
+			cSize = size
+			cCh = ch
 			if err = ewc.Close(); err == nil {
 				return nil
 			}

@@ -3,7 +3,6 @@ package cabridss
 import (
 	"fmt"
 	"github.com/spf13/afero"
-	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/mockfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
@@ -260,16 +259,15 @@ func TestFsyDssGetContentWriterBase(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 	defer fi.Close()
-	fo, err := dss.GetContentWriter("a-copy.txt", time.Now().Unix(), nil, func(err error, size int64, sha256trunc []byte) {
+	fo, err := dss.GetContentWriter("a-copy.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
 		if size != 241 {
 			t.Fatalf("TestFsyDssGetContentWriterBase size %d != 241", size)
 		}
-		hs := internal.Sha256ToStr32(sha256trunc)
-		if hs != "484f617a695613aac4b346237aa01548" {
-			t.Fatalf("TestFsyDssGetContentWriterBase hash %s != %s", hs, "484f617a695613aac4b346237aa01548")
+		if ch != "484f617a695613aac4b346237aa01548" {
+			t.Fatalf("TestFsyDssGetContentWriterBase hash %s != %s", ch, "484f617a695613aac4b346237aa01548")
 		}
 	})
 	if err != nil {
@@ -324,7 +322,7 @@ func TestFsyDssMtime(t *testing.T) {
 	if dfi.ModTime().Unix() != tt {
 		t.Fatalf("TestFsyDssMtime mtime 'd' %d != %d", dfi.ModTime().Unix(), tt)
 	}
-	fo, err := dss.GetContentWriter("d/a-copy.txt", tt, nil, func(err error, size int64, sha256trunc []byte) {
+	fo, err := dss.GetContentWriter("d/a-copy.txt", tt, nil, func(err error, size int64, ch string) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
@@ -378,16 +376,15 @@ func TestFsyDssGetContentReaderBase(t *testing.T) {
 	io.Copy(fo, fi)
 	fi2, err := dss.GetContentReader("a-copy.txt")
 	defer fi2.Close()
-	fo2, err := dss.GetContentWriter("a-copy-copy.txt", time.Now().Unix(), nil, func(err error, size int64, sha256trunc []byte) {
+	fo2, err := dss.GetContentWriter("a-copy-copy.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
 		if err != nil {
 			t.Fatal(err.Error())
 		}
 		if size != 241 {
 			t.Fatalf("TestFsyDssGetContentReaderBase size %d != 241", size)
 		}
-		hs := internal.Sha256ToStr32(sha256trunc)
-		if hs != "484f617a695613aac4b346237aa01548" {
-			t.Fatalf("TestFsyDssGetContentReaderBase hash %s != %s", hs, "484f617a695613aac4b346237aa01548")
+		if ch != "484f617a695613aac4b346237aa01548" {
+			t.Fatalf("TestFsyDssGetContentReaderBase hash %s != %s", ch, "484f617a695613aac4b346237aa01548")
 		}
 	})
 	io.Copy(fo2, fi2)
@@ -464,7 +461,7 @@ func TestFsyDssOsErrors(t *testing.T) {
 	step = "cte1"
 	fi2, err := dss.GetContentReader("a.txt")
 	defer fi2.Close()
-	fo2, err := dss.GetContentWriter("a-copy.txt", time.Now().Unix(), nil, func(err error, size int64, sha256trunc []byte) {
+	fo2, err := dss.GetContentWriter("a-copy.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
 		if err == nil {
 			t.Fatalf("TestFsyDssOsErrors should fail with chtimes error")
 		}
