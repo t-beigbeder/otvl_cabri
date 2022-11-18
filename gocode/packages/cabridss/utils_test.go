@@ -177,6 +177,20 @@ func TestNewWriteCloserWithCb(t *testing.T) {
 	}
 }
 
+func TestNewReadCloserWithCb(t *testing.T) {
+	bf := bytes.Buffer{}
+	bf.Write([]byte("TestNewReadCloserWithCb"))
+	rcwc, err := NewReadCloserWithCb(&bf, func() error {
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = rcwc.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func optionalSkip(t *testing.T) {
 	if os.Getenv("CABRIDSS_SKIP_DEV_TESTS") != "" {
 		if t.Name() == "InTheBeginning" ||
@@ -199,7 +213,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestOlfMultiHistory" ||
 			t.Name() == "TestNewWebDssServer" ||
 			t.Name() == "TestWebDssStoreMeta" ||
-			t.Name() == "TestNewWebDssClientOlf1" ||
+			t.Name() == "TestNewWebDssClientOlf" ||
 			t.Name() == "TestNewWebDssClientObs" ||
 			t.Name() == "TestNewWebDssApiClientOlf1" ||
 			t.Name() == "TestNewWebDssApiClientObs" ||
@@ -211,9 +225,12 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestNewWebApiClient" ||
 			t.Name() == "TestWebApiStream" ||
 			t.Name() == "TestWebTestSleep" ||
-			t.Name() == "TestNewEDssApiClientOlf" ||
+			t.Name() == "TestNewEDssClientOlf" ||
+			t.Name() == "TestNewEDssClientObs" ||
+			t.Name() == "TestNewEDssApiClientOlf1" ||
+			t.Name() == "TestNewEDssApiClientObs" ||
 			t.Name() == "TheEnd" {
-			t.Skip(fmt.Sprintf("Skipping %s because you set CABRISYNC_SKIP_DEV_TESTS", t.Name()))
+			t.Skip(fmt.Sprintf("Skipping %s because you set CABRIDSS_SKIP_DEV_TESTS", t.Name()))
 		}
 	}
 }

@@ -73,6 +73,7 @@ func TestWebDssStoreMeta(t *testing.T) {
 }
 
 func TestNewWebDssClientOlf(t *testing.T) {
+	ucpCount := 0
 	var sv WebServer
 	var err error
 	defer func() {
@@ -91,10 +92,11 @@ func TestNewWebDssClientOlf(t *testing.T) {
 			return err
 		},
 		func(tfs *testfs.Fs) (HDss, error) {
+			ucpCount += 1
 			dss, err := NewWebDss(
 				WebDssConfig{
 					DssBaseConfig: DssBaseConfig{
-						UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
+						UserConfigPath: ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
 						WebPort:        "3000",
 					}, NoClientLimit: true},
 				0, nil)
@@ -150,17 +152,19 @@ func TestNewWebDssClientObs(t *testing.T) {
 }
 
 func TestNewWebDssApiClientOlf(t *testing.T) {
+	ucpCount := 0
 	if err := runTestBasic(t,
 		func(tfs *testfs.Fs) error {
 			_, err := CreateOlfDss(OlfConfig{DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path()}, Root: tfs.Path(), Size: "s"})
 			return err
 		},
 		func(tfs *testfs.Fs) (HDss, error) {
+			ucpCount += 1
 			dss, err := NewWebDss(
 				WebDssConfig{
 					DssBaseConfig: DssBaseConfig{
 						LibApi:         true,
-						UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
+						UserConfigPath: ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
 					},
 					LibApiDssConfig: LibApiDssConfig{
 						IsOlf: true,

@@ -59,14 +59,15 @@ func (hdler *webContentWriterHandler) Close() error {
 
 type webDssImpl struct {
 	oDssBaseImpl
-	clId   string
-	apc    WebApiClient
-	repoId string
-	libApi bool
+	clId         string
+	apc          WebApiClient
+	repoId       string
+	libApi       bool
+	isClientEdss bool
 }
 
-func (wdi *webDssImpl) initialize(config interface{}, lsttime int64, aclusers []string) error {
-	wdi.me = wdi
+func (wdi *webDssImpl) initialize(me oDssProxy, config interface{}, lsttime int64, aclusers []string) error {
+	wdi.me = me
 	wdi.lsttime = lsttime
 	wdi.aclusers = aclusers
 
@@ -125,7 +126,7 @@ func (wdi *webDssImpl) initialize(config interface{}, lsttime int64, aclusers []
 	if err != nil {
 		return fmt.Errorf("in initialize: %v", err)
 	}
-	if err = cix.updateData(udd.UpdatedData, !mIed.ClientIsKnown); err != nil {
+	if err = wdi.me.spUpdateClient(cix, udd.UpdatedData, !mIed.ClientIsKnown); err != nil {
 		return fmt.Errorf("in initialize: %v", err)
 	}
 	wdi.index = cix
@@ -153,13 +154,6 @@ func (wdi *webDssImpl) storeMeta(npath string, time int64, bs []byte) error {
 		return fmt.Errorf("in storeMeta: %v", err)
 	}
 	return nil
-}
-
-func (wdi *webDssImpl) xStoreMeta(npath string, time int64, bs []byte, acl []ACLEntry) error {
-	if err := cXStoreMeta(wdi.apc, npath, time, bs, acl); err != nil {
-		return fmt.Errorf("in xStoreMeta: %v", err)
-	}
-	return wdi.index.storeMeta(npath, time, bs)
 }
 
 func (wdi *webDssImpl) removeMeta(npath string, time int64) error {
@@ -219,7 +213,7 @@ func (wdi *webDssImpl) libPushContent(size int64, ch string, mbs []byte, cf afer
 		getMetaBytes: func(iErr error, size int64, ch string) ([]byte, error) {
 			return mbs, nil
 		},
-	})
+	}, nil)
 	n, err := io.Copy(wter, ccf)
 	if err != nil || n != size {
 		return fmt.Errorf("in libPushContent: %v %d %d", err, n, size)
@@ -236,19 +230,14 @@ func (wdi *webDssImpl) pushContent(size int64, ch string, mbs []byte, cf afero.F
 		err = wdi.libPushContent(size, ch, mbs, cf)
 	} else {
 		err = wdi.webPushContent(size, ch, mbs, cf)
-
 	}
 	if err != nil {
 		return err
 	}
-	meta, err := wdi.decodeMeta(mbs)
-	if err != nil {
-		return fmt.Errorf("in spGetContentWriter: %w", err)
-	}
-	return wdi.index.storeMeta(meta.Path, meta.Itime, mbs)
+	return nil
 }
 
-func (wdi *webDssImpl) spGetContentWriter(cwcbs contentWriterCbs) (io.WriteCloser, error) {
+func (wdi *webDssImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) (io.WriteCloser, error) {
 	return NewTempFileWriteCloserWithCb(wdi.getAfs(), "", "cw", func(err error, size int64, ch string, wcwc *WriteCloserWithCb) error {
 		outError := err
 		defer func() {
@@ -271,10 +260,12 @@ func (wdi *webDssImpl) spGetContentWriter(cwcbs contentWriterCbs) (io.WriteClose
 			return outError
 		}
 		cf := wcwc.Underlying.(afero.File)
-		_ = meta
 		// FIXME: check if upload is required
-		err = wdi.pushContent(size, ch, mbs, cf)
-		if err != nil {
+		if err := wdi.pushContent(size, ch, mbs, cf); err != nil {
+			outError = fmt.Errorf("in spGetContentWriter: %w", err)
+			return outError
+		}
+		if err := wdi.index.storeMeta(meta.Path, meta.Itime, mbs); err != nil {
 			outError = fmt.Errorf("in spGetContentWriter: %w", err)
 			return outError
 		}
@@ -282,53 +273,57 @@ func (wdi *webDssImpl) spGetContentWriter(cwcbs contentWriterCbs) (io.WriteClose
 	})
 }
 
-func (wdi *webDssImpl) doWebGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
-	reqBody, err := json.Marshal(mDoGetContentReader{Npath: npath, MData: meta})
+func (wdi *webDssImpl) spWebGetContentReader(ch string) (io.ReadCloser, error) {
+	reqBody, err := json.Marshal(mSpGetContentReader{Ch: ch})
 	if err != nil {
-		return nil, fmt.Errorf("in doGetContentReader: %w", err)
+		return nil, fmt.Errorf("in spWebGetContentReader: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodPost, wdi.apc.Url()+"doGetContentReader", strings.NewReader(string(reqBody)))
+	req, err := http.NewRequest(http.MethodPost, wdi.apc.Url()+"spGetContentReader", strings.NewReader(string(reqBody)))
 	if err != nil {
-		return nil, fmt.Errorf("in doGetContentReader: %w", err)
+		return nil, fmt.Errorf("in spWebGetContentReader: %w", err)
 	}
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	resp, err := wdi.apc.(*apiClient).client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("in doGetContentReader: %w", err)
+		return nil, fmt.Errorf("in spWebGetContentReader: %w", err)
 	}
 	if resp != nil && resp.StatusCode >= http.StatusBadRequest {
 		bs, err := io.ReadAll(resp.Body)
-		return nil, NewClientErr("doGetContentReader", resp, err, bs)
+		return nil, NewClientErr("spWebGetContentReader", resp, err, bs)
 	}
 	slj := make([]byte, 16)
 	if n, err := resp.Body.Read(slj); n != 16 || err != nil {
-		return nil, fmt.Errorf("in doGetContentReader: %w", err)
+		return nil, fmt.Errorf("in spWebGetContentReader: %w", err)
 	}
 	lj, err := internal.Str16ToInt64(string(slj))
 	if err != nil {
-		return nil, fmt.Errorf("in doGetContentReader: %w", err)
+		return nil, fmt.Errorf("in spWebGetContentReader: %w", err)
 	}
 	if lj != 0 {
 		sErr := make([]byte, lj)
 		if n, err := resp.Body.Read(sErr); n != int(lj) || (err != nil && err != io.EOF) {
-			return nil, fmt.Errorf("in doGetContentReader: %w", err)
+			return nil, fmt.Errorf("in spWebGetContentReader: %w", err)
 		}
-		return nil, fmt.Errorf("in doGetContentReader: %s", sErr)
+		return nil, fmt.Errorf("in spWebGetContentReader: %s", sErr)
 	}
 	return resp.Body, nil
 }
 
-func (wdi *webDssImpl) doLibGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
+func (wdi *webDssImpl) spLibGetContentReader(ch string) (io.ReadCloser, error) {
 	wdc := wdi.apc.GetConfig().(webDssClientConfig)
 	proxy := wdc.libDss.(*ODss).proxy
-	return proxy.doGetContentReader(npath, meta)
+	return proxy.spGetContentReader(ch)
+}
+
+func (wdi *webDssImpl) spGetContentReader(ch string) (io.ReadCloser, error) {
+	if wdi.libApi {
+		return wdi.spLibGetContentReader(ch)
+	}
+	return wdi.spWebGetContentReader(ch)
 }
 
 func (wdi *webDssImpl) doGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
-	if wdi.libApi {
-		return wdi.doLibGetContentReader(npath, meta)
-	}
-	return wdi.doWebGetContentReader(npath, meta)
+	return wdi.spGetContentReader(meta.Ch)
 }
 
 func (wdi *webDssImpl) queryContent(ch string) (exist bool, err error) {
@@ -380,8 +375,8 @@ func (wdi *webDssImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector
 	errs = &sts.Errs
 }
 
-func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string) (oDssProxy, HDss, error) {
-	impl := webDssImpl{}
+func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isClientEdss bool) (oDssProxy, HDss, error) {
+	impl := webDssImpl{isClientEdss: isClientEdss}
 	var (
 		dss HDss
 		err error
@@ -410,13 +405,16 @@ func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string) (oDss
 // returns a pointer to the ready to use DSS or an error if any occur
 // If lsttime is not zero, access will be read-only
 func NewWebDss(config WebDssConfig, lsttime int64, aclusers []string) (HDss, error) {
-	proxy, libDss, err := newWebDssProxy(config, lsttime, aclusers)
+	proxy, libDss, err := newWebDssProxy(config, lsttime, aclusers, false)
 	if err != nil {
 		return nil, fmt.Errorf("in NewWebDss: %w", err)
 	}
 	wdcc := webDssClientConfig{WebDssConfig: config, libDss: libDss}
-	if err := proxy.initialize(wdcc, lsttime, aclusers); err != nil {
+	if err := proxy.initialize(proxy, wdcc, lsttime, aclusers); err != nil {
 		return nil, fmt.Errorf("in NewWebDss: %w", err)
+	}
+	if proxy.isRepoEncrypted() {
+		return nil, fmt.Errorf("in NewWebDss: reposirory is encrypted")
 	}
 	return &ODss{proxy: proxy}, nil
 }

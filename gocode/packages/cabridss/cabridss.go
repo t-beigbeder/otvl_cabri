@@ -34,16 +34,15 @@ type DssBaseConfig struct {
 }
 
 type Meta struct {
-	Path     string     `json:"path"`             // full path for data content
-	Mtime    int64      `json:"mtime"`            // last modification POSIX time
-	Size     int64      `json:"size"`             // content size
-	Ch       string     `json:"ch"`               // content truncated SHA256 checksum
-	IsNs     bool       `json:"isNs"`             // is it a namespace, if true has children
-	Children []string   `json:"children"`         // namespace children, sorted by name
-	ACL      []ACLEntry `json:"acl"`              // access control List, sorted by user
-	Itime    int64      `json:"itime"`            // index time
-	Empath   string     `json:"empath,omitempty"` // path of the encrypted metadata if DSS encrypted
-	Ecpath   string     `json:"ecpath,omitempty"` // path of the encrypted content if DSS encrypted
+	Path     string     `json:"path"`     // full path for data content
+	Mtime    int64      `json:"mtime"`    // last modification POSIX time
+	Size     int64      `json:"size"`     // content size
+	Ch       string     `json:"ch"`       // truncated SHA256 checksum of the content
+	IsNs     bool       `json:"isNs"`     // is it a namespace, if true has children
+	Children []string   `json:"children"` // namespace children, sorted by name
+	ACL      []ACLEntry `json:"acl"`      // access control List, sorted by user
+	Itime    int64      `json:"itime"`    // index time
+	ECh      string     `json:"ech"`      // truncated SHA256 checksum of the encrypted content if encrypted else empty
 }
 
 type IMeta interface {
@@ -406,6 +405,7 @@ type CreateNewParams struct {
 	Root      string                                                      // fsy, olf, smf
 	Size      string                                                      // if olf: s,m,l
 	LocalPath string                                                      // fsy, obs, smf (Root assumed if olf or smf)
+	Encrypted bool                                                        // all but fsy: enable repository encryption
 	GetIndex  func(config DssBaseConfig, localPath string) (Index, error) // see DssBaseConfig
 	Lsttime   int64                                                       // all but fsy: if not zero is the upper time of entries retrieved in it
 	Aclusers  []string                                                    // all but fsy: if not nil is a List of ACL users for access check
@@ -423,7 +423,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 			localPath = params.Root
 		}
 		config := OlfConfig{
-			DssBaseConfig: DssBaseConfig{LocalPath: localPath, GetIndex: params.GetIndex},
+			DssBaseConfig: DssBaseConfig{LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
 			Root:          params.Root, Size: params.Size,
 		}
 		if params.Create {
@@ -435,7 +435,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 	}
 	if params.DssType == "obs" {
 		config := ObsConfig{
-			DssBaseConfig: DssBaseConfig{LocalPath: params.LocalPath, GetIndex: params.GetIndex},
+			DssBaseConfig: DssBaseConfig{LocalPath: params.LocalPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
 			Endpoint:      params.Endpoint,
 			Region:        params.Region,
 			AccessKey:     params.AccessKey,
@@ -455,7 +455,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 			localPath = params.Root
 		}
 		config := ObsConfig{
-			DssBaseConfig: DssBaseConfig{LocalPath: localPath, GetIndex: params.GetIndex},
+			DssBaseConfig: DssBaseConfig{LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
 			Endpoint:      params.Endpoint,
 			Region:        params.Region,
 			AccessKey:     params.AccessKey,

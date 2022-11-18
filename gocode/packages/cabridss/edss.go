@@ -1,13 +1,12 @@
 package cabridss
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
+	"github.com/spf13/afero"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"io"
-	"os"
-	"time"
+	"sort"
 )
 
 type EDssConfig struct {
@@ -22,15 +21,14 @@ type eDssImpl struct {
 	webDssImpl
 }
 
-func (edi *eDssImpl) initialize(config interface{}, lsttime int64, aclusers []string) error {
+func (edi *eDssImpl) initialize(me oDssProxy, config interface{}, lsttime int64, aclusers []string) error {
 	edc := config.(eDssClientConfig)
-	if err := edi.webDssImpl.initialize(edc.webDssClientConfig, lsttime, aclusers); err != nil {
+	if err := edi.webDssImpl.initialize(me, edc.webDssClientConfig, lsttime, aclusers); err != nil {
 		return fmt.Errorf("in eDssImpl.initialize: %w", err)
 	}
 	if !edi.repoEncrypted {
 		return fmt.Errorf("in eDssImpl.initialize: the repository is not encrypted")
 	}
-	edi.me = edi
 	return nil
 }
 
@@ -46,14 +44,17 @@ func (edi *eDssImpl) defaultAcl(acl []ACLEntry) []ACLEntry {
 	}
 	for _, id := range edi.apc.GetConfig().(webDssClientConfig).identities {
 		if id.Alias == "" {
-			return []ACLEntry{{User: id.PKey, Rights: Rights{Write: true}}}
+			return []ACLEntry{{User: id.PKey, Rights: Rights{Read: true, Write: true}}}
 		}
 	}
 	return nil
 }
 
-func (edi *eDssImpl) secrets(acl []ACLEntry) (res []string) {
-	for _, user := range Users(acl) {
+func (edi *eDssImpl) secrets(users []string) (res []string) {
+	if len(users) == 0 {
+		users = Users(edi.defaultAcl(nil))
+	}
+	for _, user := range users {
 		for _, id := range edi.apc.GetConfig().(webDssClientConfig).identities {
 			if id.PKey == user {
 				res = append(res, id.Secret)
@@ -63,20 +64,49 @@ func (edi *eDssImpl) secrets(acl []ACLEntry) (res []string) {
 	return
 }
 
+func (edi *eDssImpl) doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
+	content, css, _ := internal.Ns2Content(children, "")
+	sort.Strings(children)
+	meta := Meta{
+		Path:     npath + "/",
+		Mtime:    mtime,
+		Size:     int64(len(content)),
+		Ch:       css,
+		IsNs:     true,
+		Children: children,
+		ACL:      acl,
+	}
+	mbs, itime, err := edi.getMetaBytes(meta)
+	if err != nil {
+		return fmt.Errorf("in doUpdatens: %w", err)
+	}
+	embs, err := EncryptMsg(string(mbs), Users(acl)...)
+	if err != nil {
+		return fmt.Errorf("in doUpdatens: %w", err)
+	}
+	if err := edi.storeMeta(RemoveSlashIf(meta.Path), itime, embs); err != nil {
+		return fmt.Errorf("in doUpdatens: %w", err)
+	}
+	if err := edi.index.storeMeta(RemoveSlashIf(meta.Path), itime, mbs); err != nil {
+		return fmt.Errorf("in doUpdatens: %w", err)
+	}
+	return nil
+}
+
 func (edi *eDssImpl) doGetMetaTimesFor(npath string) ([]int64, error) {
 	return nil, nil // encrypted meta is only retrieved from local index
 }
 
 func (edi *eDssImpl) doGetMetaAt(npath string, time int64) (Meta, error) {
-	bs, err, ok := edi.index.loadMeta(npath, time)
+	mbs, err, ok := edi.index.loadMeta(npath, time)
 	if err != nil || !ok {
 		return Meta{}, err
 	}
 	var meta Meta
 	if edi.metamockcbs != nil && edi.metamockcbs.MockUnmarshal != nil {
-		err = edi.metamockcbs.MockUnmarshal(bs, &meta)
+		err = edi.metamockcbs.MockUnmarshal(mbs, &meta)
 	} else {
-		err = json.Unmarshal(bs, &meta)
+		err = json.Unmarshal(mbs, &meta)
 	}
 	if err != nil {
 		return Meta{}, err
@@ -84,90 +114,124 @@ func (edi *eDssImpl) doGetMetaAt(npath string, time int64) (Meta, error) {
 	return meta, nil
 }
 
-func (edi *eDssImpl) xStoreMeta(anpath string, atime int64, abs []byte, acl []ACLEntry) error {
-	if err := cXStoreMeta(edi.apc, anpath, atime, abs, acl); err != nil {
-		return fmt.Errorf("in xStoreMeta: %v", err)
-	}
-	sbs, err := DecryptMsg(abs, edi.secrets(acl)...)
-	if err != nil {
-		return fmt.Errorf("in xStoreMeta: %v", err)
-	}
-	var meta Meta
-	if err := json.Unmarshal([]byte(sbs), &meta); err != nil {
-		return fmt.Errorf("in xStoreMeta: %v", err)
-	}
-	npath := meta.Path
-	if meta.IsNs {
-		npath = RemoveSlashIf(meta.Path)
-	}
-	return edi.index.storeMeta(npath, meta.Itime, []byte(sbs))
-}
-
-func (edi *eDssImpl) getEncodedContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
-	cf, err := os.CreateTemp("", "ccw")
-	if err != nil {
-		return nil, fmt.Errorf("in getEncodedContentWriter: %w", err)
-	}
-	lcb := func(err error, size int64, ch string) {
-		panic("FIXME: to be migrated")
-		//if err == nil {
-		//	err = edi.onCloseContent(npath, mtime, cf, size, ch, acl, func(npath string, time int64, bs []byte) error {
-		//		if err = edi.me.xStoreMeta(npath, time, bs, acl); err != nil {
-		//			return fmt.Errorf("in getEncodedContentWriter: %w", err)
-		//		}
-		//		return nil
-		//	})
-		//}
-		//if cb != nil {
-		//	cb(err, size, ch)
-		//}
-	}
-	return &ContentHandle{cb: lcb, cf: cf, h: sha256.New()}, nil
-}
-
-func (edi *eDssImpl) apiGetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
-	// cf oDssBaseImpl.metaSetter
-	//meta := Meta{Path: npath, Mtime: mtime, Size: size, Ch: css, ACL: acl}
-	//time := time.Now().Unix()
-	//_, anpath, atime, abs, err := odbi.me.apiMetaArgs(npath, time, bs, meta.ACL)
-	anpath := uuid.New().String()
+func (edi *eDssImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) (io.WriteCloser, error) {
 	var (
+		eWcwc *WriteCloserWithCb
+		eErr  error
+		eSize int64
+		eCh   string
+		cErr  error
 		cSize int64
 		cCh   string
 	)
-	iTime := time.Now().Unix()
-	if edi.mockct != 0 {
-		iTime = edi.mockct
-		edi.mockct += 1
-	}
-	cMeta := Meta{
-		Path: npath, Mtime: mtime, Size: cSize, Ch: cCh, ACL: acl,
-		Itime: iTime, Empath: uuid.New().String(), Ecpath: anpath,
-	}
-	_ = cMeta
-	ewc, err := edi.getEncodedContentWriter(anpath, time.Now().Unix(), nil, func(err error, size int64, ch string) {
-		// server, then user stuff
-		cb(err, size, ch)
+
+	ecw, err := NewTempFileWriteCloserWithCb(edi.getAfs(), "", "ecw", func(err error, size int64, ch string, me *WriteCloserWithCb) error {
+		eWcwc, eErr, eSize, eCh = me, err, size, ch
+		_, _, _, _, _, _ = eErr, eSize, eCh, cErr, cSize, cCh
+		outError := err
+		if err != nil {
+			outError = fmt.Errorf("in spGetContentWriter %w", err)
+			return outError
+		}
+		mbs, err := cwcbs.getMetaBytes(err, size, ch)
+		if err != nil {
+			outError = fmt.Errorf("in spGetContentWriter %w", err)
+			return outError
+		}
+		meta, err := edi.decodeMeta(mbs)
+		if err != nil {
+			outError = fmt.Errorf("in spGetContentWriter %w", err)
+			return outError
+		}
+		meta.Size = cSize
+		meta.Ch = cCh
+		meta.ECh = eCh
+		mbs, itime, err := edi.getMetaBytes(meta)
+		if err != nil {
+			outError = fmt.Errorf("in spGetContentWriter %w", err)
+			return outError
+		}
+		embs, err := EncryptMsg(string(mbs), Users(acl)...)
+		if err != nil {
+			outError = fmt.Errorf("in spGetContentWriter %w", err)
+			return outError
+		}
+		cf := eWcwc.Underlying.(afero.File)
+		if err := edi.pushContent(size, ch, embs, cf); err != nil {
+			outError = fmt.Errorf("in spGetContentWriter: %w", err)
+			return outError
+		}
+
+		if err := edi.index.storeMeta(meta.Path, itime, mbs); err != nil {
+			outError = fmt.Errorf("in spGetContentWriter: %w", err)
+			return outError
+		}
+
+		return eErr
 	})
 	if err != nil {
-		return nil, fmt.Errorf("in apiGetContentWriter: %w", err)
+		return nil, fmt.Errorf("in spGetContentWriter: %w", err)
 	}
-	wc, err := Encrypt(ewc, Users(acl)...)
+	wc, err := Encrypt(ecw, Users(acl)...)
 	if err != nil {
-		return nil, fmt.Errorf("in apiGetContentWriter: %w", err)
+		return nil, fmt.Errorf("in spGetContentWriter: %w", err)
 	}
-	return NewWriteCloserWithCb(wc, func(err error, size int64, ch string, wcwc *WriteCloserWithCb) error {
-		if err == nil {
-			cSize = size
-			cCh = ch
-			if err = ewc.Close(); err == nil {
-				return nil
+	return NewWriteCloserWithCb(wc, func(err error, size int64, ch string, me *WriteCloserWithCb) error {
+		outError := err
+		defer func() {
+			if cwcbs.closeCb != nil {
+				cwcbs.closeCb(outError, size, ch)
 			}
-		} else {
-			ewc.Close()
+		}()
+
+		cErr, cSize, cCh = err, size, ch
+		if cErr != nil {
+			outError = cErr
+			ecw.Close()
+			return outError
 		}
-		return fmt.Errorf("in apiGetContentWriter close CB: %v", err)
+		if err := ecw.Close(); err != nil {
+			outError = err
+			return err
+		}
+		return nil
 	}), nil
+}
+
+func (edi *eDssImpl) doGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
+	erc, err := edi.spGetContentReader(meta.ECh)
+	if err != nil {
+		return nil, fmt.Errorf("in doGetContentReader: %w", err)
+	}
+	crc, err := Decrypt(erc, edi.secrets(Users(meta.ACL))...)
+	return NewReadCloserWithCb(crc, func() error {
+		return erc.Close()
+	})
+}
+
+func (edi *eDssImpl) spUpdateClient(cix Index, eud UpdatedData, isFull bool) error {
+	udd := UpdatedData{Changed: map[string][]TimedMeta{}, Deleted: map[string]bool{}}
+	for _, etms := range eud.Changed {
+		for _, etm := range etms {
+			smbs, err := DecryptMsg([]byte(etm.Bytes), edi.secrets(Users(edi.defaultAcl(nil)))...)
+			if err != nil {
+				return fmt.Errorf("in spUpdateClient: %w", err)
+			}
+			meta, err := edi.decodeMeta([]byte(smbs))
+			if err != nil {
+				return fmt.Errorf("in spUpdateClient: %w", err)
+			}
+			mbs, _, err := edi.getMetaBytes(meta)
+			if err != nil {
+				return fmt.Errorf("in spUpdateClient: %w", err)
+			}
+			nph := internal.NameToHashStr32(RemoveSlashIfNsIf(meta.Path, meta.IsNs))
+			tms, _ := udd.Changed[nph]
+			tms = append(tms, TimedMeta{Time: meta.Itime, Bytes: string(mbs)})
+			udd.Changed[nph] = tms
+		}
+	}
+	return cix.updateData(udd, isFull)
 }
 
 func (edi *eDssImpl) openSession(aclusers []string) error {
@@ -178,7 +242,7 @@ func (edi *eDssImpl) openSession(aclusers []string) error {
 }
 
 func newEDssProxy(config EDssConfig, lsttime int64, aclusers []string) (oDssProxy, HDss, error) {
-	wdp, dss, err := newWebDssProxy(config.WebDssConfig, lsttime, aclusers)
+	wdp, dss, err := newWebDssProxy(config.WebDssConfig, lsttime, aclusers, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("in newEDssProxy: %w", err)
 	}
@@ -198,7 +262,7 @@ func NewEDss(config EDssConfig, lsttime int64, aclusers []string) (HDss, error) 
 		return nil, fmt.Errorf("in NewWebDss: %w", err)
 	}
 	wdcc := eDssClientConfig{webDssClientConfig{WebDssConfig: config.WebDssConfig, libDss: libDss}}
-	if err := proxy.initialize(wdcc, lsttime, aclusers); err != nil {
+	if err := proxy.initialize(proxy, wdcc, lsttime, aclusers); err != nil {
 		return nil, fmt.Errorf("in NewWebDss: %w", err)
 	}
 	edi := proxy.(*eDssImpl)

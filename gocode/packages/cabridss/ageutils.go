@@ -11,6 +11,16 @@ import (
 
 var ageId age.Identity
 
+// IdentityConfig refers to an age identity identified by an alias,
+// Identities are used for encryption (PKeys of the ACL users using identities aliases)
+// and for decryption (secrets of the DSS aclusers using identities aliases)
+// "" is the default alias for an identity when none is provided
+type IdentityConfig struct {
+	Alias  string `json:"alias"`
+	PKey   string `json:"pKey"`
+	Secret string `json:"secret"`
+}
+
 func GenIdentity(alias string) (IdentityConfig, error) {
 	xi, err := age.GenerateX25519Identity()
 	if err != nil {

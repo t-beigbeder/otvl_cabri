@@ -29,8 +29,8 @@ type oDssOlfImpl struct {
 	afs  afero.Fs // if not nil mock filesystem
 }
 
-func (odoi *oDssOlfImpl) initialize(config interface{}, lsttime int64, aclusers []string) error {
-	odoi.me = odoi
+func (odoi *oDssOlfImpl) initialize(me oDssProxy, config interface{}, lsttime int64, aclusers []string) error {
+	odoi.me = me
 	odoi.lsttime = lsttime
 	odoi.aclusers = aclusers
 	olfConfig := config.(OlfConfig)
@@ -120,10 +120,6 @@ func (odoi *oDssOlfImpl) storeMeta(npath string, time int64, bs []byte) error {
 	return mf.Close()
 }
 
-func (odoi *oDssOlfImpl) xStoreMeta(npath string, time int64, bs []byte, acl []ACLEntry) error {
-	return odoi.index.storeMeta(npath, time, bs)
-}
-
 func (odoi *oDssOlfImpl) removeMeta(npath string, time int64) error {
 	ht := sha256.Sum256([]byte(npath))
 	mpath := fmt.Sprintf("%s.%s",
@@ -156,7 +152,7 @@ func (odoi *oDssOlfImpl) pushContent(size int64, ch string, mbs []byte, cf afero
 	return nil
 }
 
-func (odoi *oDssOlfImpl) spGetContentWriter(cwcbs contentWriterCbs) (io.WriteCloser, error) {
+func (odoi *oDssOlfImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) (io.WriteCloser, error) {
 	return NewTempFileWriteCloserWithCb(odoi.getAfs(), ufpath.Join(odoi.root, "tmp"), "cw", func(err error, size int64, ch string, wcwc *WriteCloserWithCb) error {
 		if err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
@@ -168,25 +164,38 @@ func (odoi *oDssOlfImpl) spGetContentWriter(cwcbs contentWriterCbs) (io.WriteClo
 		if err = odoi.pushContent(size, ch, mbs, wcwc.Underlying.(afero.File)); err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
 		}
-
-		meta, err := odoi.decodeMeta(mbs)
-		if err != nil {
-			return fmt.Errorf("in spGetContentWriter %w", err)
+		var (
+			itime int64
+			npath string
+		)
+		if !odoi.isRepoEncrypted() {
+			meta, err := odoi.decodeMeta(mbs)
+			if err != nil {
+				return fmt.Errorf("in spGetContentWriter %w", err)
+			}
+			itime = meta.Itime
+			npath = RemoveSlashIfNsIf(meta.Path, meta.IsNs)
+		} else {
+			npath = uuid.New().String()
 		}
-		if err = odoi.me.storeAndIndexMeta(RemoveSlashIfNsIf(meta.Path, meta.IsNs), meta.Itime, mbs); err != nil {
+		if err = odoi.me.storeAndIndexMeta(npath, itime, mbs); err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
 		}
 		return nil
 	})
 }
 
-func (odoi *oDssOlfImpl) doGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
-	cpath := ufpath.Join(odoi.root, "content", internal.Str32ToPath(meta.Ch, odoi.size))
+func (odoi *oDssOlfImpl) spGetContentReader(ch string) (io.ReadCloser, error) {
+	cpath := ufpath.Join(odoi.root, "content", internal.Str32ToPath(ch, odoi.size))
 	cf, err := odoi.getAfs().Open(cpath)
 	if err != nil {
 		return nil, fmt.Errorf("in GetContentReader: %w", err)
 	}
 	return cf, nil
+}
+
+func (odoi *oDssOlfImpl) doGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
+	return odoi.spGetContentReader(meta.Ch)
 }
 
 func (odoi *oDssOlfImpl) queryContent(ch string) (bool, error) {
@@ -315,7 +324,7 @@ func NewOlfDss(config OlfConfig, lsttime int64, aclusers []string) (HDss, error)
 		return nil, fmt.Errorf("in NewOlfDss: %w", err)
 	}
 	proxy := newOlfProxy()
-	if err := proxy.initialize(config, lsttime, aclusers); err != nil {
+	if err := proxy.initialize(proxy, config, lsttime, aclusers); err != nil {
 		return nil, fmt.Errorf("in NewOlfDss: %w", err)
 	}
 	return &ODss{proxy: proxy}, nil

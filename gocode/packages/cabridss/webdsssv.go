@@ -69,19 +69,6 @@ func sStoreMeta(c echo.Context) error {
 	return c.JSON(http.StatusOK, nil)
 }
 
-func sXStoreMeta(c echo.Context) error {
-	var sm mStoreMeta
-	if err := c.Bind(&sm); err != nil {
-		return NewServerErr("sXStoreMeta", err)
-	}
-	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
-	err := aXStoreMeta(sm.Npath, sm.Time, sm.Bs, sm.ACL, dss)
-	if err != nil {
-		return NewServerErr("sXStoreMeta", err)
-	}
-	return c.JSON(http.StatusOK, nil)
-}
-
 func sRemoveMeta(c echo.Context) error {
 	var rm mRemoveMeta
 	if err := c.Bind(&rm); err != nil {
@@ -135,7 +122,7 @@ func sPushContent(c echo.Context) error {
 		getMetaBytes: func(iErr error, size int64, ch string) (mbs []byte, oErr error) {
 			return args.Mbs, nil
 		},
-	})
+	}, nil)
 	if err != nil {
 		return NewServerErr("sPushContent", err)
 	}
@@ -158,15 +145,15 @@ func sLoadMeta(c echo.Context) error {
 	return c.JSON(http.StatusOK, aLoadMeta(lm.Npath, lm.Time, dss))
 }
 
-func sDoGetContentReader(c echo.Context) error {
-	var args mDoGetContentReader
+func sSpGetContentReader(c echo.Context) error {
+	var args mSpGetContentReader
 	if err := c.Bind(&args); err != nil {
 		return NewServerErr("sDoGetContentReader", err)
 	}
 	oDss := GetCustomConfig(c).(WebDssServerConfig).Dss.(*ODss)
 	resp := c.Response()
 	resp.Writer.Header().Set(echo.HeaderContentType, echo.MIMEOctetStream)
-	rder, err := oDss.proxy.doGetContentReader(args.Npath, args.MData)
+	rder, err := oDss.proxy.spGetContentReader(args.Ch)
 	if err != nil {
 		resp.WriteHeader(http.StatusOK)
 		sErr := err.Error()
@@ -212,12 +199,11 @@ func WebDssServerConfigurator(e *echo.Echo, root string, config interface{}) err
 	e.PUT(root+"updateClient/:clId", sUpdateClient)
 	e.POST(root+"queryMetaTimes", sQueryMetaTimes)
 	e.POST(root+"storeMeta", sStoreMeta)
-	e.POST(root+"xStoreMeta", sXStoreMeta)
 	e.DELETE(root+"removeMeta", sRemoveMeta)
 	e.DELETE(root+"xRemoveMeta", sXRemoveMeta)
 	e.POST(root+"pushContent", sPushContent)
 	e.POST(root+"loadMeta", sLoadMeta)
-	e.POST(root+"doGetContentReader", sDoGetContentReader)
+	e.POST(root+"spGetContentReader", sSpGetContentReader)
 	e.GET(root+"queryContent/:ch", sQueryContent)
 	e.GET(root+"dumpIndex", sDumpIndex)
 	e.GET(root+"scanPhysicalStorage", sScanPhysicalStorage)

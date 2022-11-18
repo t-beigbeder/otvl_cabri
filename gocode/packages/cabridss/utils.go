@@ -178,3 +178,20 @@ func NewTempFileWriteCloserWithCb(fs afero.Fs, dir, pattern string, closeCb Writ
 	}
 	return NewWriteCloserWithCb(tempFile, closeCb), nil
 }
+
+type ReadCloserWithCb struct {
+	underlying io.Reader
+	closeCb    func() error
+}
+
+func (rcwc *ReadCloserWithCb) Read(p []byte) (n int, err error) {
+	return rcwc.underlying.Read(p)
+}
+
+func (rcwc *ReadCloserWithCb) Close() error {
+	return rcwc.closeCb()
+}
+
+func NewReadCloserWithCb(underlying io.Reader, closeCb func() error) (io.ReadCloser, error) {
+	return &ReadCloserWithCb{underlying: underlying, closeCb: closeCb}, nil
+}

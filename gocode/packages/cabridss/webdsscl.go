@@ -57,9 +57,8 @@ type mLoadMetaOut struct {
 	Bs []byte `json:"bs,string"`
 }
 
-type mDoGetContentReader struct {
-	Npath string `json:"npath"`
-	MData Meta   `json:"meta"`
+type mSpGetContentReader struct {
+	Ch string `json:"ch"`
 }
 
 type mExist struct {
@@ -116,7 +115,7 @@ func aQueryMetaTimes(npath string, dss HDss) *mTimes {
 }
 
 func aStoreMeta(npath string, time int64, bs []byte, dss HDss) error {
-	return dss.(*ODss).proxy.storeMeta(npath, time, bs)
+	return dss.(*ODss).proxy.storeAndIndexMeta(npath, time, bs)
 }
 
 func aXStoreMeta(npath string, time int64, bs []byte, acl []ACLEntry, dss HDss) error {
@@ -246,20 +245,6 @@ func cStoreMeta(apc WebApiClient, npath string, time int64, bs []byte) error {
 	}
 	if err != nil {
 		return fmt.Errorf("in cStoreMeta: %v", err)
-	}
-	return nil
-}
-
-func cXStoreMeta(apc WebApiClient, npath string, time int64, bs []byte, acl []ACLEntry) error {
-	wdc := apc.GetConfig().(webDssClientConfig)
-	var err error
-	if wdc.LibApi {
-		err = aXStoreMeta(npath, time, bs, acl, wdc.libDss)
-	} else {
-		_, err = apc.SimpleDoAsJson(http.MethodPost, apc.Url()+"xStoreMeta", mStoreMeta{Npath: npath, Time: time, Bs: bs, ACL: acl}, nil)
-	}
-	if err != nil {
-		return fmt.Errorf("in cXStoreMeta: %v", err)
 	}
 	return nil
 }

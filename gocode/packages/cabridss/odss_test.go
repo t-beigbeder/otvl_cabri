@@ -28,86 +28,68 @@ func tfsStartup(tfs *testfs.Fs) error {
 	return nil
 }
 
-func runTestBasicBck(t *testing.T, tfsPath string, dss Dss) error {
-	optionalSkip(t)
-	if err := dss.Mkns("", 0, []string{"d1é/"}, nil); err != nil {
-		return err
-	}
-	cs, err := dss.Lsns("")
-	if err != nil {
-		return err
-	}
-	if cs[0] != "d1é/" {
-		return fmt.Errorf("%v %v", cs, err)
-	}
-	if err := dss.Mkns("d1é", 0, []string{"a.txt"}, nil); err != nil {
-		return err
-	}
-	fi, err := os.Open(ufpath.Join(tfsPath, "a.txt"))
-	if err != nil {
-		return err
-	}
-	defer fi.Close()
+var ucpCount = 0
+var ids []IdentityConfig
+var currentUserConfig UserConfig
 
-	fo, err := dss.GetContentWriter("d1é/a.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
-		if err != nil {
-			t.Log(err)
+func newUcp(tfs *testfs.Fs) (ucp string, uc UserConfig, err error) {
+	ucpCount += 1
+	ucp = ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount))
+	if ucpCount == 1 {
+		uc1, err1 := GetUserConfig(DssBaseConfig{}, ucp)
+		if err1 != nil {
+			return
 		}
-		if size != 241 {
-			t.Logf("size %d != 241", size)
+		ids = uc1.Identities
+	}
+	id, err := GenIdentity(fmt.Sprintf("id-%d", ucpCount))
+	ids = append(ids, id)
+	for _, id = range ids {
+		UserConfigPutIdentity(DssBaseConfig{}, ucp, id)
+	}
+	uc, _ = GetUserConfig(DssBaseConfig{}, ucp)
+	return
+}
+
+func ucpPkeys() []string {
+	return IdPkeys(currentUserConfig)
+}
+
+func ucpSecrets() []string {
+	return IdSecrets(currentUserConfig)
+}
+
+func aclFromUcp() (acl []ACLEntry) {
+	for _, id := range currentUserConfig.Identities {
+		acl = append(acl, ACLEntry{User: id.PKey, Rights: Rights{Write: true}})
+	}
+	return
+}
+
+func serverIndex(dss HDss) (Index, Index) {
+	px, ok := dss.(*ODss).proxy.(*webDssImpl)
+	if !ok {
+		px, ok := dss.(*ODss).proxy.(*eDssImpl)
+		if !ok {
+			return nil, nil
 		}
-		if ch != "484f617a695613aac4b346237aa01548" {
-			t.Logf("%s != %s", ch, "484f617a695613aac4b346237aa01548")
+		if !px.libApi {
+			return nil, nil
 		}
-	})
-	if err != nil {
-		return err
+		return px.apc.GetConfig().(webDssClientConfig).libDss.GetIndex(), dss.GetIndex()
 	}
-	io.Copy(fo, fi)
-	fo.Close()
+	if !px.libApi {
+		return nil, nil
+	}
+	return px.apc.GetConfig().(webDssClientConfig).libDss.GetIndex(), dss.GetIndex()
+}
 
-	rc, err := dss.GetContentReader("d1é/a.txt")
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-	var buf bytes.Buffer
-	io.Copy(&buf, rc)
-	if buf.Len() != 241 {
-		return fmt.Errorf("%d != 241", buf.Len())
-	}
-
-	meta, err := dss.GetMeta("d1é/a.txt", true)
-	if err != nil {
-		return err
-	}
-	if meta.GetSize() != 241 || meta.GetCh() != "484f617a695613aac4b346237aa01548" {
-		return fmt.Errorf("meta %v", meta)
-	}
-	isDup, err := dss.IsDuplicate(meta.GetCh())
-	if err != nil || !isDup {
-		return fmt.Errorf("%v %v", err.Error(), isDup)
-	}
-
-	meta, err = dss.GetMeta("d1é/", true)
-	if err != nil {
-		return err
-	}
-	if meta.GetSize() != 6 || meta.GetCh() != "10fbdce5d5e2ba7e0249a4a8921faede" {
-		return fmt.Errorf("meta %v", meta)
-	}
-
-	if err = dss.Remove("d1é/a.txt"); err != nil {
-		return err
-	}
-	meta, err = dss.GetMeta("d1é/", true)
-	if err != nil {
-		return err
-	}
-	if meta.GetSize() != 0 || meta.GetCh() != "e3b0c44298fc1c149afbf4c8996fb924" {
-		return fmt.Errorf("meta %v", meta)
-	}
-	return nil
+func dumpIx(six, cix Index) {
+	println("six")
+	println(six.Dump())
+	println("cix")
+	println(cix.Dump())
+	println()
 }
 
 func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb func(*testfs.Fs) (HDss, error)) error {
@@ -125,10 +107,21 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 		t.Fatal(err)
 	}
 	defer dss.Close()
+	six, cix := serverIndex(dss)
+	_, _ = six, cix
 
 	if err := dss.Mkns("", 0, []string{"d1é/", "d2/"}, nil); err != nil {
 		return err
 	}
+	// check client index if relevant
+	if cix != nil {
+		dumpIx(six, cix)
+		ts, err, ok := cix.queryMetaTimes("")
+		if err != nil || len(ts) == 0 || !ok {
+			return fmt.Errorf("ts %v err %v ok %v", ts, err, ok)
+		}
+	}
+
 	cs, err := dss.Lsns("")
 	if err != nil {
 		return err
@@ -238,8 +231,8 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 		return fmt.Errorf("meta %v", meta)
 	}
 	// check client index if relevant
-	_, ok := dss.GetIndex().(*nIndex)
-	if !ok {
+	if cix != nil {
+		dumpIx(six, cix)
 		ts, err, ok := dss.GetIndex().queryMetaTimes("d2/a.txt")
 		if err != nil || len(ts) == 0 || !ok {
 			return fmt.Errorf("ts %v err %v ok %v", ts, err, ok)
@@ -259,8 +252,9 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	if err != nil {
 		return err
 	}
-	_, ok = dss.GetIndex().(*nIndex)
-	if !ok {
+	six, cix = serverIndex(dss)
+	if cix != nil {
+		dumpIx(six, cix)
 		ts, err, ok := dss.GetIndex().queryMetaTimes("d2/a.txt")
 		if err != nil || len(ts) == 0 || !ok {
 			return fmt.Errorf("ts %v err %v ok %v", ts, err, ok)

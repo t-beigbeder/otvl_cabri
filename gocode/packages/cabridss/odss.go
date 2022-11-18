@@ -32,6 +32,7 @@ type oDssBaseProxy interface {
 	auditIndex() (map[string][]AuditIndexInfo, error)
 	scanStorage() (StorageInfo, *ErrorCollector)
 	// other
+	doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error
 	setIndex(config DssBaseConfig, localPath string) error // to be called by oDssSpecificProxy.initialize
 	isRepoEncrypted() bool
 	defaultAcl(acl []ACLEntry) []ACLEntry
@@ -39,9 +40,8 @@ type oDssBaseProxy interface {
 	decodeMeta(mbs []byte) (Meta, error)
 	doGetMetaAt(npath string, time int64) (Meta, error)
 	storeAndIndexMeta(npath string, time int64, bs []byte) error
+	spUpdateClient(cix Index, data UpdatedData, isFull bool) error
 }
-
-type storeMetaCallback func(npath string, time int64, bs []byte) error
 
 type contentWriterCbs struct {
 	closeCb      WriteCloserCb
@@ -49,15 +49,15 @@ type contentWriterCbs struct {
 }
 
 type oDssSpecificProxy interface {
-	initialize(config interface{}, lsttime int64, aclusers []string) error // called on implementation instantiation (NewXxxDss)
+	initialize(me oDssProxy, config interface{}, lsttime int64, aclusers []string) error // called on implementation instantiation (NewXxxDss)
 	loadMeta(npath string, time int64) ([]byte, error)
 	queryMetaTimes(npath string) (times []int64, err error)
 	storeMeta(npath string, time int64, bs []byte) error
-	xStoreMeta(npath string, time int64, bs []byte, acl []ACLEntry) error
 	removeMeta(npath string, time int64) error
 	xRemoveMeta(npath string, time int64) error
 	pushContent(size int64, ch string, mbs []byte, cf afero.File) error
-	spGetContentWriter(cwcbs contentWriterCbs) (io.WriteCloser, error)
+	spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) (io.WriteCloser, error)
+	spGetContentReader(ch string) (io.ReadCloser, error)
 	doGetContentReader(npath string, meta Meta) (io.ReadCloser, error)
 	queryContent(ch string) (exist bool, err error)
 	spClose() error
@@ -274,25 +274,6 @@ func (odbi *oDssBaseImpl) hasParent(npath string, isDir bool) (bool, error) {
 	return isNpathIn(npath, isDir, meta.Children), nil
 }
 
-func (odbi *oDssBaseImpl) doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry, curMeta Meta) error {
-	content, css, _ := internal.Ns2Content(children, "")
-	sort.Strings(children)
-	meta := Meta{
-		Path:     npath + "/",
-		Mtime:    mtime,
-		Size:     int64(len(content)),
-		Ch:       css,
-		IsNs:     true,
-		Children: children,
-		ACL:      acl,
-	}
-	mbs, itime, err := odbi.getMetaBytes(meta)
-	if err != nil {
-		return fmt.Errorf("in doUpdatens: %w", err)
-	}
-	return odbi.storeAndIndexMeta(RemoveSlashIf(meta.Path), itime, mbs)
-}
-
 func (odbi *oDssBaseImpl) mkupns(npath string, mtime int64, children []string, acl []ACLEntry) error {
 	if odbi.lsttime != 0 {
 		return fmt.Errorf("read-only DSS")
@@ -312,7 +293,7 @@ func (odbi *oDssBaseImpl) mkupns(npath string, mtime int64, children []string, a
 	if err == nil && !odbi.hasWriteAcl(meta) {
 		return fmt.Errorf("in Mkns/Updatens: %s read-only", npath)
 	}
-	return odbi.doUpdatens(npath, mtime, children, acl, Meta{})
+	return odbi.me.doUpdatens(npath, mtime, children, acl)
 }
 
 func (odbi *oDssBaseImpl) mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
@@ -374,30 +355,16 @@ func (odbi *oDssBaseImpl) getContentWriter(npath string, mtime int64, acl []ACLE
 		closeCb: closeCb,
 		getMetaBytes: func(iErr error, size int64, ch string) (mbs []byte, oErr error) {
 			if iErr == nil {
-				sort.Slice(acl, func(i, j int) bool {
-					return acl[i].User < acl[j].User
-				})
-				time := time.Now().Unix()
-				if odbi.mockct != 0 {
-					time = odbi.mockct
-					odbi.mockct += 1
-				}
-				meta := Meta{Path: npath, Mtime: mtime, Size: size, Ch: ch, ACL: acl, Itime: time}
-				var bs []byte
-				var err error
-				if odbi.metamockcbs != nil && odbi.metamockcbs.MockMarshal != nil {
-					bs, err = odbi.metamockcbs.MockMarshal(meta)
-				} else {
-					bs, err = json.Marshal(meta)
-				}
+				meta := Meta{Path: npath, Mtime: mtime, Size: size, Ch: ch, ACL: acl}
+				mbs, _, err := odbi.getMetaBytes(meta)
 				if err != nil {
 					return nil, fmt.Errorf("in getMetaBytes: %w", err)
 				}
-				return bs, nil
+				return mbs, nil
 			}
 			return nil, fmt.Errorf("in getMetaBytes: %w", iErr)
 		},
-	})
+	}, acl)
 }
 
 func (odbi *oDssBaseImpl) getContentReader(npath string) (io.ReadCloser, error) {
@@ -418,9 +385,6 @@ func (odbi *oDssBaseImpl) getContentReader(npath string) (io.ReadCloser, error) 
 	}
 	if !odbi.hasReadAcl(meta) {
 		return nil, fmt.Errorf("in GetContentReader: %s access denied", npath)
-	}
-	if odbi.me.isEncrypted() {
-		return nil, fmt.Errorf("in getContentReader: not yet implemented") // FIXME
 	}
 	return odbi.me.doGetContentReader(npath, meta)
 }
@@ -466,7 +430,7 @@ func (odbi *oDssBaseImpl) remove(npath string) error {
 			uchildren = append(uchildren, child)
 		}
 	}
-	return odbi.doUpdatens(parent, time.Now().Unix(), uchildren, meta.ACL, Meta{})
+	return odbi.me.doUpdatens(parent, time.Now().Unix(), uchildren, meta.ACL)
 }
 
 func (odbi *oDssBaseImpl) getMeta(npath string, getCh bool) (IMeta, error) {
@@ -713,6 +677,25 @@ func (odbi *oDssBaseImpl) getRepoId() string { return odbi.repoId }
 
 func (odbi *oDssBaseImpl) isEncrypted() bool { return false }
 
+func (odbi *oDssBaseImpl) doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
+	content, css, _ := internal.Ns2Content(children, "")
+	sort.Strings(children)
+	meta := Meta{
+		Path:     npath + "/",
+		Mtime:    mtime,
+		Size:     int64(len(content)),
+		Ch:       css,
+		IsNs:     true,
+		Children: children,
+		ACL:      acl,
+	}
+	mbs, itime, err := odbi.getMetaBytes(meta)
+	if err != nil {
+		return fmt.Errorf("in doUpdatens: %w", err)
+	}
+	return odbi.storeAndIndexMeta(RemoveSlashIf(meta.Path), itime, mbs)
+}
+
 func (odbi *oDssBaseImpl) doAuditIndexFromStorage(mai map[string][]AuditIndexInfo) error {
 	sti, errs := odbi.scanStorage()
 	if errs != nil {
@@ -930,9 +913,6 @@ func (odbi *oDssBaseImpl) decodeMeta(mbs []byte) (meta Meta, err error) {
 }
 
 func (odbi *oDssBaseImpl) doGetMetaAt(npath string, time int64) (Meta, error) {
-	if odbi.me.isEncrypted() {
-		panic("isEncrypted")
-	}
 	bs, err, ok := odbi.index.loadMeta(npath, time)
 	if err != nil {
 		return Meta{}, err
@@ -947,7 +927,7 @@ func (odbi *oDssBaseImpl) doGetMetaAt(npath string, time int64) (Meta, error) {
 	if err != nil {
 		return Meta{}, err
 	}
-	if err = odbi.me.xStoreMeta(npath, time, bs, meta.ACL); err != nil {
+	if err = odbi.index.storeMeta(npath, time, bs); err != nil {
 		return Meta{}, err
 	}
 	return meta, nil
@@ -984,4 +964,8 @@ func (odbi *oDssBaseImpl) storeAndIndexMeta(npath string, time int64, bs []byte)
 		return fmt.Errorf("in storeAndIndexMeta: %w", err)
 	}
 	return nil
+}
+
+func (odbi *oDssBaseImpl) spUpdateClient(cix Index, data UpdatedData, isFull bool) error {
+	return cix.updateData(data, isFull)
 }

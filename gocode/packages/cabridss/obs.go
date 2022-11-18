@@ -25,8 +25,8 @@ type oDssObjImpl struct {
 	is3 IS3Session
 }
 
-func (odoi *oDssObjImpl) initialize(config interface{}, lsttime int64, aclusers []string) error {
-	odoi.me = odoi
+func (odoi *oDssObjImpl) initialize(me oDssProxy, config interface{}, lsttime int64, aclusers []string) error {
+	odoi.me = me
 	odoi.lsttime = lsttime
 	odoi.aclusers = aclusers
 	obsConfig := config.(ObsConfig)
@@ -90,10 +90,6 @@ func (odoi *oDssObjImpl) storeMeta(npath string, time int64, bs []byte) error {
 	return odoi.is3.Put(fmt.Sprintf("meta-%s.%s", internal.NameToHashStr32(npath), internal.Int64ToStr16(time)), bs)
 }
 
-func (odoi *oDssObjImpl) xStoreMeta(npath string, time int64, bs []byte, acl []ACLEntry) error {
-	return odoi.index.storeMeta(npath, time, bs)
-}
-
 func (odoi *oDssObjImpl) removeMeta(npath string, time int64) error {
 	return odoi.is3.Delete(fmt.Sprintf("meta-%s.%s", internal.NameToHashStr32(npath), internal.Int64ToStr16(time)))
 }
@@ -118,7 +114,7 @@ func (odoi *oDssObjImpl) pushContent(size int64, ch string, mbs []byte, cf afero
 	return nil
 }
 
-func (odoi *oDssObjImpl) spGetContentWriter(cwcbs contentWriterCbs) (io.WriteCloser, error) {
+func (odoi *oDssObjImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) (io.WriteCloser, error) {
 	return NewTempFileWriteCloserWithCb(odoi.getAfs(), "", "cw", func(err error, size int64, ch string, wcwc *WriteCloserWithCb) error {
 		if err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
@@ -130,19 +126,33 @@ func (odoi *oDssObjImpl) spGetContentWriter(cwcbs contentWriterCbs) (io.WriteClo
 		if err = odoi.pushContent(size, ch, mbs, wcwc.Underlying.(afero.File)); err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
 		}
-		meta, err := odoi.decodeMeta(mbs)
-		if err != nil {
-			return fmt.Errorf("in spGetContentWriter %w", err)
+		var (
+			itime int64
+			npath string
+		)
+		if !odoi.isRepoEncrypted() {
+			meta, err := odoi.decodeMeta(mbs)
+			if err != nil {
+				return fmt.Errorf("in spGetContentWriter %w", err)
+			}
+			itime = meta.Itime
+			npath = RemoveSlashIfNsIf(meta.Path, meta.IsNs)
+		} else {
+			npath = uuid.New().String()
 		}
-		if err = odoi.me.storeAndIndexMeta(RemoveSlashIfNsIf(meta.Path, meta.IsNs), meta.Itime, mbs); err != nil {
+		if err = odoi.me.storeAndIndexMeta(npath, itime, mbs); err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
 		}
 		return nil
 	})
 }
 
+func (odoi *oDssObjImpl) spGetContentReader(ch string) (io.ReadCloser, error) {
+	return odoi.is3.Download(fmt.Sprintf("content-%s", ch))
+}
+
 func (odoi *oDssObjImpl) doGetContentReader(npath string, meta Meta) (io.ReadCloser, error) {
-	return odoi.is3.Download(fmt.Sprintf("content-%s", meta.Ch))
+	return odoi.spGetContentReader(meta.Ch)
 }
 
 func (odoi *oDssObjImpl) queryContent(ch string) (bool, error) {
@@ -226,7 +236,7 @@ func newObsProxy() oDssProxy {
 // If lsttime is not zero, access will be read-only
 func NewObsDss(config ObsConfig, lsttime int64, aclusers []string) (HDss, error) {
 	proxy := newObsProxy()
-	if err := proxy.initialize(config, lsttime, aclusers); err != nil {
+	if err := proxy.initialize(proxy, config, lsttime, aclusers); err != nil {
 		return nil, fmt.Errorf("in NewObsDss: %w", err)
 	}
 	return &ODss{proxy: proxy}, nil
@@ -256,7 +266,7 @@ func CreateObsDss(config ObsConfig) (HDss, error) {
 // config provides the object store specification
 func CleanObsDss(config ObsConfig) error {
 	ods := &ODss{proxy: newObsProxy()}
-	if err := ods.proxy.initialize(config, 0, nil); err != nil {
+	if err := ods.proxy.initialize(ods.proxy, config, 0, nil); err != nil {
 		return fmt.Errorf("in CleanObsDss: %w", err)
 	}
 	defer ods.proxy.close()
