@@ -170,5 +170,4 @@ func TestNewEDssApiClientObs(t *testing.T) {
 	internal.Retry(t, func(t *testing.T) error {
 		return runTestNewEDssApiClientObs(t)
 	})
-
 }

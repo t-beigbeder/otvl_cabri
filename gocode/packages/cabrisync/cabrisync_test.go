@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/mockfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
@@ -13,6 +14,43 @@ import (
 	"testing"
 	"time"
 )
+
+var ucpCount = 0
+var ids []cabridss.IdentityConfig
+var currentUserConfig cabridss.UserConfig
+var mtCount = time.Date(2018, time.April, 24, 23, 0, 0, 0, time.UTC).Unix() - 1
+
+func mtimeCount() int64 { mtCount += 1; return mtCount }
+
+func newUcp(tfs *testfs.Fs) (ucp string, uc cabridss.UserConfig, err error) {
+	ucpCount += 1
+	ucp = ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount))
+	if ucpCount == 1 {
+		uc1, err1 := cabridss.GetUserConfig(cabridss.DssBaseConfig{}, ucp)
+		if err1 != nil {
+			return
+		}
+		ids = uc1.Identities
+	}
+	id, err := cabridss.GenIdentity(fmt.Sprintf("id-%d", ucpCount))
+	ids = append(ids, id)
+	for _, id = range ids {
+		cabridss.UserConfigPutIdentity(cabridss.DssBaseConfig{}, ucp, id)
+	}
+	uc, _ = cabridss.GetUserConfig(cabridss.DssBaseConfig{}, ucp)
+	return
+}
+
+func dumpIx(six, cix cabridss.Index) {
+	if cix == nil {
+		return
+	}
+	println("six")
+	println(six.Dump())
+	println("cix")
+	println(cix.Dump())
+	println()
+}
 
 func basicTfsStartup(tfs *testfs.Fs) error {
 	if err := tfs.RandTextFile("a.txt", 41); err != nil {
@@ -51,7 +89,7 @@ func basicTfsStartup(tfs *testfs.Fs) error {
 	return nil
 }
 
-func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.Dss, noAcl bool, verbose bool) {
+func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.Dss, noAcl bool, verbose bool) error {
 	var err error
 
 	optionalSleep(t)
@@ -189,6 +227,10 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 	if rs13 != es {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs13)
 	}
+	hdss, _ := dssr.(cabridss.HDss)
+	six, cix := cabridss.GetServerIndexesForTests(hdss)
+	dumpIx(six, cix)
+	return nil
 }
 
 func TestSynchronizeBasic(t *testing.T) {
@@ -446,6 +488,150 @@ func TestSynchronizeBasicFsyWebOlf(t *testing.T) {
 	//dssr.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
 
 	runTestSynchronizeBasic(t, tfsl, dssl, dssr, true, false)
+}
+
+func runTestSynchronizeWith(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb func(*testfs.Fs) (cabridss.HDss, error)) error {
+	optionalSkip(t)
+	tfsl, err := testfs.CreateFs(fmt.Sprintf("%sLeft", t.Name()), basicTfsStartup)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfsl.Delete()
+	dssl, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, tfsl.Path())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	cbs := mockfs.MockCbs{}
+	dssl.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
+
+	tfsr, err := testfs.CreateFs(fmt.Sprintf("%sRight", t.Name()), basicTfsStartup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tfsr.Delete()
+	if err = createDssCb(tfsr); err != nil {
+		return err
+	}
+	dssr, err := newDssCb(tfsr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dssr.Close()
+	return runTestSynchronizeBasic(t, tfsl, dssl, dssr, true, false)
+}
+
+func TestSynchronizeBasicFsyEDssApiOlf(t *testing.T) {
+	if err := runTestSynchronizeWith(t,
+		func(tfs *testfs.Fs) error {
+			_, err := cabridss.CreateOlfDss(cabridss.OlfConfig{
+				DssBaseConfig: cabridss.DssBaseConfig{LocalPath: tfs.Path(), Encrypted: true},
+				Root:          tfs.Path(), Size: "s"})
+			return err
+		},
+		func(tfs *testfs.Fs) (cabridss.HDss, error) {
+			ucp, uc, _ := newUcp(tfs)
+			dss, err := cabridss.NewEDss(
+				cabridss.EDssConfig{
+					WebDssConfig: cabridss.WebDssConfig{
+						DssBaseConfig: cabridss.DssBaseConfig{
+							LibApi:         true,
+							UserConfigPath: ucp,
+						},
+						LibApiDssConfig: cabridss.LibApiDssConfig{
+							IsOlf: true,
+							OlfCfg: cabridss.OlfConfig{
+								DssBaseConfig: cabridss.DssBaseConfig{
+									LocalPath: tfs.Path(),
+									GetIndex: func(config cabridss.DssBaseConfig, _ string) (cabridss.Index, error) {
+										return cabridss.NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+									},
+								}, Root: tfs.Path(), Size: "s"},
+						},
+					},
+				},
+				0, cabridss.IdPkeys(uc))
+			return dss, err
+
+		}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSynchronizeBasicFsyEDssWebOlf(t *testing.T) {
+	var sv cabridss.WebServer
+	var err error
+	defer func() {
+		if sv != nil {
+			sv.Shutdown()
+		}
+	}()
+
+	if err := runTestSynchronizeWith(t,
+		func(tfs *testfs.Fs) error {
+			getPIndex := func(config cabridss.DssBaseConfig, _ string) (cabridss.Index, error) {
+				return cabridss.NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+			}
+			sv, err = createWebDssServer(":3000", "",
+				cabridss.CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex, Encrypted: true},
+			)
+			return err
+		},
+		func(tfs *testfs.Fs) (cabridss.HDss, error) {
+			dss, err := cabridss.NewEDss(
+				cabridss.EDssConfig{
+					WebDssConfig: cabridss.WebDssConfig{
+						DssBaseConfig: cabridss.DssBaseConfig{
+							UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
+							WebPort:        "3000",
+						}, NoClientLimit: true},
+				},
+				0, nil)
+			return dss, err
+		}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func runTestSynchronizeBasicFsyEDssApiObs(t *testing.T) error {
+	return runTestSynchronizeWith(t,
+		func(tfs *testfs.Fs) error {
+			config := getOC()
+			config.LocalPath = tfs.Path()
+			config.DssBaseConfig.GetIndex = cabridss.GetPIndex
+			config.Encrypted = true
+			dss, err := cabridss.CreateObsDss(config)
+			if err != nil {
+				return err
+			}
+			dss.Close()
+			return nil
+		},
+		func(tfs *testfs.Fs) (cabridss.HDss, error) {
+			dbc := getOC()
+			dbc.LocalPath = tfs.Path()
+			dbc.DssBaseConfig.GetIndex = cabridss.GetPIndex
+			dss, err := cabridss.NewEDss(
+				cabridss.EDssConfig{
+					cabridss.WebDssConfig{
+						DssBaseConfig: cabridss.DssBaseConfig{
+							LibApi:         true,
+							UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
+						},
+						LibApiDssConfig: cabridss.LibApiDssConfig{
+							IsObs:  true,
+							ObsCfg: dbc,
+						},
+					},
+				},
+				0, nil)
+			return dss, err
+		})
+}
+
+func TestSynchronizeBasicFsyEDssApiObs(t *testing.T) {
+	internal.Retry(t, func(t *testing.T) error {
+		return runTestSynchronizeBasicFsyEDssApiObs(t)
+	})
 }
 
 func basicPlusTfsStartup(tfs *testfs.Fs) error {

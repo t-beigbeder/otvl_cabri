@@ -31,6 +31,9 @@ func tfsStartup(tfs *testfs.Fs) error {
 var ucpCount = 0
 var ids []IdentityConfig
 var currentUserConfig UserConfig
+var mtCount = time.Date(2018, time.April, 24, 23, 0, 0, 0, time.UTC).Unix() - 1
+
+func mtimeCount() int64 { mtCount += 1; return mtCount }
 
 func newUcp(tfs *testfs.Fs) (ucp string, uc UserConfig, err error) {
 	ucpCount += 1
@@ -110,7 +113,7 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	six, cix := serverIndex(dss)
 	_, _ = six, cix
 
-	if err := dss.Mkns("", 0, []string{"d1é/", "d2/"}, nil); err != nil {
+	if err := dss.Mkns("", mtimeCount(), []string{"d1é/", "d2/"}, nil); err != nil {
 		return err
 	}
 	// check client index if relevant
@@ -129,10 +132,10 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	if cs[0] != "d1é/" {
 		return fmt.Errorf("%v %v", cs, err)
 	}
-	if err := dss.Mkns("d1é", 0, []string{"a.txt"}, nil); err != nil {
+	if err := dss.Mkns("d1é", mtimeCount(), []string{"a.txt"}, nil); err != nil {
 		return err
 	}
-	if err := dss.Mkns("d2", 0, []string{"a.txt"}, nil); err != nil {
+	if err := dss.Mkns("d2", mtimeCount(), []string{"a.txt"}, nil); err != nil {
 		return err
 	}
 	fi, err := os.Open(ufpath.Join(tfs.Path(), "a.txt"))
@@ -141,7 +144,7 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	}
 	defer fi.Close()
 
-	fo, err := dss.GetContentWriter("d1é/a.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
+	fo, err := dss.GetContentWriter("d1é/a.txt", mtimeCount(), nil, func(err error, size int64, ch string) {
 		if err != nil {
 			t.Log(err)
 		}
@@ -175,7 +178,7 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	}
 	defer fi.Close()
 
-	fo, err = dss.GetContentWriter("d2/a.txt", time.Now().Unix(), nil, nil)
+	fo, err = dss.GetContentWriter("d2/a.txt", mtimeCount(), nil, nil)
 	if err != nil {
 		t.Log(err)
 		return err

@@ -215,7 +215,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestWebDssStoreMeta" ||
 			t.Name() == "TestNewWebDssClientOlf" ||
 			t.Name() == "TestNewWebDssClientObs" ||
-			t.Name() == "TestNewWebDssApiClientOlf1" ||
+			t.Name() == "TestNewWebDssApiClientOlf" ||
 			t.Name() == "TestNewWebDssApiClientObs" ||
 			t.Name() == "TestWebClientOlfHistory" ||
 			t.Name() == "TestWebClientObsHistory" ||
@@ -227,7 +227,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestWebTestSleep" ||
 			t.Name() == "TestNewEDssClientOlf" ||
 			t.Name() == "TestNewEDssClientObs" ||
-			t.Name() == "TestNewEDssApiClientOlf1" ||
+			t.Name() == "TestNewEDssApiClientOlf" ||
 			t.Name() == "TestNewEDssApiClientObs" ||
 			t.Name() == "TheEnd" {
 			t.Skip(fmt.Sprintf("Skipping %s because you set CABRIDSS_SKIP_DEV_TESTS", t.Name()))

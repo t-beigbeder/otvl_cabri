@@ -37,7 +37,9 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestSynchronizeBasicFsyOlfACL" ||
 			t.Name() == "TestSynchronizeBasicFsyObs" ||
 			t.Name() == "TestSynchronizeBasicFsyObsACL" ||
-			t.Name() == "TestSynchronizeBasicFsyWebOlf1" ||
+			t.Name() == "TestSynchronizeBasicFsyWebOlf" ||
+			t.Name() == "TestSynchronizeBasicFsyEDssApiOlf1" ||
+			t.Name() == "TestSynchronizeBasicFsyEDssWebOlf1" ||
 			t.Name() == "TestSynchroInconsistentChildren" ||
 			t.Name() == "TestLoopSynchroInconsistentChildren" ||
 			t.Name() == "TestSynchronizeArboTiny" ||
