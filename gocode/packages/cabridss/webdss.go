@@ -361,18 +361,22 @@ func copyMap[T any](dst map[string]T, src map[string]T) {
 	}
 }
 
+func (wdi *webDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+	copyMap(sti.Path2Meta, sts.Sti.Path2Meta)
+	copyMap(sti.Path2Content, sts.Sti.Path2Content)
+	copyMap(sti.ExistingCs, sts.Sti.ExistingCs)
+	copyMap(sti.Path2Error, sts.Sti.Path2Error)
+	errs = &sts.Errs
+}
+
 func (wdi *webDssImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector) {
 	sts, err := cScanPhysicalStorage(wdi.apc)
 	if err != nil {
 		errs.Collect(fmt.Errorf("in scanPhysicalStorage: %v", err))
 		return
 	}
-
-	copyMap(sti.Path2Meta, sts.Sti.Path2Meta)
-	copyMap(sti.Path2Content, sts.Sti.Path2Content)
-	copyMap(sti.ExistingCs, sts.Sti.ExistingCs)
-	copyMap(sti.Path2Error, sts.Sti.Path2Error)
-	errs = &sts.Errs
+	// opportunity to decrypt if applicable
+	wdi.me.spScanPhysicalStorageClient(sts, sti, errs)
 }
 
 func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isClientEdss bool) (oDssProxy, HDss, error) {

@@ -41,6 +41,7 @@ type oDssBaseProxy interface {
 	doGetMetaAt(npath string, time int64) (Meta, error)
 	storeAndIndexMeta(npath string, time int64, bs []byte) error
 	spUpdateClient(cix Index, data UpdatedData, isFull bool) error
+	spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector)
 }
 
 type contentWriterCbs struct {
@@ -827,16 +828,17 @@ func (odbi *oDssBaseImpl) scanStorage() (StorageInfo, *ErrorCollector) {
 		Path2Error:   map[string]error{},
 	}
 	errs := &ErrorCollector{}
-	if odbi.me.isEncrypted() {
-		errs.Collect(fmt.Errorf("in scanStorage: not yet implemented"))
-		return StorageInfo{}, errs // FIXME
-	}
 	odbi.me.scanPhysicalStorage(sti, errs)
 	pathErr := func(path string, err error) {
 		sti.Path2Error[path] = err
 		errs.Collect(err)
 	}
 	for path, bs := range sti.Path2Meta {
+		if odbi.isRepoEncrypted() {
+			// will check the following after decryption on client side
+			// and also maybe we are there
+			continue
+		}
 		var meta Meta
 		if err := json.Unmarshal(bs, &meta); err != nil {
 			pathErr(path, err)
@@ -864,14 +866,19 @@ func (odbi *oDssBaseImpl) scanStorage() (StorageInfo, *ErrorCollector) {
 			pathErr(path, err)
 			continue
 		}
-		defer cr.Close()
 		ch := internal.ShaFrom(cr)
+		cr.Close()
 		if ch != meta.Ch {
 			pathErr(path, fmt.Errorf("%s (meta %s) cs %s loaded %s", path, ipath, meta.Ch, ch))
 			continue
 		}
 	}
 	for path, ccs := range sti.Path2Content {
+		if odbi.isRepoEncrypted() {
+			// will check the following after decryption on client side
+			// and also maybe we are there
+			continue
+		}
 		_, ok := sti.ExistingCs[ccs]
 		if !ok {
 			pathErr(path, fmt.Errorf("%s (ch %s) is not used anymore", path, ccs))
@@ -968,4 +975,8 @@ func (odbi *oDssBaseImpl) storeAndIndexMeta(npath string, time int64, bs []byte)
 
 func (odbi *oDssBaseImpl) spUpdateClient(cix Index, data UpdatedData, isFull bool) error {
 	return cix.updateData(data, isFull)
+}
+
+func (odbi *oDssBaseImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+	panic("inconsistent")
 }

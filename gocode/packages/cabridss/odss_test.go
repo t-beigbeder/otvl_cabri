@@ -116,7 +116,7 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	if err := dss.Mkns("", mtimeCount(), []string{"d1é/", "d2/"}, nil); err != nil {
 		return err
 	}
-	// check client index if relevant
+	// check client index if applicable
 	if cix != nil {
 		dumpIx(six, cix)
 		ts, err, ok := cix.queryMetaTimes("")
@@ -233,7 +233,7 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	if meta.GetSize() != 0 || meta.GetCh() != "e3b0c44298fc1c149afbf4c8996fb924" {
 		return fmt.Errorf("meta %v", meta)
 	}
-	// check client index if relevant
+	// check client index if applicable
 	if cix != nil {
 		dumpIx(six, cix)
 		ts, err, ok := dss.GetIndex().queryMetaTimes("d2/a.txt")

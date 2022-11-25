@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestNewEDssClientOlf(t *testing.T) {
+func TestEDssClientOlfBase(t *testing.T) {
 	var sv WebServer
 	var err error
 	defer func() {
@@ -43,7 +43,7 @@ func TestNewEDssClientOlf(t *testing.T) {
 	}
 }
 
-func runTestNewEDssClientObs(t *testing.T) error {
+func runTestEDssClientObsBase(t *testing.T) error {
 	var sv WebServer
 	var err error
 	defer func() {
@@ -84,13 +84,13 @@ func runTestNewEDssClientObs(t *testing.T) error {
 	return nil
 }
 
-func TestNewEDssClientObs(t *testing.T) {
+func TestEDssClientObsBase(t *testing.T) {
 	internal.Retry(t, func(t *testing.T) error {
-		return runTestNewEDssClientObs(t)
+		return runTestEDssClientObsBase(t)
 	})
 }
 
-func TestNewEDssApiClientOlf(t *testing.T) {
+func TestEDssApiClientOlfBase(t *testing.T) {
 	if err := runTestBasic(t,
 		func(tfs *testfs.Fs) error {
 			_, err := CreateOlfDss(OlfConfig{
@@ -127,7 +127,7 @@ func TestNewEDssApiClientOlf(t *testing.T) {
 	}
 }
 
-func runTestNewEDssApiClientObs(t *testing.T) error {
+func runTestEDssApiClientObsBase(t *testing.T) error {
 	return runTestBasic(t,
 		func(tfs *testfs.Fs) error {
 			if err := CleanObsDss(getOC()); err != nil {
@@ -166,8 +166,46 @@ func runTestNewEDssApiClientObs(t *testing.T) error {
 		})
 }
 
-func TestNewEDssApiClientObs(t *testing.T) {
+func TestEDssApiClientObsBase(t *testing.T) {
 	internal.Retry(t, func(t *testing.T) error {
-		return runTestNewEDssApiClientObs(t)
+		return runTestEDssApiClientObsBase(t)
 	})
+}
+
+func TestEDssApiClientOlfHistory(t *testing.T) {
+	t.Skip("TestEDssApiClientOlfHistory to be implemented")
+	if err := runTestHistory(t,
+		func(tfs *testfs.Fs) error {
+			_, err := CreateOlfDss(OlfConfig{
+				DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path(), Encrypted: true},
+				Root:          tfs.Path(), Size: "s"})
+			return err
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			ucp, uc, _ := newUcp(tfs)
+			dss, err := NewEDss(
+				EDssConfig{
+					WebDssConfig: WebDssConfig{
+						DssBaseConfig: DssBaseConfig{
+							LibApi:         true,
+							UserConfigPath: ucp,
+						},
+						LibApiDssConfig: LibApiDssConfig{
+							IsOlf: true,
+							OlfCfg: OlfConfig{
+								DssBaseConfig: DssBaseConfig{
+									LocalPath: tfs.Path(),
+									GetIndex: func(config DssBaseConfig, _ string) (Index, error) {
+										return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+									},
+								}, Root: tfs.Path(), Size: "s"},
+						},
+					},
+				},
+				0, IdPkeys(uc))
+			return dss, err
+
+		}); err != nil {
+		t.Fatal(err)
+	}
 }

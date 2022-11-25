@@ -234,6 +234,50 @@ func (edi *eDssImpl) spUpdateClient(cix Index, eud UpdatedData, isFull bool) err
 	return cix.updateData(udd, isFull)
 }
 
+func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+	pathErr := func(path string, err error) {
+		sti.Path2Error[path] = err
+		errs.Collect(err)
+	}
+
+	eSti := sts.Sti
+	for epath, ebs := range eSti.Path2Meta {
+		smbs, err := DecryptMsg(ebs, edi.secrets(Users(edi.defaultAcl(nil)))...)
+		if err != nil {
+			pathErr(epath, err)
+			continue
+		}
+		sti.Path2Meta[epath] = []byte(smbs)
+		var meta Meta
+		if err := json.Unmarshal([]byte(smbs), &meta); err != nil {
+			pathErr(epath, err)
+			continue
+		}
+		if meta.IsNs {
+			continue
+		}
+		sti.ExistingCs[meta.Ch] = true
+		cr, err := edi.me.doGetContentReader(meta.Path, meta)
+		if err != nil {
+			pathErr(epath, err)
+			continue
+		}
+		ch := internal.ShaFrom(cr)
+		cr.Close()
+		sti.Path2Content[epath] = ch
+		if ch != meta.Ch {
+			pathErr(epath, fmt.Errorf("%s (meta %s) cs %s loaded %s", epath, meta.Path, meta.Ch, ch))
+			continue
+		}
+	}
+}
+
+func (edi *eDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+	copyMap(sti.Path2Error, sts.Sti.Path2Error)
+	errs = &sts.Errs
+	edi.decryptScannedStorage(sts, sti, errs)
+}
+
 func (edi *eDssImpl) openSession(aclusers []string) error {
 	if err := cOpenSession(edi.apc, aclusers); err != nil {
 		return fmt.Errorf("in openSession: %w", err)
