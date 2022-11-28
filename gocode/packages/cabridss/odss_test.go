@@ -88,11 +88,13 @@ func serverIndex(dss HDss) (Index, Index) {
 }
 
 func dumpIx(six, cix Index) {
-	println("six")
-	println(six.Dump())
-	println("cix")
-	println(cix.Dump())
-	println()
+	if os.Getenv("CABRIDSS_KEEP_DUMP_IX") != "" {
+		println("six")
+		println(six.Dump())
+		println("cix")
+		println(cix.Dump())
+		println()
+	}
 }
 
 func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb func(*testfs.Fs) (HDss, error)) error {
@@ -366,9 +368,34 @@ func runTestHistory(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb f
 		t.Fatal(err)
 	}
 	defer dss.Close()
+	six, cix := serverIndex(dss)
+	_, _ = six, cix
 
 	if err := prepareTestHistory(t, tfs.Path(), dss); err != nil {
 		return err
+	}
+	// check client index if applicable
+	if cix != nil {
+		dumpIx(six, cix)
+	}
+
+	// check after applying index synchro if client access applies
+	if err = dss.Close(); err != nil {
+		return err
+	}
+	dss, err = newDssCb(tfs)
+	if err != nil {
+		return err
+	}
+	defer dss.Close()
+	_, err = dss.GetMeta("", true)
+	if err != nil {
+		return err
+	}
+
+	six, cix = serverIndex(dss)
+	if cix != nil {
+		dumpIx(six, cix)
 	}
 
 	mHes, err := dss.GetHistory("", false)
@@ -473,7 +500,10 @@ func runTestHistory(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb f
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\nAudit info\n%s\n", internal.MapSliceStringer[AuditIndexInfo]{mai})
+	if len(mai) != 0 {
+		fmt.Printf("\nAudit info\n%s\n", internal.MapSliceStringer[AuditIndexInfo]{mai})
+		return fmt.Errorf("test failed")
+	}
 	return nil
 }
 
@@ -497,6 +527,20 @@ func runTestMultiHistory(t *testing.T, createDssCb func(*testfs.Fs) error, newDs
 		return err
 	}
 
+	// check after applying index synchro if client access applies
+	if err = dss.Close(); err != nil {
+		return err
+	}
+	dss, err = newDssCb(tfs)
+	if err != nil {
+		return err
+	}
+	defer dss.Close()
+	_, err = dss.GetMeta("", true)
+	if err != nil {
+		return err
+	}
+
 	mHes, err := dss.GetHistory("", false)
 	if err != nil {
 		return err
@@ -599,6 +643,9 @@ func runTestMultiHistory(t *testing.T, createDssCb func(*testfs.Fs) error, newDs
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\nAudit info\n%s\n", internal.MapSliceStringer[AuditIndexInfo]{mai})
+	if len(mai) != 0 {
+		fmt.Printf("\nAudit info\n%s\n", internal.MapSliceStringer[AuditIndexInfo]{mai})
+		return fmt.Errorf("test failed")
+	}
 	return nil
 }

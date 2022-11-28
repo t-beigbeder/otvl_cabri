@@ -2,6 +2,7 @@ package cabridss
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
@@ -194,4 +195,20 @@ func (rcwc *ReadCloserWithCb) Close() error {
 
 func NewReadCloserWithCb(underlying io.Reader, closeCb func() error) (io.ReadCloser, error) {
 	return &ReadCloserWithCb{underlying: underlying, closeCb: closeCb}, nil
+}
+
+func (sti StorageInfo) loadStoredInMemory() (metas map[string]map[int64][]byte) {
+	metas = map[string]map[int64][]byte{}
+	for _, bs := range sti.Path2Meta {
+		var meta Meta
+		if err := json.Unmarshal(bs, &meta); err != nil {
+			continue
+		}
+		hn := internal.NameToHashStr32(RemoveSlashIfNsIf(meta.Path, meta.IsNs))
+		if _, ok := metas[hn]; !ok {
+			metas[hn] = map[int64][]byte{}
+		}
+		metas[hn][meta.Itime] = bs
+	}
+	return
 }

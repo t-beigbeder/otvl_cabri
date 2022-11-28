@@ -233,3 +233,18 @@ func TestGenIdentity(t *testing.T) {
 	}
 
 }
+
+func TestEncryptMsgWithPass(t *testing.T) {
+	bs, err := EncryptMsgWithPass("TestEncryptMsgWithPass", "secretLifeOfArabia")
+	if err != nil {
+		t.Fatal(err)
+	}
+	msg, err := DecryptMsgWithPass(bs, "secretLifeOfArabia")
+	if err != nil || msg != "TestEncryptMsgWithPass" {
+		t.Fatal(err, msg)
+	}
+	msg, err = DecryptMsgWithPass(bs, "secretLifeOfArabia1")
+	if err == nil {
+		t.Fatal(err)
+	}
+}

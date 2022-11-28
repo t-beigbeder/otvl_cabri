@@ -697,11 +697,7 @@ func (odbi *oDssBaseImpl) doUpdatens(npath string, mtime int64, children []strin
 	return odbi.storeAndIndexMeta(RemoveSlashIf(meta.Path), itime, mbs)
 }
 
-func (odbi *oDssBaseImpl) doAuditIndexFromStorage(mai map[string][]AuditIndexInfo) error {
-	sti, errs := odbi.scanStorage()
-	if errs != nil {
-		return fmt.Errorf("in doAuditIndexFromStorage: %v", errs)
-	}
+func (odbi *oDssBaseImpl) doAuditIndexFromStorage(sti StorageInfo, mai map[string][]AuditIndexInfo) error {
 	appMai := func(k string, aii AuditIndexInfo) {
 		if aii.Error == "" {
 			aii.Error = "IndexMissing"
@@ -727,11 +723,8 @@ func (odbi *oDssBaseImpl) doAuditIndexFromStorage(mai map[string][]AuditIndexInf
 			appMai(path, AuditIndexInfo{"Inconsistent", err, t, bs})
 			continue
 		}
-		ipath := meta.Path
-		if meta.IsNs {
-			ipath = RemoveSlashIf(ipath)
-		}
-		bs2, err, ok := odbi.index.loadMeta(ipath, t)
+		ipath := RemoveSlashIfNsIf(meta.Path, meta.IsNs)
+		bs2, err, ok := odbi.index.loadMeta(ipath, meta.Itime)
 		if err != nil {
 			appMai(path, AuditIndexInfo{"", err, t, bs})
 			continue
@@ -740,20 +733,20 @@ func (odbi *oDssBaseImpl) doAuditIndexFromStorage(mai map[string][]AuditIndexInf
 			appMai(path, AuditIndexInfo{"", fmt.Errorf("no error"), t, bs})
 			continue
 		}
-		if internal.BytesToSha256Str(bs) != internal.BytesToSha256Str(bs2) {
-			appMai(path, AuditIndexInfo{"", fmt.Errorf("%s (meta %s) sha %s loaded %s", path, ipath, internal.BytesToSha256Str(bs), internal.BytesToSha256Str(bs2)), t, bs})
+		var meta2 Meta
+		if err := json.Unmarshal(bs2, &meta2); err != nil {
+			appMai(path, AuditIndexInfo{"Inconsistent", err, t, bs2})
+			continue
+		}
+		if !meta2.Equals(meta, true) {
+			appMai(path, AuditIndexInfo{"", fmt.Errorf("%s (meta %s) meta %v loaded %v", path, ipath, meta, meta2), t, bs})
 			continue
 		}
 	}
-
 	return nil
 }
 
-func (odbi *oDssBaseImpl) doAuditIndexFromIndex(mai map[string][]AuditIndexInfo) error {
-	_, metas, _, err := odbi.getIndex().(*pIndex).loadInMemory()
-	if err != nil {
-		return fmt.Errorf("in doAuditIndexFromIndex: %v", err)
-	}
+func (odbi *oDssBaseImpl) doAuditIndexFromIndex(sti StorageInfo, mai map[string][]AuditIndexInfo) error {
 	appMai := func(k string, aii AuditIndexInfo) {
 		if aii.Error == "" {
 			aii.Error = "StorageMissing"
@@ -763,6 +756,13 @@ func (odbi *oDssBaseImpl) doAuditIndexFromIndex(mai map[string][]AuditIndexInfo)
 		}
 		mai[k] = append(mai[k], aii)
 	}
+
+	_, metas, _, err := odbi.getIndex().(*pIndex).loadInMemory()
+	smetas := sti.loadStoredInMemory()
+	if err != nil {
+		return fmt.Errorf("in doAuditIndexFromIndex: %v", err)
+	}
+
 	for k, mm := range metas {
 		for t, m := range mm {
 			var meta Meta
@@ -770,24 +770,21 @@ func (odbi *oDssBaseImpl) doAuditIndexFromIndex(mai map[string][]AuditIndexInfo)
 				appMai(k, AuditIndexInfo{"Inconsistent", err, t, m})
 				continue
 			}
-			path := meta.Path
-			if meta.IsNs {
-				path = RemoveSlashIf(meta.Path)
-			}
-			if odbi.me.isEncrypted() {
-				return fmt.Errorf("in doAuditIndexFromIndex: not yet implemented") // FIXME
-			}
-			bs, err := odbi.me.loadMeta(path, t)
-			if err != nil {
+			if _, ok := smetas[k]; !ok {
 				appMai(k, AuditIndexInfo{"", err, t, m})
 				continue
 			}
-			if len(bs) != len(m) {
-				appMai(k, AuditIndexInfo{"", fmt.Errorf("len index %d storage %d", len(m), len(bs)), t, m})
+			if _, ok := smetas[k][t]; !ok {
+				appMai(k, AuditIndexInfo{"", err, t, m})
 				continue
 			}
-			if internal.BytesToSha256Str(bs) != internal.BytesToSha256Str(m) {
-				appMai(k, AuditIndexInfo{"", fmt.Errorf("sha256 index %s storage %s", internal.BytesToSha256Str(bs), internal.BytesToSha256Str(m)), t, m})
+			var meta2 Meta
+			if err := json.Unmarshal(smetas[k][t], &meta2); err != nil {
+				appMai(k, AuditIndexInfo{"Inconsistent", err, t, smetas[k][t]})
+				continue
+			}
+			if !meta2.Equals(meta, true) {
+				appMai(k, AuditIndexInfo{"", fmt.Errorf("%s (meta %s) meta %v loaded %v", k, RemoveSlashIfNsIf(meta.Path, meta.IsNs), meta, meta2), t, m})
 				continue
 			}
 		}
@@ -806,13 +803,17 @@ func (odbi *oDssBaseImpl) auditIndex() (map[string][]AuditIndexInfo, error) {
 	if len(mai) > 0 {
 		return mai, nil
 	}
+	sti, errs := odbi.scanStorage()
+	if errs != nil {
+		return nil, fmt.Errorf("in doAuditIndexFromStorage: %v", errs)
+	}
 	res := map[string][]AuditIndexInfo{}
-	if err = odbi.doAuditIndexFromStorage(res); err != nil {
+	if err = odbi.doAuditIndexFromStorage(sti, res); err != nil {
 		if err != nil {
 			return nil, fmt.Errorf("in AuditIndex: %v", err)
 		}
 	}
-	if err = odbi.doAuditIndexFromIndex(res); err != nil {
+	if err = odbi.doAuditIndexFromIndex(sti, res); err != nil {
 		if err != nil {
 			return nil, fmt.Errorf("in AuditIndex: %v", err)
 		}

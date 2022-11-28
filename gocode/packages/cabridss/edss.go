@@ -3,6 +3,7 @@ package cabridss
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"io"
@@ -84,7 +85,7 @@ func (edi *eDssImpl) doUpdatens(npath string, mtime int64, children []string, ac
 	if err != nil {
 		return fmt.Errorf("in doUpdatens: %w", err)
 	}
-	if err := edi.storeMeta(RemoveSlashIf(meta.Path), itime, embs); err != nil {
+	if err := edi.storeMeta(uuid.New().String(), itime, embs); err != nil {
 		return fmt.Errorf("in doUpdatens: %w", err)
 	}
 	if err := edi.index.storeMeta(RemoveSlashIf(meta.Path), itime, mbs); err != nil {

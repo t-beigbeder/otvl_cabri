@@ -219,7 +219,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestNewWebDssApiClientObs" ||
 			t.Name() == "TestWebClientOlfHistory" ||
 			t.Name() == "TestWebClientObsHistory" ||
-			t.Name() == "TestWebDssApiClientOlfHistory1" ||
+			t.Name() == "TestWebDssApiClientOlfHistory" ||
 			t.Name() == "TestWebDssApiClientObsHistory" ||
 			t.Name() == "TestWebClientOlfMultiHistory" ||
 			t.Name() == "TestNewWebApiClient" ||
@@ -229,8 +229,10 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestEDssClientObsBase" ||
 			t.Name() == "TestEDssApiClientOlfBase" ||
 			t.Name() == "TestEDssApiClientObsBase" ||
-			t.Name() == "TestEDssApiClientOlfHistory1" ||
-			t.Name() == "TestEDssApiClientObsHistory" ||
+			t.Name() == "TestEDssClientOlfHistory1" ||
+			t.Name() == "TestEDssApiClientOlfHistory" ||
+			t.Name() == "TestEDssClientOlfMultiHistory1" ||
+			t.Name() == "TestEDssApiClientOlfMultiHistory" ||
 			t.Name() == "TheEnd" {
 			t.Skip(fmt.Sprintf("Skipping %s because you set CABRIDSS_SKIP_DEV_TESTS", t.Name()))
 		}

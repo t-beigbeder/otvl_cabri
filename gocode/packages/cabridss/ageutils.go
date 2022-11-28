@@ -127,3 +127,48 @@ func Decrypt(src io.Reader, sids ...string) (io.Reader, error) {
 	}
 	return age.Decrypt(src, ids...)
 }
+
+func EncryptMsgWithPass(msg string, pass string) ([]byte, error) {
+	r, err := age.NewScryptRecipient(pass)
+	if err != nil {
+		return nil, fmt.Errorf("in EncryptMsgWithPass: %w", err)
+	}
+	bsa := bytes.Buffer{}
+	wc, err := age.Encrypt(&bsa, r)
+	if err != nil {
+		return nil, fmt.Errorf("in EncryptMsgWithPass: %w", err)
+	}
+	_, err = io.Copy(wc, strings.NewReader(msg))
+	if err != nil {
+		return nil, fmt.Errorf("in EncryptMsgWithPass: %w", err)
+	}
+	err = wc.Close()
+	if err != nil {
+		return nil, fmt.Errorf("in EncryptMsgWithPass: %w", err)
+	}
+	bsb, err := json.Marshal(bsa.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("in EncryptMsgWithPass: %w", err)
+	}
+	return bsb, nil
+}
+
+func DecryptMsgWithPass(jbs []byte, pass string) (string, error) {
+	id, err := age.NewScryptIdentity(pass)
+	if err != nil {
+		return "", fmt.Errorf("in DecryptMsgWithPath: %w", err)
+	}
+	var bs []byte
+	if err = json.Unmarshal(jbs, &bs); err != nil {
+		return "", fmt.Errorf("in DecryptMsgWithPath: %w", err)
+	}
+	rd, err := age.Decrypt(bytes.NewReader(bs), id)
+	if err != nil {
+		return "", fmt.Errorf("in DecryptMsgWithPath: %w", err)
+	}
+	bss, err := io.ReadAll(rd)
+	if err != nil {
+		return "", fmt.Errorf("in DecryptMsgWithPath: %w", err)
+	}
+	return string(bss), nil
+}
