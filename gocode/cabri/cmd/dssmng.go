@@ -67,7 +67,7 @@ var dssMknsCmd = &coral.Command{
 	SilenceUsage: true,
 }
 
-var dssUnloxkOptions cabriui.DSSUnlockOptions
+var dssUnlockOptions cabriui.DSSUnlockOptions
 
 var dssUnlockCmd = &coral.Command{
 	Use:   "unlock",
@@ -86,10 +86,10 @@ var dssUnlockCmd = &coral.Command{
 		return nil
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
-		dssUnloxkOptions.BaseOptions = baseOptions
+		dssUnlockOptions.BaseOptions = baseOptions
 		return cabriui.DSSUnlockRun(
 			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.OutOrStdout(),
-			dssUnloxkOptions, args,
+			dssUnlockOptions, args,
 		)
 	},
 	SilenceUsage: true,
@@ -126,8 +126,8 @@ func init() {
 	dssCmd.AddCommand(dssMkCmd)
 	dssMknsCmd.Flags().StringArrayVarP(&dssMknsOptions.Children, "children", "c", nil, "children")
 	dssCmd.AddCommand(dssMknsCmd)
-	dssUnlockCmd.Flags().BoolVar(&dssUnloxkOptions.RepairIndex, "repair", false, "repair the index if persistent")
-	dssUnlockCmd.Flags().BoolVar(&dssUnloxkOptions.RepairReadOnly, "read", true, "don't repair, show diagnostic")
+	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.RepairIndex, "repair", false, "repair the index if persistent")
+	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.RepairReadOnly, "read", true, "don't repair, show diagnostic")
 	dssCmd.AddCommand(dssUnlockCmd)
 	dssCmd.AddCommand(dssCleanCmd)
 }

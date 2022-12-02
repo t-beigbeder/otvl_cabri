@@ -354,6 +354,9 @@ func cOpenSession(apc WebApiClient, aclusers []string) error {
 		if err != nil {
 			return fmt.Errorf("in cOpenSession: acluser \"%s\" %w", au, err)
 		}
+		if id.Secret == "" {
+			continue
+		}
 		if dm, err := DecryptMsg(em, id.Secret); err != nil || dm != "" {
 			return fmt.Errorf("in cOpenSession: acluser \"%s\" %w \"%s\"", au, err, dm)
 		}

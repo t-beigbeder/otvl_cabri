@@ -347,7 +347,9 @@ func CreateOlfDss(config OlfConfig) (HDss, error) {
 		return nil, fmt.Errorf("in CreateOlfDss: please provide a LocalPath")
 	}
 	config.RepoId = uuid.New().String()
-	SaveDssConfig(config.DssBaseConfig, config)
+	if err := SaveDssConfig(config.DssBaseConfig, config); err != nil {
+		return nil, fmt.Errorf("in CreateObsDss: %w", err)
+	}
 
 	err = os.Mkdir(ufpath.Join(root, "meta"), 0o777)
 	if err != nil {

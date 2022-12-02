@@ -21,6 +21,10 @@ var dssCmd = &coral.Command{
 
 func init() {
 	rootCmd.AddCommand(cliCmd)
+	cliCmd.PersistentFlags().StringVar(&baseOptions.ConfigDir, "cdir", "", "load configuration files from this directory instead of .cabri in home directory")
+	cliCmd.PersistentFlags().StringVarP(&baseOptions.IdentityAlias, "ia", "", "", "identity alias used for encryption if applicable")
+	cliCmd.PersistentFlags().StringVarP(&baseOptions.PassFile, "pfile", "", "", "file containing the master password")
+	cliCmd.PersistentFlags().BoolVar(&baseOptions.Password, "password", false, "force master password prompt")
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.Serial, "serial", false, "run all tasks in sequence")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.IndexImplems, "ximpl", nil, "list of non-default object storage index implementations")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsRegions, "obsrg", nil, "list of object storage regions")

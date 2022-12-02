@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"filippo.io/age"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"io"
 	"strings"
 	"testing"
@@ -245,6 +247,23 @@ func TestEncryptMsgWithPass(t *testing.T) {
 	}
 	msg, err = DecryptMsgWithPass(bs, "secretLifeOfArabia1")
 	if err == nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEncryptFileWithPass(t *testing.T) {
+	tfs, err := testfs.CreateFs("TestGetUserConfig", tfsStartup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tfs.Delete()
+	if err = EncryptFileWithPass(ufpath.Join(tfs.Path(), "a.txt"), ufpath.Join(tfs.Path(), "a.etxt"), "TestEncryptFileWithPass"); err != nil {
+		t.Fatal(err)
+	}
+	if err = DecryptFileWithPass(ufpath.Join(tfs.Path(), "a.etxt"), ufpath.Join(tfs.Path(), "a.ctxt"), "TestEncryptFileWithPassBad"); err == nil {
+		t.Fatal("should fail with error")
+	}
+	if err = DecryptFileWithPass(ufpath.Join(tfs.Path(), "a.etxt"), ufpath.Join(tfs.Path(), "a.ctxt"), "TestEncryptFileWithPass"); err != nil {
 		t.Fatal(err)
 	}
 }

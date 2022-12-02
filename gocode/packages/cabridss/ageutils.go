@@ -6,6 +6,7 @@ import (
 	"filippo.io/age"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -128,6 +129,9 @@ func Decrypt(src io.Reader, sids ...string) (io.Reader, error) {
 	return age.Decrypt(src, ids...)
 }
 
+// EncryptMsgWithPass encrypts a msg with a given password using Scrypt encoding
+//
+// It returns the encrypted content as json encoded bytes.
 func EncryptMsgWithPass(msg string, pass string) ([]byte, error) {
 	r, err := age.NewScryptRecipient(pass)
 	if err != nil {
@@ -153,6 +157,10 @@ func EncryptMsgWithPass(msg string, pass string) ([]byte, error) {
 	return bsb, nil
 }
 
+// DecryptMsgWithPass decrypts jbs encrypted content with a given password using Scrypt encoding
+// It returns the message in cleartext
+//
+// jbs are the json encoded bytes
 func DecryptMsgWithPass(jbs []byte, pass string) (string, error) {
 	id, err := age.NewScryptIdentity(pass)
 	if err != nil {
@@ -171,4 +179,36 @@ func DecryptMsgWithPass(jbs []byte, pass string) (string, error) {
 		return "", fmt.Errorf("in DecryptMsgWithPath: %w", err)
 	}
 	return string(bss), nil
+}
+
+// EncryptFileWithPass encrypts a file source to a file target with a given password pass using Scrypt encoding
+func EncryptFileWithPass(source, target, pass string) error {
+	bs, err := os.ReadFile(source)
+	if err != nil {
+		return fmt.Errorf("in EncryptFileWithPass: %w", err)
+	}
+	ebs, err := EncryptMsgWithPass(string(bs), pass)
+	if err != nil {
+		return fmt.Errorf("in EncryptFileWithPass: %w", err)
+	}
+	if err := os.WriteFile(target, ebs, 0o666); err != nil {
+		return fmt.Errorf("in EncryptFileWithPass: %w", err)
+	}
+	return nil
+}
+
+// DecryptFileWithPass decrypts a file source to a file target with a given password pass using Scrypt encoding
+func DecryptFileWithPass(source, target, pass string) error {
+	ebs, err := os.ReadFile(source)
+	if err != nil {
+		return fmt.Errorf("in DecryptFileWithPass: %w", err)
+	}
+	bs, err := DecryptMsgWithPass(ebs, pass)
+	if err != nil {
+		return fmt.Errorf("in DecryptFileWithPass: %w", err)
+	}
+	if err := os.WriteFile(target, []byte(bs), 0o666); err != nil {
+		return fmt.Errorf("in DecryptFileWithPass: %w", err)
+	}
+	return nil
 }

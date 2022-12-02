@@ -43,12 +43,12 @@ true && \
   cover_package internal && \
   cover_package ufpath && \
   cover_package joule && \
-  cover_package cabritbx && \
+  cover_package cabritbx --tags=test_testfs,test_cabridss && \
   cover_package plumber && \
   cover_package testfs --tags=test_testfs && \
   cover_package cabridss --tags=test_testfs,test_cabridss && \
   cover_package cabrisync --tags=test_testfs,test_cabridss && \
-  cover_package cabriui && \
+  cover_package cabriui --tags=test_testfs,test_cabridss && \
   mkdir -p $base_dir/build $base_dir/cmds/locsv/frontend_build && \
   touch $base_dir/cmds/locsv/frontend_build/dummy && \
   cd $base_dir/cmds/locsv && \

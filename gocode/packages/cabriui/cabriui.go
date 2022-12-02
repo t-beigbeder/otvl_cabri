@@ -7,12 +7,17 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type BaseOptions struct {
+	ConfigDir     string
+	IdentityAlias string
+	Password      bool
+	PassFile      string
 	Serial        bool
 	IndexImplems  []string
 	ObsRegions    []string
@@ -263,4 +268,60 @@ func GetWebConfig(opts BaseOptions, index int, addr, root string) (cabridss.WebD
 	bc.WebPort = port
 	bc.WebRoot = root
 	return cabridss.WebDssConfig{DssBaseConfig: bc}, nil
+}
+
+func MutualExcludeFlags(names []string, flags ...bool) error {
+	for i, bname := range names {
+		bval := flags[i]
+		for j := i + 1; j < len(names); j++ {
+			oval := flags[j]
+			if bval && oval {
+				return fmt.Errorf(fmt.Sprintf("flags %s and %s cannot be used at the same time", bname, names[j]))
+			}
+		}
+	}
+	return nil
+}
+
+func MasterPassword(uow joule.UnitOfWork, opts BaseOptions, askNumber int) (string, error) {
+	if opts.PassFile != "" {
+		bs, err := os.ReadFile(opts.PassFile)
+		if err != nil {
+			return "", err
+		}
+		if bs[len(bs)-1] == '\n' {
+			bs = bs[:len(bs)-1]
+		}
+		return string(bs), nil
+	}
+	if askNumber > 0 || opts.Password {
+		passwd1 := uow.UiSecret("please enter the master password: ")
+		if askNumber > 1 {
+			passwd2 := uow.UiSecret("please enter the master password again: ")
+			if passwd1 != passwd2 || passwd1 == "" {
+				return "", fmt.Errorf("passwords differ or are empty")
+			}
+		}
+		return passwd1, nil
+	}
+	return "", nil
+}
+
+func ConfigPath(opts BaseOptions) (string, error) {
+	cp := opts.ConfigDir
+	var err error
+	if cp == "" {
+		cp, err = cabridss.GetHomeUserConfigPath(cabridss.DssBaseConfig{})
+		if err != nil {
+			return "", err
+		}
+	}
+	fi, err := os.Stat(cp)
+	if err != nil {
+		return "", err
+	}
+	if !fi.IsDir() {
+		return "", fmt.Errorf("%s is not a directory", cp)
+	}
+	return cp, nil
 }
