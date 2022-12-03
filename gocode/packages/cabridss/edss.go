@@ -65,6 +65,20 @@ func (edi *eDssImpl) secrets(users []string) (res []string) {
 	return
 }
 
+func (edi *eDssImpl) pkeys(users []string) (res []string) {
+	for _, user := range users {
+		for _, id := range edi.apc.GetConfig().(webDssClientConfig).identities {
+			if id.PKey == user {
+				res = append(res, user)
+			}
+		}
+	}
+	if len(res) == 0 {
+		res = edi.pkeys(Users(edi.defaultAcl(nil)))
+	}
+	return
+}
+
 func (edi *eDssImpl) doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
 	content, css, _ := internal.Ns2Content(children, "")
 	sort.Strings(children)
@@ -81,7 +95,7 @@ func (edi *eDssImpl) doUpdatens(npath string, mtime int64, children []string, ac
 	if err != nil {
 		return fmt.Errorf("in doUpdatens: %w", err)
 	}
-	embs, err := EncryptMsg(string(mbs), Users(acl)...)
+	embs, err := EncryptMsg(string(mbs), edi.pkeys(Users(acl))...)
 	if err != nil {
 		return fmt.Errorf("in doUpdatens: %w", err)
 	}
@@ -152,7 +166,7 @@ func (edi *eDssImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) 
 			outError = fmt.Errorf("in spGetContentWriter %w", err)
 			return outError
 		}
-		embs, err := EncryptMsg(string(mbs), Users(acl)...)
+		embs, err := EncryptMsg(string(mbs), edi.pkeys(Users(acl))...)
 		if err != nil {
 			outError = fmt.Errorf("in spGetContentWriter %w", err)
 			return outError
@@ -173,7 +187,7 @@ func (edi *eDssImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) 
 	if err != nil {
 		return nil, fmt.Errorf("in spGetContentWriter: %w", err)
 	}
-	wc, err := Encrypt(ecw, Users(acl)...)
+	wc, err := Encrypt(ecw, edi.pkeys(Users(acl))...)
 	if err != nil {
 		return nil, fmt.Errorf("in spGetContentWriter: %w", err)
 	}
@@ -302,6 +316,7 @@ func newEDssProxy(config EDssConfig, lsttime int64, aclusers []string) (oDssProx
 // returns a pointer to the ready to use DSS or an error if any occur
 // If lsttime is not zero, access will be read-only
 func NewEDss(config EDssConfig, lsttime int64, aclusers []string) (HDss, error) {
+	config.Encrypted = true
 	proxy, libDss, err := newEDssProxy(config, lsttime, aclusers)
 	if err != nil {
 		return nil, fmt.Errorf("in NewWebDss: %w", err)

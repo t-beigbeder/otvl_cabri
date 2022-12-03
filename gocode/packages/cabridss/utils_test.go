@@ -227,11 +227,11 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestWebTestSleep" ||
 			t.Name() == "TestEDssClientOlfBase" ||
 			t.Name() == "TestEDssClientObsBase" ||
-			t.Name() == "TestEDssApiClientOlfBase" ||
+			t.Name() == "TestEDssApiClientOlfBase1" ||
 			t.Name() == "TestEDssApiClientObsBase" ||
-			t.Name() == "TestEDssClientOlfHistory1" ||
+			t.Name() == "TestEDssClientOlfHistory" ||
 			t.Name() == "TestEDssApiClientOlfHistory" ||
-			t.Name() == "TestEDssClientOlfMultiHistory1" ||
+			t.Name() == "TestEDssClientOlfMultiHistory" ||
 			t.Name() == "TestEDssApiClientOlfMultiHistory" ||
 			t.Name() == "TheEnd" {
 			t.Skip(fmt.Sprintf("Skipping %s because you set CABRIDSS_SKIP_DEV_TESTS", t.Name()))

@@ -1,12 +1,10 @@
 package cabridss
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
-	"hash"
 	"io"
 	"os"
 	"strings"
@@ -17,130 +15,7 @@ const MIN_TIME int64 = -9223372036854775808
 const MAX_TIME int64 = 9223372036854775807
 const MAX_META_SIZE = 100000
 
-type DssBaseConfig struct {
-	ConfigDir      string                                                      `json:"-"`          // if not "" path to the user's configuration directory
-	ConfigPassword string                                                      `json:"-"`          // if master password is used to encrypt client configuration
-	LocalPath      string                                                      `json:"-"`          // local path for configuration and index, or "" if unused (index will be memory based)
-	RepoId         string                                                      `json:"repoId"`     // uuid of the repository
-	UserConfigPath string                                                      `json:"-"`          // user "clientConfig" file location, defaults to $HOME/.cabri
-	Unlock         bool                                                        `json:"-"`          // unlocks index concurrent updates lock
-	AutoRepair     bool                                                        `json:"autoRepair"` // if unlock required, automatically repairs the index
-	ReIndex        bool                                                        `json:"-"`          // forces full content reindexation
-	GetIndex       func(config DssBaseConfig, localPath string) (Index, error) `json:"-"`          // non-default function to instantiate an index
-	LibApi         bool                                                        `json:"-"`          // prevents using a web API server for local DSS access
-	WebProtocol    string                                                      `json:"-"`          // web API server protocol
-	WebHost        string                                                      `json:"-"`          // web API server host
-	WebPort        string                                                      `json:"-"`          // web API server port
-	WebRoot        string                                                      `json:"-"`          // web API server root
-	Encrypted      bool                                                        `json:"encrypted"`  // repository is encrypted
-}
-
-type Meta struct {
-	Path     string     `json:"path"`     // full path for data content
-	Mtime    int64      `json:"mtime"`    // last modification POSIX time
-	Size     int64      `json:"size"`     // content size
-	Ch       string     `json:"ch"`       // truncated SHA256 checksum of the content
-	IsNs     bool       `json:"isNs"`     // is it a namespace, if true has children
-	Children []string   `json:"children"` // namespace children, sorted by name
-	ACL      []ACLEntry `json:"acl"`      // access control List, sorted by user
-	Itime    int64      `json:"itime"`    // index time
-	ECh      string     `json:"ech"`      // truncated SHA256 checksum of the encrypted content if encrypted else empty
-}
-
-type IMeta interface {
-	GetPath() string                     // path in the DSS
-	GetMtime() int64                     // last modification POSIX time
-	GetSize() int64                      // content size
-	GetCh() string                       // content truncated SHA256 checksum (panic if DSS does not enable)
-	GetChUnsafe() string                 // content truncated SHA256 checksum or empty if DSS does not enable
-	GetIsNs() bool                       // is it a namespace, if true has children
-	GetChildren() []string               // namespace children, sorted by name
-	GetAcl() []ACLEntry                  // access control List, sorted by user
-	GetItime() int64                     // index time
-	Equals(other IMeta, chacl bool) bool // checks equality (does not compare Ch if one end is unavailable) compare ACL if chacl true
-}
-
-type MetaMockCbs struct {
-	MockMarshal   func(v interface{}) ([]byte, error)
-	MockUnmarshal func(data []byte, v interface{}) error
-}
-
 type WriteCloserCb func(err error, size int64, ch string)
-
-type ContentHandle struct {
-	cb      WriteCloserCb
-	cf      afero.File
-	h       hash.Hash
-	written int64
-}
-
-func (m Meta) GetPath() string { return m.Path }
-
-func (m Meta) GetMtime() int64 { return m.Mtime }
-
-func (m Meta) GetSize() int64 { return m.Size }
-
-func (m Meta) GetCh() string {
-	if m.Ch == "" {
-		panic("GetMeta didn't request getCh")
-	}
-	return m.Ch
-}
-
-func (m Meta) GetChUnsafe() string { return m.Ch }
-
-func (m Meta) GetIsNs() bool { return m.IsNs }
-
-func (m Meta) GetChildren() []string { return m.Children }
-
-func (m Meta) GetAcl() []ACLEntry { return m.ACL }
-
-func (m Meta) GetItime() int64 { return m.Itime }
-
-func (m Meta) Equals(om IMeta, chacl bool) bool {
-	if om == nil {
-		return false
-	}
-	if m.Size != om.GetSize() || m.Mtime != om.GetMtime() || (m.Ch != "" && om.GetChUnsafe() != "" && m.Ch != om.GetCh()) {
-		return false
-	}
-	if chacl {
-		if len(m.ACL) != len(om.GetAcl()) {
-			return false
-		}
-		for _, ace := range m.ACL {
-			for _, oace := range om.GetAcl() {
-				if ace.User != oace.User {
-					continue
-				}
-				if ace.Rights.Read != oace.Rights.Read || ace.Rights.Write != oace.Rights.Write || ace.Rights.Execute != oace.Rights.Execute {
-					return false
-				}
-			}
-		}
-	}
-	return true
-}
-
-func (ch *ContentHandle) Write(p []byte) (n int, err error) {
-	n, err = ch.cf.Write(p)
-	if n > 0 {
-		ch.written += int64(n)
-		ch.h.Write(p[0:n])
-	}
-	return
-}
-
-func (ch *ContentHandle) Close() (err error) {
-	err = ch.cf.Close()
-	if err != nil {
-		os.Remove(ch.cf.Name())
-	}
-	if ch.cb != nil {
-		ch.cb(err, ch.written, internal.Sha256ToStr32(ch.h.Sum(nil)))
-	}
-	return err
-}
 
 // Dss is the Data Storage System interface.
 //
@@ -480,49 +355,4 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 // GetPIndex provides the buntdb index with the localPath
 func GetPIndex(bc DssBaseConfig, localPath string) (Index, error) {
 	return NewPIndex(ufpath.Join(bc.LocalPath, "index.bdb"), bc.Unlock, bc.AutoRepair)
-}
-
-func SaveDssConfig(bc DssBaseConfig, dssConfig interface{}) error {
-	if err := checkDir(bc.LocalPath); err != nil {
-		return fmt.Errorf("in SaveDssConfig: %w", err)
-	}
-	configFile := ufpath.Join(bc.LocalPath, "config")
-	if _, err := os.Stat(configFile); err == nil {
-		return fmt.Errorf("in SaveDssConfig: cannot create file %s", configFile)
-	}
-	bs, err := json.Marshal(dssConfig)
-	if err != nil {
-		return fmt.Errorf("in SaveDssConfig: %w", err)
-	}
-	uc, err := CurrentUserConfig(bc)
-	if err != nil {
-		return fmt.Errorf("in SaveDssConfig: %w", err)
-	}
-	ebs, err := EncryptMsg(string(bs), uc.Internal.PKey)
-	if err != nil {
-		return fmt.Errorf("in SaveDssConfig: %w", err)
-	}
-	if err := os.WriteFile(configFile, ebs, 0o666); err != nil {
-		return fmt.Errorf("in SaveDssConfig: %w", err)
-	}
-	return nil
-}
-
-func LoadDssConfig(bc DssBaseConfig, persistentConfig interface{}) error {
-	ebs, err := os.ReadFile(ufpath.Join(bc.LocalPath, "config"))
-	if err != nil {
-		return fmt.Errorf("in LoadDssConfig: %w", err)
-	}
-	uc, err := CurrentUserConfig(bc)
-	if err != nil {
-		return fmt.Errorf("in LoadDssConfig: %w", err)
-	}
-	bs, err := DecryptMsg(ebs, uc.Internal.Secret)
-	if err != nil {
-		return fmt.Errorf("in LoadDssConfig: %w", err)
-	}
-	if err = json.Unmarshal([]byte(bs), persistentConfig); err != nil {
-		return fmt.Errorf("in LoadDssConfig: %w", err)
-	}
-	return nil
 }

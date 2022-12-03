@@ -6,11 +6,39 @@ import (
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
+	"hash"
 	"io"
 	"os"
 	"sort"
 	"time"
 )
+
+type ContentHandle struct {
+	cb      WriteCloserCb
+	cf      afero.File
+	h       hash.Hash
+	written int64
+}
+
+func (ch *ContentHandle) Write(p []byte) (n int, err error) {
+	n, err = ch.cf.Write(p)
+	if n > 0 {
+		ch.written += int64(n)
+		ch.h.Write(p[0:n])
+	}
+	return
+}
+
+func (ch *ContentHandle) Close() (err error) {
+	err = ch.cf.Close()
+	if err != nil {
+		os.Remove(ch.cf.Name())
+	}
+	if ch.cb != nil {
+		ch.cb(err, ch.written, internal.Sha256ToStr32(ch.h.Sum(nil)))
+	}
+	return err
+}
 
 type FsyConfig struct {
 	DssBaseConfig

@@ -32,8 +32,8 @@ func TestEDssClientOlfBase(t *testing.T) {
 				EDssConfig{
 					WebDssConfig: WebDssConfig{
 						DssBaseConfig: DssBaseConfig{
-							UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
-							WebPort:        "3000",
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+							WebPort:   "3000",
 						}, NoClientLimit: true},
 				},
 				0, nil)
@@ -72,8 +72,8 @@ func runTestEDssClientObsBase(t *testing.T) error {
 				EDssConfig{
 					WebDssConfig: WebDssConfig{
 						DssBaseConfig: DssBaseConfig{
-							UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
-							WebPort:        "3000",
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+							WebPort:   "3000",
 						}, NoClientLimit: true},
 				},
 				0, nil)
@@ -104,8 +104,8 @@ func TestEDssApiClientOlfBase(t *testing.T) {
 				EDssConfig{
 					WebDssConfig: WebDssConfig{
 						DssBaseConfig: DssBaseConfig{
-							LibApi:         true,
-							UserConfigPath: ucp,
+							LibApi:    true,
+							ConfigDir: ucp,
 						},
 						LibApiDssConfig: LibApiDssConfig{
 							IsOlf: true,
@@ -152,8 +152,8 @@ func runTestEDssApiClientObsBase(t *testing.T) error {
 				EDssConfig{
 					WebDssConfig{
 						DssBaseConfig: DssBaseConfig{
-							LibApi:         true,
-							UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
+							LibApi:    true,
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 						},
 						LibApiDssConfig: LibApiDssConfig{
 							IsObs:  true,
@@ -196,8 +196,8 @@ func TestEDssClientOlfHistory(t *testing.T) {
 				EDssConfig{
 					WebDssConfig: WebDssConfig{
 						DssBaseConfig: DssBaseConfig{
-							UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
-							WebPort:        "3000",
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+							WebPort:   "3000",
 						}, NoClientLimit: true},
 				},
 				0, nil)
@@ -221,8 +221,8 @@ func TestEDssApiClientOlfHistory(t *testing.T) {
 				EDssConfig{
 					WebDssConfig: WebDssConfig{
 						DssBaseConfig: DssBaseConfig{
-							LibApi:         true,
-							UserConfigPath: ucp,
+							LibApi:    true,
+							ConfigDir: ucp,
 						},
 						LibApiDssConfig: LibApiDssConfig{
 							IsOlf: true,
@@ -268,8 +268,8 @@ func TestEDssClientOlfMultiHistory(t *testing.T) {
 				EDssConfig{
 					WebDssConfig: WebDssConfig{
 						DssBaseConfig: DssBaseConfig{
-							UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
-							WebPort:        "3000",
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+							WebPort:   "3000",
 						}, NoClientLimit: true},
 				},
 				0, nil)
@@ -293,8 +293,8 @@ func TestEDssApiClientOlfMultiHistory(t *testing.T) {
 				EDssConfig{
 					WebDssConfig: WebDssConfig{
 						DssBaseConfig: DssBaseConfig{
-							LibApi:         true,
-							UserConfigPath: ucp,
+							LibApi:    true,
+							ConfigDir: ucp,
 						},
 						LibApiDssConfig: LibApiDssConfig{
 							IsOlf: true,

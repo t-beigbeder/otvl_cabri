@@ -8,7 +8,7 @@ import (
 var configOptions cabriui.ConfigOptions
 
 var configCmd = &coral.Command{
-	Use:   "config",
+	Use:   "config [args...]",
 	Short: "manage application configuration",
 	Long:  `manage application configuration`,
 	Args: func(cmd *coral.Command, args []string) error {

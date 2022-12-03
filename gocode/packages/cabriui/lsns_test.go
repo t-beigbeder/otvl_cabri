@@ -105,14 +105,14 @@ func TestLsnsArboBase(t *testing.T) {
 
 	bo := getObjOptions()
 	bo.IndexImplems = []string{"memory"}
-	err = DSSMkRun(os.Stdin, os.Stdout, os.Stderr, DSSMkOptions{BaseOptions: bo}, []string{"obs:"})
+	err = dssTestMkRun(os.Stdin, os.Stdout, os.Stderr, DSSMkOptions{BaseOptions: bo}, []string{"obs:"})
 	if err != nil {
 		t.Error(err)
 	}
-	if err = DSSMknsRun(os.Stdin, os.Stdout, os.Stderr, DSSMknsOptions{BaseOptions: bo, Children: []string{"d1/"}}, []string{"obs:@"}); err != nil {
+	if err = dssTestMknsRun(os.Stdin, os.Stdout, os.Stderr, DSSMknsOptions{BaseOptions: bo, Children: []string{"d1/"}}, []string{"obs:@"}); err != nil {
 		t.Error(err)
 	}
-	if err = DSSMknsRun(os.Stdin, os.Stdout, os.Stderr, DSSMknsOptions{BaseOptions: bo}, []string{"obs:@d1"}); err != nil {
+	if err = dssTestMknsRun(os.Stdin, os.Stdout, os.Stderr, DSSMknsOptions{BaseOptions: bo}, []string{"obs:@d1"}); err != nil {
 		t.Error(err)
 	}
 	var outBuf3 bytes.Buffer
@@ -129,16 +129,16 @@ func TestLsnsArboBase(t *testing.T) {
 		t.Fatal(err)
 	}
 	ds := fmt.Sprintf("smf:%s/smf", tfs.Path())
-	err = DSSMkRun(os.Stdin, os.Stdout, os.Stderr, DSSMkOptions{BaseOptions: bo}, []string{ds})
+	err = dssTestMkRun(os.Stdin, os.Stdout, os.Stderr, DSSMkOptions{BaseOptions: bo}, []string{ds})
 	if err != nil {
 		t.Error(err)
 	}
 	ds = fmt.Sprintf("smf:%s/smf@", tfs.Path())
-	if err = DSSMknsRun(os.Stdin, os.Stdout, os.Stderr, DSSMknsOptions{Children: []string{"d1/"}}, []string{ds}); err != nil {
+	if err = dssTestMknsRun(os.Stdin, os.Stdout, os.Stderr, DSSMknsOptions{Children: []string{"d1/"}}, []string{ds}); err != nil {
 		t.Error(err)
 	}
 	ds = fmt.Sprintf("smf:%s/smf@d1", tfs.Path())
-	if err = DSSMknsRun(os.Stdin, os.Stdout, os.Stderr, DSSMknsOptions{Children: []string{}}, []string{ds}); err != nil {
+	if err = dssTestMknsRun(os.Stdin, os.Stdout, os.Stderr, DSSMknsOptions{Children: []string{}}, []string{ds}); err != nil {
 		t.Error(err)
 	}
 	var outBuf4 bytes.Buffer

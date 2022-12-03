@@ -327,6 +327,13 @@ func NewOlfDss(config OlfConfig, lsttime int64, aclusers []string) (HDss, error)
 	if err := proxy.initialize(proxy, config, lsttime, aclusers); err != nil {
 		return nil, fmt.Errorf("in NewOlfDss: %w", err)
 	}
+	if proxy.isRepoEncrypted() != config.Encrypted {
+		if proxy.isRepoEncrypted() {
+			return nil, fmt.Errorf("in NewOlfDss: repository is encrypted")
+		} else {
+			return nil, fmt.Errorf("in NewOlfDss: repository is not encrypted")
+		}
+	}
 	return &ODss{proxy: proxy}, nil
 }
 

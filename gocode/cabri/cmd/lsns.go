@@ -10,7 +10,7 @@ import (
 var lsnsOptions cabriui.LsnsOptions
 
 var lsnsCmd = &coral.Command{
-	Use:   "lsns",
+	Use:   "lsns <dss-type:/path/to/dss@path/in/dss>",
 	Short: "list namespace information",
 	Long:  `list namespace information`,
 	Args: func(cmd *coral.Command, args []string) error {

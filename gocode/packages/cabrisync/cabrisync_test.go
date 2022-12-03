@@ -473,8 +473,8 @@ func TestSynchronizeBasicFsyWebOlf(t *testing.T) {
 	dssr, err := cabridss.NewWebDss(
 		cabridss.WebDssConfig{
 			DssBaseConfig: cabridss.DssBaseConfig{
-				UserConfigPath: ufpath.Join(tfsr.Path(), ".cabri"),
-				WebPort:        "3000",
+				ConfigDir: ufpath.Join(tfsr.Path(), ".cabri"),
+				WebPort:   "3000",
 			}, NoClientLimit: true},
 		0, nil)
 	if err != nil {
@@ -534,8 +534,8 @@ func TestSynchronizeBasicFsyEDssApiOlf(t *testing.T) {
 				cabridss.EDssConfig{
 					WebDssConfig: cabridss.WebDssConfig{
 						DssBaseConfig: cabridss.DssBaseConfig{
-							LibApi:         true,
-							UserConfigPath: ucp,
+							LibApi:    true,
+							ConfigDir: ucp,
 						},
 						LibApiDssConfig: cabridss.LibApiDssConfig{
 							IsOlf: true,
@@ -581,8 +581,8 @@ func TestSynchronizeBasicFsyEDssWebOlf(t *testing.T) {
 				cabridss.EDssConfig{
 					WebDssConfig: cabridss.WebDssConfig{
 						DssBaseConfig: cabridss.DssBaseConfig{
-							UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
-							WebPort:        "3000",
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+							WebPort:   "3000",
 						}, NoClientLimit: true},
 				},
 				0, nil)
@@ -614,8 +614,8 @@ func runTestSynchronizeBasicFsyEDssApiObs(t *testing.T) error {
 				cabridss.EDssConfig{
 					cabridss.WebDssConfig{
 						DssBaseConfig: cabridss.DssBaseConfig{
-							LibApi:         true,
-							UserConfigPath: ufpath.Join(tfs.Path(), ".cabri"),
+							LibApi:    true,
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 						},
 						LibApiDssConfig: cabridss.LibApiDssConfig{
 							IsObs:  true,

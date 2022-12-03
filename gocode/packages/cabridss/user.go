@@ -108,16 +108,16 @@ func SaveUserConfig(config DssBaseConfig, configDir string, uc UserConfig) error
 	return writeUserConfig(config, configDir, uc, enc)
 }
 
-func GetHomeUserConfigPath(config DssBaseConfig) (string, error) {
+func GetHomeConfigDir(config DssBaseConfig) (string, error) {
 	homeDir, err := OsUserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("in GetHomeUserConfigPath: %v", err)
+		return "", fmt.Errorf("in GetHomeConfigDir: %v", err)
 	}
 	return filepath.Join(homeDir, ".cabri"), nil
 }
 
 func GetHomeUserConfig(config DssBaseConfig) (UserConfig, error) {
-	configDir, err := GetHomeUserConfigPath(config)
+	configDir, err := GetHomeConfigDir(config)
 	if err != nil {
 		return UserConfig{}, fmt.Errorf("in GetHomeUserConfig: %v", err)
 	}

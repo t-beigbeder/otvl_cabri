@@ -58,7 +58,13 @@ func lsnsOut(ctx context.Context, s string) { lsnsUow(ctx).UiStrOut(s) }
 func lsnsErr(ctx context.Context, s string) { lsnsUow(ctx).UiStrErr(s) }
 
 func lsns(ctx context.Context, dssPath string) error {
-	var err error
+	var (
+		err error
+		mp  string
+	)
+	if mp, err = MasterPassword(lsnsUow(ctx), lsnsOpts(ctx).BaseOptions, 0); err != nil {
+		return err
+	}
 	vars := lsnsVars(ctx)
 	vars.dssType, vars.root, vars.npath, _ = CheckDssPath(dssPath)
 	var lasttime int64
@@ -71,15 +77,20 @@ func lsns(ctx context.Context, dssPath string) error {
 			return err
 		}
 	} else if vars.dssType == "olf" {
-		oc, err := GetOlfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root)
+		oc, err := GetOlfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, mp)
 		if err != nil {
 			return err
 		}
 		if vars.dss, err = cabridss.NewOlfDss(oc, lasttime, nil); err != nil {
 			return err
 		}
+	} else if vars.dssType == "xolf" {
+		vars.dss, err = NewXolfDss(lsnsOpts(ctx).BaseOptions, 0, lasttime, vars.root, mp)
+		if err != nil {
+			return err
+		}
 	} else if vars.dssType == "obs" {
-		oc, err := GetObsConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root)
+		oc, err := GetObsConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, mp)
 		if err != nil {
 			return err
 		}
@@ -87,7 +98,7 @@ func lsns(ctx context.Context, dssPath string) error {
 			return err
 		}
 	} else if vars.dssType == "smf" {
-		sc, err := GetSmfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root)
+		sc, err := GetSmfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, mp)
 		if err != nil {
 			return err
 		}
@@ -96,7 +107,7 @@ func lsns(ctx context.Context, dssPath string) error {
 		}
 	} else if vars.dssType == "webapi+http" {
 		frags := strings.Split(vars.root[2:], "/")
-		wc, err := GetWebConfig(lsnsOpts(ctx).BaseOptions, 0, frags[0], frags[1])
+		wc, err := GetWebConfig(lsnsOpts(ctx).BaseOptions, 0, frags[0], frags[1], mp)
 		if err != nil {
 			return err
 		}

@@ -10,7 +10,7 @@ import (
 var dssMkOptions cabriui.DSSMkOptions
 
 var dssMkCmd = &coral.Command{
-	Use:   "make",
+	Use:   "make <dss-type:/path/to/dss>",
 	Short: "create a new DSS",
 	Long:  `create a new DSS`,
 	Args: func(cmd *coral.Command, args []string) error {
@@ -31,10 +31,10 @@ var dssMkCmd = &coral.Command{
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
 		dssMkOptions.BaseOptions = baseOptions
-		return cabriui.DSSMkRun(
-			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.OutOrStdout(),
+		return cabriui.CLIRun[cabriui.DSSMkOptions, *cabriui.DSSMkVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
 			dssMkOptions, args,
-		)
+			cabriui.DSSMkStartup, cabriui.DSSMkShutdown)
 	},
 	SilenceUsage: true,
 }
@@ -59,10 +59,10 @@ var dssMknsCmd = &coral.Command{
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
 		dssMknsOptions.BaseOptions = baseOptions
-		return cabriui.DSSMknsRun(
-			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.OutOrStdout(),
+		return cabriui.CLIRun[cabriui.DSSMknsOptions, *cabriui.DSSMknsVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
 			dssMknsOptions, args,
-		)
+			cabriui.DSSMknsStartup, cabriui.DSSMknsShutdown)
 	},
 	SilenceUsage: true,
 }
@@ -87,13 +87,15 @@ var dssUnlockCmd = &coral.Command{
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
 		dssUnlockOptions.BaseOptions = baseOptions
-		return cabriui.DSSUnlockRun(
-			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.OutOrStdout(),
+		return cabriui.CLIRun[cabriui.DSSUnlockOptions, *cabriui.DSSUnlockVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
 			dssUnlockOptions, args,
-		)
+			cabriui.DSSUnlockStartup, cabriui.DSSUnlockShutdown)
 	},
 	SilenceUsage: true,
 }
+
+var dssCleanOptions cabriui.DSSCleanOptions
 
 var dssCleanCmd = &coral.Command{
 	Use:   "clean",
@@ -112,10 +114,11 @@ var dssCleanCmd = &coral.Command{
 		return nil
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
-		return cabriui.DSSCleanRun(
-			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.OutOrStdout(),
-			baseOptions, args,
-		)
+		dssCleanOptions.BaseOptions = baseOptions
+		return cabriui.CLIRun[cabriui.DSSCleanOptions, *cabriui.DSSCleanVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssCleanOptions, args,
+			cabriui.DSSCleanStartup, cabriui.DSSCleanShutdown)
 	},
 	Hidden:       true,
 	SilenceUsage: true,

@@ -56,9 +56,15 @@ func syncOut(ctx context.Context, s string) { syncUow(ctx).UiStrOut(s) }
 func syncErr(ctx context.Context, s string) { syncUow(ctx).UiStrErr(s) }
 
 func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (dss cabridss.Dss, path string, err error) {
+	var (
+		mp       string
+		lasttime int64
+		slt      string
+	)
+	if mp, err = MasterPassword(syncUow(ctx), syncOpts(ctx).BaseOptions, 0); err != nil {
+		return
+	}
 	dssType, root, path, _ := CheckDssPath(dssPath)
-	var lasttime int64
-	slt := ""
 	if isRight {
 		slt = syncOpts(ctx).RightTime
 	} else {
@@ -72,7 +78,7 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (dss
 			return nil, "", err
 		}
 	} else if dssType == "olf" {
-		oc, err := GetOlfConfig(syncOpts(ctx).BaseOptions, *obsIx, root)
+		oc, err := GetOlfConfig(syncOpts(ctx).BaseOptions, *obsIx, root, mp)
 		if err != nil {
 			return nil, "", err
 		}
@@ -80,8 +86,13 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (dss
 			return nil, "", err
 		}
 		*obsIx += 1
+	} else if dssType == "xolf" {
+		if dss, err = NewXolfDss(syncOpts(ctx).BaseOptions, *obsIx, lasttime, root, mp); err != nil {
+			return nil, "", err
+		}
+		*obsIx += 1
 	} else if dssType == "obs" {
-		oc, err := GetObsConfig(syncOpts(ctx).BaseOptions, *obsIx, root)
+		oc, err := GetObsConfig(syncOpts(ctx).BaseOptions, *obsIx, root, mp)
 		if err != nil {
 			return nil, "", err
 		}
@@ -91,7 +102,7 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (dss
 		}
 		*obsIx += 1
 	} else if dssType == "smf" {
-		sc, err := GetSmfConfig(syncOpts(ctx).BaseOptions, *obsIx, root)
+		sc, err := GetSmfConfig(syncOpts(ctx).BaseOptions, *obsIx, root, mp)
 		if err != nil {
 			return nil, "", err
 		}
@@ -100,7 +111,7 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (dss
 		}
 	} else if dssType == "webapi+http" {
 		frags := strings.Split(root[2:], "/")
-		wc, err := GetWebConfig(syncOpts(ctx).BaseOptions, 0, frags[0], frags[1])
+		wc, err := GetWebConfig(syncOpts(ctx).BaseOptions, 0, frags[0], frags[1], mp)
 		if err != nil {
 			return nil, "", err
 		}

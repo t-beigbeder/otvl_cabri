@@ -57,11 +57,11 @@ func configEncrypt(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	cp, err := ConfigPath(configOpts(ctx).BaseOptions)
+	cd, err := ConfigDir(configOpts(ctx).BaseOptions)
 	if err != nil {
 		return err
 	}
-	return cabridss.EncryptUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cp)
+	return cabridss.EncryptUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd)
 }
 
 func configDecrypt(ctx context.Context) error {
@@ -69,28 +69,28 @@ func configDecrypt(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	cp, err := ConfigPath(configOpts(ctx).BaseOptions)
+	cd, err := ConfigDir(configOpts(ctx).BaseOptions)
 	if err != nil {
 		return err
 	}
-	return cabridss.DecryptUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cp)
+	return cabridss.DecryptUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd)
 }
 
-func getMPConfigPathAndData(ctx context.Context) (mp, cp string, uc cabridss.UserConfig, err error) {
+func getMPConfigDirAndData(ctx context.Context) (mp, cd string, uc cabridss.UserConfig, err error) {
 	if mp, err = MasterPassword(configUow(ctx), configOpts(ctx).BaseOptions, 0); err != nil {
 		return
 	}
-	if cp, err = ConfigPath(configOpts(ctx).BaseOptions); err != nil {
+	if cd, err = ConfigDir(configOpts(ctx).BaseOptions); err != nil {
 		return
 	}
-	if uc, err = cabridss.GetUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cp); err != nil {
+	if uc, err = cabridss.GetUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd); err != nil {
 		return
 	}
 	return
 }
 
 func configDump(ctx context.Context) error {
-	_, _, uc, err := getMPConfigPathAndData(ctx)
+	_, _, uc, err := getMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func configDump(ctx context.Context) error {
 }
 
 func configGen(ctx context.Context) error {
-	mp, cp, uc, err := getMPConfigPathAndData(ctx)
+	mp, cd, uc, err := getMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
@@ -114,11 +114,11 @@ func configGen(ctx context.Context) error {
 		}
 		uc.PutIdentity(ic)
 	}
-	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cp, uc)
+	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd, uc)
 }
 
 func configGet(ctx context.Context) error {
-	_, _, uc, err := getMPConfigPathAndData(ctx)
+	_, _, uc, err := getMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
@@ -133,7 +133,7 @@ func configGet(ctx context.Context) error {
 }
 
 func configPut(ctx context.Context) error {
-	mp, cp, uc, err := getMPConfigPathAndData(ctx)
+	mp, cd, uc, err := getMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
@@ -158,11 +158,11 @@ func configPut(ctx context.Context) error {
 	}
 
 	uc.PutIdentity(cabridss.IdentityConfig{Alias: args[0], PKey: args[1], Secret: secret})
-	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cp, uc)
+	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd, uc)
 }
 
 func configRemove(ctx context.Context) error {
-	mp, cp, uc, err := getMPConfigPathAndData(ctx)
+	mp, cd, uc, err := getMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func configRemove(ctx context.Context) error {
 		}
 		uc.Identities = newIds
 	}
-	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cp, uc)
+	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd, uc)
 }
 
 func configRun(ctx context.Context) error {

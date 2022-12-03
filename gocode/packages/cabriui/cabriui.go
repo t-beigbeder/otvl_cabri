@@ -96,7 +96,7 @@ func CheckDssSpec(dssSpec string) (dssType, root string, err error) {
 		err = fmt.Errorf("DSS specification %s is invalid", dssSpec)
 		return
 	}
-	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "obs" && frags[0] != "smf" {
+	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "xolf" && frags[0] != "obs" && frags[0] != "smf" {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", frags[0])
 		return
 	}
@@ -114,7 +114,7 @@ func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
 	if len(frags) > 2 {
 		frags[1] = strings.Join(frags[1:], ":")
 	}
-	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "obs" && frags[0] != "smf" && frags[0] != "webapi+http" {
+	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "xolf" && frags[0] != "obs" && frags[0] != "smf" && frags[0] != "webapi+http" {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", frags[0])
 		return
 	}
@@ -176,27 +176,36 @@ func CheckTimeStamp(value string) (unix int64, err error) {
 	return
 }
 
-func GetBaseConfig(opts BaseOptions, index int, root, localPath string) (cabridss.DssBaseConfig, error) {
+func GetBaseConfig(opts BaseOptions, index int, root, localPath, mp string) (cabridss.DssBaseConfig, error) {
+	cd, err := ConfigDir(opts)
+	if err != nil {
+		return cabridss.DssBaseConfig{}, nil
+	}
+	dbc := cabridss.DssBaseConfig{
+		ConfigDir:      cd,
+		ConfigPassword: mp,
+		LocalPath:      localPath}
+
 	if len(opts.IndexImplems) > index {
 		if opts.IndexImplems[index] == "no" {
-			return cabridss.DssBaseConfig{LocalPath: localPath, GetIndex: func(config cabridss.DssBaseConfig, _ string) (cabridss.Index, error) {
+			dbc.GetIndex = func(config cabridss.DssBaseConfig, _ string) (cabridss.Index, error) {
 				return cabridss.NewNIndex(), nil
-			}}, nil
+			}
 		} else if opts.IndexImplems[index] == "memory" {
-			return cabridss.DssBaseConfig{LocalPath: localPath, GetIndex: func(config cabridss.DssBaseConfig, _ string) (cabridss.Index, error) {
+			dbc.GetIndex = func(config cabridss.DssBaseConfig, _ string) (cabridss.Index, error) {
 				return cabridss.NewMIndex(), nil
-			}}, nil
+			}
 		} else if opts.IndexImplems[index] == "bdb" {
-			return cabridss.DssBaseConfig{LocalPath: localPath, GetIndex: cabridss.GetPIndex}, nil
+			dbc.GetIndex = cabridss.GetPIndex
 		} else {
 			return cabridss.DssBaseConfig{}, fmt.Errorf("index implementation #%d is unknown %s (no, memory, bdb)", index+1, opts.IndexImplems[index])
 		}
 	}
-	return cabridss.DssBaseConfig{LocalPath: localPath}, nil
+	return dbc, nil
 }
 
-func GetOlfConfig(opts BaseOptions, index int, root string) (cabridss.OlfConfig, error) {
-	bc, err := GetBaseConfig(opts, index, root, root)
+func GetOlfConfig(opts BaseOptions, index int, root, mp string) (cabridss.OlfConfig, error) {
+	bc, err := GetBaseConfig(opts, index, root, root, mp)
 	if err != nil {
 		return cabridss.OlfConfig{}, err
 	}
@@ -208,7 +217,7 @@ func GetOlfConfig(opts BaseOptions, index int, root string) (cabridss.OlfConfig,
 	return cabridss.OlfConfig{DssBaseConfig: bc, Root: root}, nil
 }
 
-func GetObsConfig(opts BaseOptions, index int, root string) (cabridss.ObsConfig, error) {
+func GetObsConfig(opts BaseOptions, index int, root, mp string) (cabridss.ObsConfig, error) {
 	var region, endpoint, container, accessKey, secretKey string
 	if len(opts.ObsRegions) > index {
 		region = opts.ObsRegions[index]
@@ -225,7 +234,7 @@ func GetObsConfig(opts BaseOptions, index int, root string) (cabridss.ObsConfig,
 	if len(opts.ObsSecretKeys) > index {
 		secretKey = opts.ObsSecretKeys[index]
 	}
-	bc, err := GetBaseConfig(opts, index, root, root)
+	bc, err := GetBaseConfig(opts, index, root, root, mp)
 	if err != nil {
 		return cabridss.ObsConfig{}, err
 	}
@@ -242,8 +251,8 @@ func GetObsConfig(opts BaseOptions, index int, root string) (cabridss.ObsConfig,
 	}, nil
 }
 
-func GetSmfConfig(opts BaseOptions, index int, root string) (cabridss.ObsConfig, error) {
-	config, err := GetObsConfig(opts, index, root)
+func GetSmfConfig(opts BaseOptions, index int, root, mp string) (cabridss.ObsConfig, error) {
+	config, err := GetObsConfig(opts, index, root, mp)
 	if err != nil {
 		return cabridss.ObsConfig{}, err
 	}
@@ -253,8 +262,8 @@ func GetSmfConfig(opts BaseOptions, index int, root string) (cabridss.ObsConfig,
 	return config, nil
 }
 
-func GetWebConfig(opts BaseOptions, index int, addr, root string) (cabridss.WebDssConfig, error) {
-	bc, err := GetBaseConfig(opts, index, "", "")
+func GetWebConfig(opts BaseOptions, index int, addr, root, mp string) (cabridss.WebDssConfig, error) {
+	bc, err := GetBaseConfig(opts, index, "", "", mp)
 	if err != nil {
 		return cabridss.WebDssConfig{}, err
 	}
@@ -307,21 +316,51 @@ func MasterPassword(uow joule.UnitOfWork, opts BaseOptions, askNumber int) (stri
 	return "", nil
 }
 
-func ConfigPath(opts BaseOptions) (string, error) {
-	cp := opts.ConfigDir
+func ConfigDir(opts BaseOptions) (string, error) {
+	cd := opts.ConfigDir
 	var err error
-	if cp == "" {
-		cp, err = cabridss.GetHomeUserConfigPath(cabridss.DssBaseConfig{})
+	if cd == "" {
+		cd, err = cabridss.GetHomeConfigDir(cabridss.DssBaseConfig{})
 		if err != nil {
 			return "", err
 		}
 	}
-	fi, err := os.Stat(cp)
+	fi, err := os.Stat(cd)
 	if err != nil {
 		return "", err
 	}
 	if !fi.IsDir() {
-		return "", fmt.Errorf("%s is not a directory", cp)
+		return "", fmt.Errorf("%s is not a directory", cd)
 	}
-	return cp, nil
+	return cd, nil
+}
+
+func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string) (cabridss.HDss, error) {
+	oc, err := GetOlfConfig(opts, index, root, mp)
+	if err != nil {
+		return nil, err
+	}
+	bc, err := GetBaseConfig(opts, index, root, root, mp)
+	if err != nil {
+		return nil, err
+	}
+	if bc.GetIndex == nil {
+		oc.GetIndex = cabridss.GetPIndex
+	}
+	dss, err := cabridss.NewEDss(
+		cabridss.EDssConfig{
+			WebDssConfig: cabridss.WebDssConfig{
+				DssBaseConfig: cabridss.DssBaseConfig{
+					LibApi:         true,
+					ConfigDir:      oc.ConfigDir,
+					ConfigPassword: mp,
+				},
+				LibApiDssConfig: cabridss.LibApiDssConfig{
+					IsOlf:  true,
+					OlfCfg: oc,
+				},
+			},
+		},
+		lasttime, nil)
+	return dss, err
 }

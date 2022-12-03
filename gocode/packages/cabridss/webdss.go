@@ -77,12 +77,12 @@ func (wdi *webDssImpl) initialize(me oDssProxy, config interface{}, lsttime int6
 		err, err2 error
 		ucp       string
 	)
-	if wdc.UserConfigPath != "" {
-		uc, err = GetUserConfig(wdc.DssBaseConfig, wdc.UserConfigPath)
-		ucp = wdc.UserConfigPath
+	if wdc.ConfigDir != "" {
+		uc, err = GetUserConfig(wdc.DssBaseConfig, wdc.ConfigDir)
+		ucp = wdc.ConfigDir
 	} else {
 		uc, err = GetHomeUserConfig(wdc.DssBaseConfig)
-		ucp, err2 = GetHomeUserConfigPath(wdc.DssBaseConfig)
+		ucp, err2 = GetHomeConfigDir(wdc.DssBaseConfig)
 	}
 	if err != nil {
 		return fmt.Errorf("in initialize: %v", err)
@@ -388,10 +388,12 @@ func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isCli
 	if config.LibApi {
 		impl.libApi = true
 		if config.IsOlf {
+			config.OlfCfg.DssBaseConfig.Encrypted = config.DssBaseConfig.Encrypted
 			if dss, err = NewOlfDss(config.OlfCfg, lsttime, aclusers); err != nil {
 				return nil, nil, err
 			}
 		} else if config.IsObs {
+			config.OlfCfg.DssBaseConfig.Encrypted = config.DssBaseConfig.Encrypted
 			if dss, err = NewObsDss(config.ObsCfg, lsttime, aclusers); err != nil {
 				return nil, nil, err
 			}
