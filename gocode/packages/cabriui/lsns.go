@@ -85,7 +85,8 @@ func lsns(ctx context.Context, dssPath string) error {
 			return err
 		}
 	} else if vars.dssType == "xolf" {
-		vars.dss, err = NewXolfDss(lsnsOpts(ctx).BaseOptions, 0, lasttime, vars.root, mp)
+		// FIXME acl
+		vars.dss, err = NewXolfDss(lsnsOpts(ctx).BaseOptions, 0, lasttime, vars.root, mp, nil)
 		if err != nil {
 			return err
 		}

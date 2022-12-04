@@ -87,7 +87,8 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (dss
 		}
 		*obsIx += 1
 	} else if dssType == "xolf" {
-		if dss, err = NewXolfDss(syncOpts(ctx).BaseOptions, *obsIx, lasttime, root, mp); err != nil {
+		// FIXME acl
+		if dss, err = NewXolfDss(syncOpts(ctx).BaseOptions, *obsIx, lasttime, root, mp, nil); err != nil {
 			return nil, "", err
 		}
 		*obsIx += 1

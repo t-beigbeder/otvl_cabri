@@ -129,10 +129,15 @@ func dssMknsRun(ctx context.Context) error {
 		dss cabridss.Dss
 		err error
 		mp  string
+		acl []cabridss.ACLEntry
 	)
-	if mp, err = MasterPassword(dssMknsUow(ctx), opts.BaseOptions, 0); err != nil {
+	if mp, err = MasterPassword(dssMknsUow(ctx), dssMknsOpts(ctx).BaseOptions, 0); err != nil {
 		return err
 	}
+	if acl, err = GetEncryptionACL[DSSMknsOptions, *DSSMknsVars](ctx); err != nil {
+		return err
+	}
+	_ = acl
 	if dssType == "fsy" {
 		if dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, root); err != nil {
 			return err
@@ -142,11 +147,11 @@ func dssMknsRun(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if dss, err = cabridss.NewOlfDss(oc, 0, nil); err != nil {
+		if dss, err = cabridss.NewOlfDss(oc, 0, cabridss.Users(acl)); err != nil {
 			return err
 		}
 	} else if dssType == "xolf" {
-		dss, err = NewXolfDss(opts.BaseOptions, 0, 0, root, mp)
+		dss, err = NewXolfDss(opts.BaseOptions, 0, 0, root, mp, cabridss.Users(acl))
 		if err != nil {
 			return err
 		}
@@ -155,7 +160,7 @@ func dssMknsRun(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if dss, err = cabridss.NewObsDss(oc, 0, nil); err != nil {
+		if dss, err = cabridss.NewObsDss(oc, 0, cabridss.Users(acl)); err != nil {
 			return err
 		}
 	} else if dssType == "smf" {
@@ -163,7 +168,7 @@ func dssMknsRun(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if dss, err = cabridss.NewObsDss(sc, 0, nil); err != nil {
+		if dss, err = cabridss.NewObsDss(sc, 0, cabridss.Users(acl)); err != nil {
 			return err
 		}
 	} else if dssType == "webapi+http" {
@@ -172,13 +177,13 @@ func dssMknsRun(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if dss, err = cabridss.NewWebDss(wc, 0, nil); err != nil {
+		if dss, err = cabridss.NewWebDss(wc, 0, cabridss.Users(acl)); err != nil {
 			return err
 		}
 	} else {
 		return fmt.Errorf("DSS type %s is not (yet) supported", dssType)
 	}
-	if err = dss.Mkns(npath, time.Now().Unix(), opts.Children, nil); err != nil {
+	if err = dss.Mkns(npath, time.Now().Unix(), opts.Children, acl); err != nil {
 		return err
 	}
 	if err = dss.Close(); err != nil {

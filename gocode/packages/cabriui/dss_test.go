@@ -15,7 +15,7 @@ import (
 func dssTestMkRun(
 	cliIn io.Reader, cliOut io.Writer, cliErr io.Writer,
 	opts DSSMkOptions, args []string,
-) error {
+) error { // FIXME: migrate to use new code
 	dssType, root, _ := CheckDssSpec(args[0])
 	var dss cabridss.Dss
 	var err error
@@ -57,7 +57,7 @@ func dssTestMkRun(
 func dssTestMknsRun(
 	cliIn io.Reader, cliOut io.Writer, cliErr io.Writer,
 	opts DSSMknsOptions, args []string,
-) error {
+) error { // FIXME: migrate to use new code
 	dssType, root, npath, _ := CheckDssPath(args[0])
 	var dss cabridss.Dss
 	var err error
@@ -112,7 +112,7 @@ func dssTestMknsRun(
 
 func dssTestUnlockRun(cliIn io.Reader, cliOut io.Writer, cliErr io.Writer,
 	opts DSSUnlockOptions, args []string,
-) error {
+) error { // FIXME: migrate to use new code
 	dssType, root, _ := CheckDssSpec(args[0])
 
 	var dss cabridss.HDss

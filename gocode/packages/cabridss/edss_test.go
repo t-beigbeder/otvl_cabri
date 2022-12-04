@@ -148,6 +148,7 @@ func runTestEDssApiClientObsBase(t *testing.T) error {
 			dbc := getOC()
 			dbc.LocalPath = tfs.Path()
 			dbc.DssBaseConfig.GetIndex = GetPIndex
+			dbc.DssBaseConfig.Encrypted = true
 			dss, err := NewEDss(
 				EDssConfig{
 					WebDssConfig{

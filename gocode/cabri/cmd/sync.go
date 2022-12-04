@@ -42,6 +42,9 @@ for instance
 		return nil
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
+		if _, err := cabriui.CheckACL(baseOptions.CreateACLUsers, baseOptions.CreateACLRights); err != nil {
+			return err
+		}
 		syncOptions.BaseOptions = baseOptions
 		if _, err := cabriui.CheckTimeStamp(syncOptions.LeftTime); err != nil {
 			return err

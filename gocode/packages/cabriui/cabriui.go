@@ -14,17 +14,19 @@ import (
 )
 
 type BaseOptions struct {
-	ConfigDir     string
-	IdentityAlias string
-	Password      bool
-	PassFile      string
-	Serial        bool
-	IndexImplems  []string
-	ObsRegions    []string
-	ObsEndpoints  []string
-	ObsContainers []string
-	ObsAccessKeys []string
-	ObsSecretKeys []string
+	ConfigDir       string
+	IdentityAlias   string
+	CreateACLUsers  []string
+	CreateACLRights []string
+	Password        bool
+	PassFile        string
+	Serial          bool
+	IndexImplems    []string
+	ObsRegions      []string
+	ObsEndpoints    []string
+	ObsContainers   []string
+	ObsAccessKeys   []string
+	ObsSecretKeys   []string
 }
 
 func (bos BaseOptions) getBaseOptions() BaseOptions {
@@ -130,6 +132,29 @@ func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
 	}
 	root = rnPath[0]
 	npath = rnPath[1]
+	return
+}
+
+func CheckACL(users, rights []string) (acl []cabridss.ACLEntry, err error) {
+	dr := cabridss.Rights{Read: true, Write: true}
+	for i, u := range users {
+		ur := dr
+		if i < len(rights) {
+			ur = cabridss.Rights{}
+			for _, char := range rights[i] {
+				if char == 'r' {
+					ur.Read = true
+				} else if char == 'w' {
+					ur.Write = true
+				} else if char == 'x' {
+					ur.Execute = true
+				} else {
+					return nil, fmt.Errorf("invalid character %c for access right (not in 'rwx')", char)
+				}
+			}
+		}
+		acl = append(acl, cabridss.ACLEntry{User: u, Rights: ur})
+	}
 	return
 }
 
@@ -335,7 +360,61 @@ func ConfigDir(opts BaseOptions) (string, error) {
 	return cd, nil
 }
 
-func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string) (cabridss.HDss, error) {
+func GetMPConfigDirAndData[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context) (mp, cd string, uc cabridss.UserConfig, err error) {
+	uow := getUnitOfWork[OT, VT](ctx)
+	uictx := uiCtxFrom[OT, VT](ctx)
+	if mp, err = MasterPassword(uow, uictx.opts.getBaseOptions(), 0); err != nil {
+		return
+	}
+	if cd, err = ConfigDir(uictx.opts.getBaseOptions()); err != nil {
+		return
+	}
+	if uc, err = cabridss.GetUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd); err != nil {
+		return
+	}
+	return
+}
+
+func GetEncryptionACL[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context) (acl []cabridss.ACLEntry, err error) {
+	var (
+		uc        cabridss.UserConfig
+		uacl      []cabridss.ACLEntry
+		iaFound   bool
+		defaultId cabridss.IdentityConfig
+	)
+	if _, _, uc, err = GetMPConfigDirAndData[OT, VT](ctx); err != nil {
+		return
+	}
+	bo := uiCtxFrom[OT, VT](ctx).opts.getBaseOptions()
+	if uacl, err = CheckACL(bo.CreateACLUsers, bo.CreateACLRights); err != nil {
+		return
+	}
+	for _, idc := range uc.Identities {
+		if idc.Alias == bo.IdentityAlias {
+			defaultId = idc
+		}
+	}
+	if defaultId.PKey == "" {
+		err = fmt.Errorf("no identity found for alias %s", bo.IdentityAlias)
+		return
+	}
+	for _, uace := range uacl {
+		for _, idc := range uc.Identities {
+			if idc.Alias == uace.User {
+				acl = append(acl, cabridss.ACLEntry{User: idc.PKey, Rights: uace.Rights})
+				if idc.Alias == bo.IdentityAlias {
+					iaFound = true
+				}
+			}
+		}
+	}
+	if !iaFound {
+		acl = append(acl, cabridss.ACLEntry{User: defaultId.PKey, Rights: cabridss.Rights{Read: true, Write: true}})
+	}
+	return
+}
+
+func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string, aclusers []string) (cabridss.HDss, error) {
 	oc, err := GetOlfConfig(opts, index, root, mp)
 	if err != nil {
 		return nil, err
@@ -361,6 +440,6 @@ func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string) (c
 				},
 			},
 		},
-		lasttime, nil)
+		lasttime, aclusers)
 	return dss, err
 }

@@ -52,6 +52,10 @@ func configOut(ctx context.Context, s string) { configUow(ctx).UiStrOut(s) }
 
 func configErr(ctx context.Context, s string) { configUow(ctx).UiStrErr(s) }
 
+func configMPConfigDirAndData(ctx context.Context) (mp, cd string, uc cabridss.UserConfig, err error) {
+	return GetMPConfigDirAndData[ConfigOptions, *ConfigVars](ctx)
+}
+
 func configEncrypt(ctx context.Context) error {
 	mp, err := MasterPassword(configUow(ctx), configOpts(ctx).BaseOptions, 2)
 	if err != nil {
@@ -76,21 +80,8 @@ func configDecrypt(ctx context.Context) error {
 	return cabridss.DecryptUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd)
 }
 
-func getMPConfigDirAndData(ctx context.Context) (mp, cd string, uc cabridss.UserConfig, err error) {
-	if mp, err = MasterPassword(configUow(ctx), configOpts(ctx).BaseOptions, 0); err != nil {
-		return
-	}
-	if cd, err = ConfigDir(configOpts(ctx).BaseOptions); err != nil {
-		return
-	}
-	if uc, err = cabridss.GetUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd); err != nil {
-		return
-	}
-	return
-}
-
 func configDump(ctx context.Context) error {
-	_, _, uc, err := getMPConfigDirAndData(ctx)
+	_, _, uc, err := configMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
@@ -103,7 +94,7 @@ func configDump(ctx context.Context) error {
 }
 
 func configGen(ctx context.Context) error {
-	mp, cd, uc, err := getMPConfigDirAndData(ctx)
+	mp, cd, uc, err := configMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
@@ -118,7 +109,7 @@ func configGen(ctx context.Context) error {
 }
 
 func configGet(ctx context.Context) error {
-	_, _, uc, err := getMPConfigDirAndData(ctx)
+	_, _, uc, err := configMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
@@ -133,7 +124,7 @@ func configGet(ctx context.Context) error {
 }
 
 func configPut(ctx context.Context) error {
-	mp, cd, uc, err := getMPConfigDirAndData(ctx)
+	mp, cd, uc, err := configMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
@@ -162,7 +153,7 @@ func configPut(ctx context.Context) error {
 }
 
 func configRemove(ctx context.Context) error {
-	mp, cd, uc, err := getMPConfigDirAndData(ctx)
+	mp, cd, uc, err := configMPConfigDirAndData(ctx)
 	if err != nil {
 		return err
 	}
