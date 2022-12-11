@@ -22,9 +22,8 @@ var dssCmd = &coral.Command{
 func init() {
 	rootCmd.AddCommand(cliCmd)
 	cliCmd.PersistentFlags().StringVar(&baseOptions.ConfigDir, "cdir", "", "load configuration files from this directory instead of .cabri in home directory")
-	cliCmd.PersistentFlags().StringVarP(&baseOptions.IdentityAlias, "ia", "", "", "identity alias used for encryption if applicable")
-	cliCmd.PersistentFlags().StringArrayVarP(&baseOptions.CreateACLUsers, "user", "u", nil, "ordered list of ACL users for creation")
-	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.CreateACLRights, "rights", nil, "ordered list of ACL rights (defaults to rw) for creation")
+	cliCmd.PersistentFlags().StringArrayVarP(&baseOptions.Users, "user", "u", nil, "list of ACL users for retrieval")
+	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ACL, "acl", nil, "list of ACL <user:rights> items (defaults to rw) for creation and update")
 	cliCmd.PersistentFlags().StringVarP(&baseOptions.PassFile, "pfile", "", "", "file containing the master password")
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.Password, "password", false, "force master password prompt")
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.Serial, "serial", false, "run all tasks in sequence")

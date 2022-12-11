@@ -33,14 +33,14 @@ type syncCtx struct {
 	leftRight    []string // right children left after remove
 }
 
-func (sdc sideCtx) arrow() rune {
+func (sdc *sideCtx) arrow() rune {
 	if sdc.isRight {
 		return '>'
 	}
 	return '<'
 }
 
-func (sdc sideCtx) relPath() string {
+func (sdc *sideCtx) relPath() string {
 	fp := ""
 	if len(sdc.pPath) > 0 {
 		if len(fp) > 0 {
@@ -59,7 +59,7 @@ func (sdc sideCtx) relPath() string {
 	return fp
 }
 
-func (sdc sideCtx) fullPath() string {
+func (sdc *sideCtx) fullPath() string {
 	fp := sdc.root
 	rp := sdc.relPath()
 	if len(rp) > 0 {
@@ -72,23 +72,36 @@ func (sdc sideCtx) fullPath() string {
 	return fp
 }
 
-func (syc syncCtx) pErr() error {
+func (syc *syncCtx) pErr() error {
 	if syc.err != nil {
 		return fmt.Errorf("parent error %v", syc.err)
 	}
 	return nil
 }
 
+func (syc *syncCtx) cmpMeta() (updated, mUpdated bool) {
+	lMeta, _ := syc.left.meta.(cabridss.Meta)
+	rMeta, _ := syc.right.meta.(cabridss.Meta)
+	if lMeta.Size != rMeta.Size || (lMeta.Ch != "" && lMeta.Ch != rMeta.Ch) {
+		updated = true
+		return
+	}
+	if lMeta.Mtime != rMeta.Mtime {
+		mUpdated = true
+		return
+	}
+	if syc.options.NoACL {
+		return
+	}
+	mACL := syc.mapACL(rMeta.ACL, true)
+	mUpdated = !cabridss.CmpAcl(lMeta.ACL, mACL)
+	return
+}
+
 func (syc *syncCtx) eval(rent *SyncReportEntry) {
 	if syc.left.exist {
 		if syc.right.exist {
-			if !syc.left.meta.Equals(syc.right.meta, !syc.options.NoACL) {
-				if syc.left.meta.GetSize() != syc.right.meta.GetSize() || syc.left.meta.GetChUnsafe() != syc.right.meta.GetChUnsafe() {
-					rent.Updated = true
-				} else {
-					rent.MUpdated = true
-				}
-			}
+			rent.Updated, rent.MUpdated = syc.cmpMeta()
 			if syc.options.BiDir {
 				rent.isRTL = syc.right.meta.GetMtime() > syc.left.meta.GetMtime()
 			}
@@ -109,7 +122,7 @@ func (syc *syncCtx) eval(rent *SyncReportEntry) {
 	}
 }
 
-func (syc syncCtx) makeChild(path string) syncCtx {
+func (syc *syncCtx) makeChild(path string) syncCtx {
 	npath := path
 	isNs := path[len(path)-1] == '/'
 	if isNs {
@@ -130,7 +143,7 @@ func (syc syncCtx) makeChild(path string) syncCtx {
 	}
 }
 
-func (syc syncCtx) diagnose(label string, sdDsp bool) {
+func (syc *syncCtx) diagnose(label string, sdDsp bool) {
 	if syc.options.BeVerbose == nil {
 		return
 	}
@@ -142,7 +155,7 @@ func (syc syncCtx) diagnose(label string, sdDsp bool) {
 	syc.right.diagnose("  ")
 }
 
-func (sdc sideCtx) diagnose(label string) {
+func (sdc *sideCtx) diagnose(label string) {
 	if sdc.options.BeVerbose == nil {
 		return
 	}

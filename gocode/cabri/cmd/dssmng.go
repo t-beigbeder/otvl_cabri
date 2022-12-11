@@ -58,7 +58,7 @@ var dssMknsCmd = &coral.Command{
 		return nil
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
-		if _, err := cabriui.CheckACL(baseOptions.CreateACLUsers, baseOptions.CreateACLRights); err != nil {
+		if _, err := cabriui.CheckUiACL(baseOptions.ACL); err != nil {
 			return err
 		}
 		dssMknsOptions.BaseOptions = baseOptions

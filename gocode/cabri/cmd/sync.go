@@ -42,7 +42,10 @@ for instance
 		return nil
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
-		if _, err := cabriui.CheckACL(baseOptions.CreateACLUsers, baseOptions.CreateACLRights); err != nil {
+		if _, err := cabriui.CheckUiACL(baseOptions.ACL); err != nil {
+			return err
+		}
+		if _, err := cabriui.CheckUiACL(syncOptions.LeftACL); err != nil {
 			return err
 		}
 		syncOptions.BaseOptions = baseOptions
@@ -72,4 +75,7 @@ func init() {
 	syncCmd.Flags().StringVar(&syncOptions.LeftTime, "lefttime", "", "upper time of entries retrieved in left historized DSS")
 	syncCmd.Flags().StringVar(&syncOptions.RightTime, "righttime", "", "upper time of entries retrieved in right historized DSS")
 	syncCmd.Flags().BoolVar(&syncOptions.NoACL, "noacl", false, "don't check ACL")
+	syncCmd.Flags().StringArrayVar(&syncOptions.MapACL, "macl", nil, "list of ACL user mapping <left-user:right-user> items")
+	syncCmd.PersistentFlags().StringArrayVar(&syncOptions.LeftUsers, "leftuser", nil, "list of ACL users for left-side retrieval")
+	syncCmd.PersistentFlags().StringArrayVar(&syncOptions.LeftACL, "leftacl", nil, "list of ACL <user:rights> items (defaults to rw) for left-side creation and update")
 }

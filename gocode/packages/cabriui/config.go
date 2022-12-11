@@ -52,10 +52,6 @@ func configOut(ctx context.Context, s string) { configUow(ctx).UiStrOut(s) }
 
 func configErr(ctx context.Context, s string) { configUow(ctx).UiStrErr(s) }
 
-func configMPConfigDirAndData(ctx context.Context) (mp, cd string, uc cabridss.UserConfig, err error) {
-	return GetMPConfigDirAndData[ConfigOptions, *ConfigVars](ctx)
-}
-
 func configEncrypt(ctx context.Context) error {
 	mp, err := MasterPassword(configUow(ctx), configOpts(ctx).BaseOptions, 2)
 	if err != nil {
@@ -81,11 +77,11 @@ func configDecrypt(ctx context.Context) error {
 }
 
 func configDump(ctx context.Context) error {
-	_, _, uc, err := configMPConfigDirAndData(ctx)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
 	if err != nil {
 		return err
 	}
-	bs, err := json.MarshalIndent(uc, "", "  ")
+	bs, err := json.MarshalIndent(ure.UserConfig, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -94,7 +90,7 @@ func configDump(ctx context.Context) error {
 }
 
 func configGen(ctx context.Context) error {
-	mp, cd, uc, err := configMPConfigDirAndData(ctx)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
 	if err != nil {
 		return err
 	}
@@ -103,18 +99,18 @@ func configGen(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		uc.PutIdentity(ic)
+		ure.UserConfig.PutIdentity(ic)
 	}
-	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd, uc)
+	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: ure.MasterPassword}, ure.ConfigDir, ure.UserConfig)
 }
 
 func configGet(ctx context.Context) error {
-	_, _, uc, err := configMPConfigDirAndData(ctx)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
 	if err != nil {
 		return err
 	}
 	for _, alias := range configCtx(ctx).args {
-		ic := uc.GetIdentity(alias)
+		ic := ure.UserConfig.GetIdentity(alias)
 		if ic.PKey == "" {
 			return fmt.Errorf("identity for alias %s not found", alias)
 		}
@@ -124,7 +120,7 @@ func configGet(ctx context.Context) error {
 }
 
 func configPut(ctx context.Context) error {
-	mp, cd, uc, err := configMPConfigDirAndData(ctx)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
 	if err != nil {
 		return err
 	}
@@ -148,24 +144,24 @@ func configPut(ctx context.Context) error {
 		}
 	}
 
-	uc.PutIdentity(cabridss.IdentityConfig{Alias: args[0], PKey: args[1], Secret: secret})
-	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd, uc)
+	ure.UserConfig.PutIdentity(cabridss.IdentityConfig{Alias: args[0], PKey: args[1], Secret: secret})
+	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: ure.MasterPassword}, ure.ConfigDir, ure.UserConfig)
 }
 
 func configRemove(ctx context.Context) error {
-	mp, cd, uc, err := configMPConfigDirAndData(ctx)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
 	if err != nil {
 		return err
 	}
 	args := configCtx(ctx).args
 	for _, alias := range args {
-		ic := uc.GetIdentity(alias)
+		ic := ure.UserConfig.GetIdentity(alias)
 		if ic.PKey == "" {
 			return fmt.Errorf("identity for alias %s not found", alias)
 		}
 	}
 	var newIds []cabridss.IdentityConfig
-	for _, id := range uc.Identities {
+	for _, id := range ure.UserConfig.Identities {
 		found := false
 		for _, alias := range args {
 			if id.Alias == alias {
@@ -176,9 +172,9 @@ func configRemove(ctx context.Context) error {
 		if !found {
 			newIds = append(newIds, id)
 		}
-		uc.Identities = newIds
+		ure.UserConfig.Identities = newIds
 	}
-	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd, uc)
+	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: ure.MasterPassword}, ure.ConfigDir, ure.UserConfig)
 }
 
 func configRun(ctx context.Context) error {

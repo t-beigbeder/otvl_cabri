@@ -128,60 +128,59 @@ func dssMknsRun(ctx context.Context) error {
 	var (
 		dss cabridss.Dss
 		err error
-		mp  string
-		acl []cabridss.ACLEntry
+		ure UiRunEnv
 	)
-	if mp, err = MasterPassword(dssMknsUow(ctx), dssMknsOpts(ctx).BaseOptions, 0); err != nil {
+	if ure, err = GetUiRunEnv[DSSMknsOptions, *DSSMknsVars](ctx, dssType[0] == 'x'); err != nil {
 		return err
 	}
-	if acl, err = GetEncryptionACL[DSSMknsOptions, *DSSMknsVars](ctx); err != nil {
-		return err
-	}
-	_ = acl
 	if dssType == "fsy" {
 		if dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, root); err != nil {
 			return err
 		}
 	} else if dssType == "olf" {
-		oc, err := GetOlfConfig(opts.BaseOptions, 0, root, mp)
+		oc, err := GetOlfConfig(opts.BaseOptions, 0, root, ure.MasterPassword)
 		if err != nil {
 			return err
 		}
-		if dss, err = cabridss.NewOlfDss(oc, 0, cabridss.Users(acl)); err != nil {
+		if dss, err = cabridss.NewOlfDss(oc, 0, ure.Users); err != nil {
 			return err
 		}
 	} else if dssType == "xolf" {
-		dss, err = NewXolfDss(opts.BaseOptions, 0, 0, root, mp, cabridss.Users(acl))
+		dss, err = NewXolfDss(opts.BaseOptions, 0, 0, root, ure.MasterPassword, ure.Users)
 		if err != nil {
 			return err
 		}
 	} else if dssType == "obs" {
-		oc, err := GetObsConfig(opts.BaseOptions, 0, root, mp)
+		oc, err := GetObsConfig(opts.BaseOptions, 0, root, ure.MasterPassword)
 		if err != nil {
 			return err
 		}
-		if dss, err = cabridss.NewObsDss(oc, 0, cabridss.Users(acl)); err != nil {
+		if dss, err = cabridss.NewObsDss(oc, 0, ure.Users); err != nil {
 			return err
 		}
 	} else if dssType == "smf" {
-		sc, err := GetSmfConfig(opts.BaseOptions, 0, root, mp)
+		sc, err := GetSmfConfig(opts.BaseOptions, 0, root, ure.MasterPassword)
 		if err != nil {
 			return err
 		}
-		if dss, err = cabridss.NewObsDss(sc, 0, cabridss.Users(acl)); err != nil {
+		if dss, err = cabridss.NewObsDss(sc, 0, ure.Users); err != nil {
 			return err
 		}
 	} else if dssType == "webapi+http" {
 		frags := strings.Split(root[2:], "/")
-		wc, err := GetWebConfig(opts.BaseOptions, 0, frags[0], frags[1], mp)
+		wc, err := GetWebConfig(opts.BaseOptions, 0, frags[0], frags[1], ure.MasterPassword)
 		if err != nil {
 			return err
 		}
-		if dss, err = cabridss.NewWebDss(wc, 0, cabridss.Users(acl)); err != nil {
+		if dss, err = cabridss.NewWebDss(wc, 0, ure.Users); err != nil {
 			return err
 		}
 	} else {
 		return fmt.Errorf("DSS type %s is not (yet) supported", dssType)
+	}
+	acl, err := ure.ACLOrDefault()
+	if err != nil {
+		return err
 	}
 	if err = dss.Mkns(npath, time.Now().Unix(), opts.Children, acl); err != nil {
 		return err

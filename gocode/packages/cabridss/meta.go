@@ -53,6 +53,29 @@ func (m Meta) GetAcl() []ACLEntry { return m.ACL }
 
 func (m Meta) GetItime() int64 { return m.Itime }
 
+func CmpAcl(acl1, acl2 []ACLEntry) bool {
+	if len(acl1) != len(acl2) {
+		return false
+	}
+	for _, ace := range acl1 {
+		found := false
+		for _, oace := range acl2 {
+			if ace.User != oace.User {
+				continue
+			}
+			if ace.Rights.Read != oace.Rights.Read || ace.Rights.Write != oace.Rights.Write || ace.Rights.Execute != oace.Rights.Execute {
+				return false
+			}
+			found = true
+			break
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
 func (m Meta) Equals(om IMeta, chacl bool) bool {
 	if om == nil {
 		return false
@@ -60,20 +83,8 @@ func (m Meta) Equals(om IMeta, chacl bool) bool {
 	if m.Size != om.GetSize() || m.Mtime != om.GetMtime() || (m.Ch != "" && om.GetChUnsafe() != "" && m.Ch != om.GetCh()) {
 		return false
 	}
-	if chacl {
-		if len(m.ACL) != len(om.GetAcl()) {
-			return false
-		}
-		for _, ace := range m.ACL {
-			for _, oace := range om.GetAcl() {
-				if ace.User != oace.User {
-					continue
-				}
-				if ace.Rights.Read != oace.Rights.Read || ace.Rights.Write != oace.Rights.Write || ace.Rights.Execute != oace.Rights.Execute {
-					return false
-				}
-			}
-		}
+	if chacl && !CmpAcl(m.ACL, om.GetAcl()) {
+		return false
 	}
 	return true
 }

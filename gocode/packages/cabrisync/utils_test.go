@@ -31,15 +31,16 @@ func optionalSleep(t *testing.T) {
 
 func optionalSkip(t *testing.T) {
 	if os.Getenv("CABRISYNC_SKIP_DEV_TESTS") != "" {
-		if t.Name() == "TestSynchronizeBasic" ||
+		if t.Name() == "TestSynchronizeBasic1" ||
 			t.Name() == "TestSynchronizeBasicACL" ||
 			t.Name() == "TestSynchronizeBasicFsyOlf" ||
 			t.Name() == "TestSynchronizeBasicFsyOlfACL" ||
 			t.Name() == "TestSynchronizeBasicFsyObs" ||
 			t.Name() == "TestSynchronizeBasicFsyObsACL" ||
 			t.Name() == "TestSynchronizeBasicFsyWebOlf" ||
-			t.Name() == "TestSynchronizeBasicFsyEDssApiOlf1" ||
-			t.Name() == "TestSynchronizeBasicFsyEDssWebOlf1" ||
+			t.Name() == "TestSynchronizeBasicFsyEDssApiOlf" ||
+			t.Name() == "TestSynchronizeBasicFsyEDssWebOlf" ||
+			t.Name() == "TestSynchronizeBasicFsyEDssApiObs" ||
 			t.Name() == "TestSynchroInconsistentChildren" ||
 			t.Name() == "TestLoopSynchroInconsistentChildren" ||
 			t.Name() == "TestSynchronizeArboTiny" ||
@@ -48,7 +49,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestSynchronizeArboWebDssClientOlf" ||
 			t.Name() == "TestSynchronizeArboWebDssClientObs" ||
 			t.Name() == "TestSynchronizeArboWebDssClientSmf" ||
-			t.Name() == "TestSynchronizeArboBase1" ||
+			t.Name() == "TestSynchronizeArboBase" ||
 			t.Name() == "TestSynchronizeArboNoFear" ||
 			t.Name() == "TestSynchronizeArboBiDirOlf" ||
 			t.Name() == "TestSynchronizeArboBiDirObs" ||

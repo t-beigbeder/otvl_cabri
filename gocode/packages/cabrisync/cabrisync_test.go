@@ -206,6 +206,10 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 	report11.TextOutput(io.Discard)
 	rs11 := report11.GetStats()
 	if rs11.ErrNum != 0 || rs11.CreNum != 4 || rs11.UpdNum != 4 || rs11.RmvNum != 0 || rs11.KeptNum != 0 || rs11.MUpNum != 2 {
+		println("report10")
+		report10.TextOutput(os.Stdout)
+		println("report11")
+		report11.TextOutput(os.Stdout)
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs11)
 	}
 	report12 := Synchronize(nil, dssl, "", dssr, "step4", SyncOptions{InDepth: true, BiDir: true, Evaluate: true, NoACL: noAcl})
@@ -610,6 +614,7 @@ func runTestSynchronizeBasicFsyEDssApiObs(t *testing.T) error {
 			dbc := getOC()
 			dbc.LocalPath = tfs.Path()
 			dbc.DssBaseConfig.GetIndex = cabridss.GetPIndex
+			dbc.Encrypted = true
 			dss, err := cabridss.NewEDss(
 				cabridss.EDssConfig{
 					cabridss.WebDssConfig{

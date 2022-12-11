@@ -7,26 +7,24 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type BaseOptions struct {
-	ConfigDir       string
-	IdentityAlias   string
-	CreateACLUsers  []string
-	CreateACLRights []string
-	Password        bool
-	PassFile        string
-	Serial          bool
-	IndexImplems    []string
-	ObsRegions      []string
-	ObsEndpoints    []string
-	ObsContainers   []string
-	ObsAccessKeys   []string
-	ObsSecretKeys   []string
+	ConfigDir     string
+	Users         []string
+	ACL           []string
+	Password      bool
+	PassFile      string
+	Serial        bool
+	IndexImplems  []string
+	ObsRegions    []string
+	ObsEndpoints  []string
+	ObsContainers []string
+	ObsAccessKeys []string
+	ObsSecretKeys []string
 }
 
 func (bos BaseOptions) getBaseOptions() BaseOptions {
@@ -135,22 +133,23 @@ func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
 	return
 }
 
-func CheckACL(users, rights []string) (acl []cabridss.ACLEntry, err error) {
-	dr := cabridss.Rights{Read: true, Write: true}
-	for i, u := range users {
-		ur := dr
-		if i < len(rights) {
-			ur = cabridss.Rights{}
-			for _, char := range rights[i] {
-				if char == 'r' {
-					ur.Read = true
-				} else if char == 'w' {
-					ur.Write = true
-				} else if char == 'x' {
-					ur.Execute = true
-				} else {
-					return nil, fmt.Errorf("invalid character %c for access right (not in 'rwx')", char)
-				}
+func CheckUiACL(sacl []string) (acl []cabridss.ACLEntry, err error) {
+	for _, sac := range sacl {
+		sacsubs := strings.Split(sac, ":")
+		if len(sacsubs) != 2 {
+			return nil, fmt.Errorf("invalid ACL string %s, not <user:rights>", sac)
+		}
+		u, rights := sacsubs[0], sacsubs[1]
+		ur := cabridss.Rights{}
+		for _, char := range rights {
+			if char == 'r' {
+				ur.Read = true
+			} else if char == 'w' {
+				ur.Write = true
+			} else if char == 'x' {
+				ur.Execute = true
+			} else {
+				return nil, fmt.Errorf("invalid character %c for access right (not in 'rwx')", char)
 			}
 		}
 		acl = append(acl, cabridss.ACLEntry{User: u, Rights: ur})
@@ -315,131 +314,4 @@ func MutualExcludeFlags(names []string, flags ...bool) error {
 		}
 	}
 	return nil
-}
-
-func MasterPassword(uow joule.UnitOfWork, opts BaseOptions, askNumber int) (string, error) {
-	if opts.PassFile != "" {
-		bs, err := os.ReadFile(opts.PassFile)
-		if err != nil {
-			return "", err
-		}
-		if bs[len(bs)-1] == '\n' {
-			bs = bs[:len(bs)-1]
-		}
-		return string(bs), nil
-	}
-	if askNumber > 0 || opts.Password {
-		passwd1 := uow.UiSecret("please enter the master password: ")
-		if askNumber > 1 {
-			passwd2 := uow.UiSecret("please enter the master password again: ")
-			if passwd1 != passwd2 || passwd1 == "" {
-				return "", fmt.Errorf("passwords differ or are empty")
-			}
-		}
-		return passwd1, nil
-	}
-	return "", nil
-}
-
-func ConfigDir(opts BaseOptions) (string, error) {
-	cd := opts.ConfigDir
-	var err error
-	if cd == "" {
-		cd, err = cabridss.GetHomeConfigDir(cabridss.DssBaseConfig{})
-		if err != nil {
-			return "", err
-		}
-	}
-	fi, err := os.Stat(cd)
-	if err != nil {
-		return "", err
-	}
-	if !fi.IsDir() {
-		return "", fmt.Errorf("%s is not a directory", cd)
-	}
-	return cd, nil
-}
-
-func GetMPConfigDirAndData[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context) (mp, cd string, uc cabridss.UserConfig, err error) {
-	uow := getUnitOfWork[OT, VT](ctx)
-	uictx := uiCtxFrom[OT, VT](ctx)
-	if mp, err = MasterPassword(uow, uictx.opts.getBaseOptions(), 0); err != nil {
-		return
-	}
-	if cd, err = ConfigDir(uictx.opts.getBaseOptions()); err != nil {
-		return
-	}
-	if uc, err = cabridss.GetUserConfig(cabridss.DssBaseConfig{ConfigPassword: mp}, cd); err != nil {
-		return
-	}
-	return
-}
-
-func GetEncryptionACL[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context) (acl []cabridss.ACLEntry, err error) {
-	var (
-		uc        cabridss.UserConfig
-		uacl      []cabridss.ACLEntry
-		iaFound   bool
-		defaultId cabridss.IdentityConfig
-	)
-	if _, _, uc, err = GetMPConfigDirAndData[OT, VT](ctx); err != nil {
-		return
-	}
-	bo := uiCtxFrom[OT, VT](ctx).opts.getBaseOptions()
-	if uacl, err = CheckACL(bo.CreateACLUsers, bo.CreateACLRights); err != nil {
-		return
-	}
-	for _, idc := range uc.Identities {
-		if idc.Alias == bo.IdentityAlias {
-			defaultId = idc
-		}
-	}
-	if defaultId.PKey == "" {
-		err = fmt.Errorf("no identity found for alias %s", bo.IdentityAlias)
-		return
-	}
-	for _, uace := range uacl {
-		for _, idc := range uc.Identities {
-			if idc.Alias == uace.User {
-				acl = append(acl, cabridss.ACLEntry{User: idc.PKey, Rights: uace.Rights})
-				if idc.Alias == bo.IdentityAlias {
-					iaFound = true
-				}
-			}
-		}
-	}
-	if !iaFound {
-		acl = append(acl, cabridss.ACLEntry{User: defaultId.PKey, Rights: cabridss.Rights{Read: true, Write: true}})
-	}
-	return
-}
-
-func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string, aclusers []string) (cabridss.HDss, error) {
-	oc, err := GetOlfConfig(opts, index, root, mp)
-	if err != nil {
-		return nil, err
-	}
-	bc, err := GetBaseConfig(opts, index, root, root, mp)
-	if err != nil {
-		return nil, err
-	}
-	if bc.GetIndex == nil {
-		oc.GetIndex = cabridss.GetPIndex
-	}
-	dss, err := cabridss.NewEDss(
-		cabridss.EDssConfig{
-			WebDssConfig: cabridss.WebDssConfig{
-				DssBaseConfig: cabridss.DssBaseConfig{
-					LibApi:         true,
-					ConfigDir:      oc.ConfigDir,
-					ConfigPassword: mp,
-				},
-				LibApiDssConfig: cabridss.LibApiDssConfig{
-					IsOlf:  true,
-					OlfCfg: oc,
-				},
-			},
-		},
-		lasttime, aclusers)
-	return dss, err
 }

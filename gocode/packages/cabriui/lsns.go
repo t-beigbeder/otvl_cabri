@@ -60,13 +60,13 @@ func lsnsErr(ctx context.Context, s string) { lsnsUow(ctx).UiStrErr(s) }
 func lsns(ctx context.Context, dssPath string) error {
 	var (
 		err error
-		mp  string
+		ure UiRunEnv
 	)
-	if mp, err = MasterPassword(lsnsUow(ctx), lsnsOpts(ctx).BaseOptions, 0); err != nil {
-		return err
-	}
 	vars := lsnsVars(ctx)
 	vars.dssType, vars.root, vars.npath, _ = CheckDssPath(dssPath)
+	if ure, err = GetUiRunEnv[LsnsOptions, *LsnsVars](ctx, vars.dssType[0] == 'x'); err != nil {
+		return err
+	}
 	var lasttime int64
 	slt := lsnsOpts(ctx).LastTime
 	if slt != "" {
@@ -77,42 +77,41 @@ func lsns(ctx context.Context, dssPath string) error {
 			return err
 		}
 	} else if vars.dssType == "olf" {
-		oc, err := GetOlfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, mp)
+		oc, err := GetOlfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, ure.MasterPassword)
 		if err != nil {
 			return err
 		}
-		if vars.dss, err = cabridss.NewOlfDss(oc, lasttime, nil); err != nil {
+		if vars.dss, err = cabridss.NewOlfDss(oc, lasttime, ure.Users); err != nil {
 			return err
 		}
 	} else if vars.dssType == "xolf" {
-		// FIXME acl
-		vars.dss, err = NewXolfDss(lsnsOpts(ctx).BaseOptions, 0, lasttime, vars.root, mp, nil)
+		vars.dss, err = NewXolfDss(lsnsOpts(ctx).BaseOptions, 0, lasttime, vars.root, ure.MasterPassword, ure.Users)
 		if err != nil {
 			return err
 		}
 	} else if vars.dssType == "obs" {
-		oc, err := GetObsConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, mp)
+		oc, err := GetObsConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, ure.MasterPassword)
 		if err != nil {
 			return err
 		}
-		if vars.dss, err = cabridss.NewObsDss(oc, lasttime, nil); err != nil {
+		if vars.dss, err = cabridss.NewObsDss(oc, lasttime, ure.Users); err != nil {
 			return err
 		}
 	} else if vars.dssType == "smf" {
-		sc, err := GetSmfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, mp)
+		sc, err := GetSmfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, ure.MasterPassword)
 		if err != nil {
 			return err
 		}
-		if vars.dss, err = cabridss.NewObsDss(sc, lasttime, nil); err != nil {
+		if vars.dss, err = cabridss.NewObsDss(sc, lasttime, ure.Users); err != nil {
 			return err
 		}
 	} else if vars.dssType == "webapi+http" {
 		frags := strings.Split(vars.root[2:], "/")
-		wc, err := GetWebConfig(lsnsOpts(ctx).BaseOptions, 0, frags[0], frags[1], mp)
+		wc, err := GetWebConfig(lsnsOpts(ctx).BaseOptions, 0, frags[0], frags[1], ure.MasterPassword)
 		if err != nil {
 			return err
 		}
-		if vars.dss, err = cabridss.NewWebDss(wc, 0, nil); err != nil {
+		if vars.dss, err = cabridss.NewWebDss(wc, 0, ure.Users); err != nil {
 			return err
 		}
 	} else {

@@ -35,50 +35,66 @@ func (sdc *sideCtx) getMeta() (err error) {
 	return nil
 }
 
-func (syc syncCtx) mapACL(oACL []cabridss.ACLEntry) []cabridss.ACLEntry {
+func (syc *syncCtx) mapACL(oACL []cabridss.ACLEntry, isRight bool) []cabridss.ACLEntry {
 	if syc.options.NoACL {
 		return nil
 	}
-	return oACL
+	var tACL []cabridss.ACLEntry
+	for _, oae := range oACL {
+		tae := oae
+		for lu, ru := range syc.options.MapACL {
+			if (isRight && ru == oae.User) || (!isRight && lu == oae.User) {
+				if isRight {
+					tae.User = lu
+				} else {
+					tae.User = ru
+				}
+			}
+		}
+		tACL = append(tACL, tae)
+	}
+	return tACL
 }
 
-func (syc syncCtx) evalMergeNsMeta(rent SyncReportEntry) (mtime int64, acl []cabridss.ACLEntry) {
+func (syc *syncCtx) evalMergeNsMeta(rent SyncReportEntry) (mtime int64, lAcl, rAcl []cabridss.ACLEntry) {
 	if (rent.isRTL && rent.Created) || syc.left.meta == nil {
 		if syc.right.meta == nil {
 			syc.err = fmt.Errorf("in evalMergeNsMeta: FIX")
 		}
 		mtime = syc.right.meta.GetMtime()
-		acl = syc.mapACL(syc.right.meta.GetAcl())
+		lAcl = syc.mapACL(syc.right.meta.GetAcl(), true)
 	} else {
 		mtime = syc.left.meta.GetMtime()
-		acl = syc.mapACL(syc.left.meta.GetAcl())
+	}
+	if syc.left.meta != nil {
+		rAcl = syc.mapACL(syc.left.meta.GetAcl(), false)
 	}
 	return
 }
 
 func (syc *syncCtx) mergeNsBefore(rent SyncReportEntry) {
-	mtime, acl := syc.evalMergeNsMeta(rent)
+	mtime, lAcl, rAcl := syc.evalMergeNsMeta(rent)
 	if syc.err == nil &&
 		((syc.left.exist && len(syc.leftMg) != len(syc.left.exCh)) || (!syc.left.exist && rent.isRTL && rent.Created)) {
-		syc.err = syc.left.crUpNs(mtime, syc.leftMg, acl)
+		syc.err = syc.left.crUpNs(mtime, syc.leftMg, lAcl)
 	}
 	if syc.err == nil &&
 		((syc.right.exist && len(syc.rightMg) != len(syc.right.exCh)) || (!syc.right.exist && !rent.isRTL && rent.Created)) {
-		syc.err = syc.right.crUpNs(mtime, syc.rightMg, acl)
+		syc.err = syc.right.crUpNs(mtime, syc.rightMg, rAcl)
 	}
 }
 
 func (syc *syncCtx) mergeNsAfter(rent SyncReportEntry) {
-	mtime, acl := syc.evalMergeNsMeta(rent)
+	mtime, lAcl, rAcl := syc.evalMergeNsMeta(rent)
 	if syc.err == nil &&
 		((syc.left.exist && (rent.Updated || rent.MUpdated)) ||
 			(!syc.left.exist && rent.isRTL && rent.Created)) {
-		syc.err = syc.left.crUpNs(mtime, syc.leftMg, acl)
+		syc.err = syc.left.crUpNs(mtime, syc.leftMg, lAcl)
 	}
 	if syc.err == nil &&
 		((syc.right.exist && (rent.Updated || rent.MUpdated)) ||
 			(!syc.right.exist && !rent.isRTL && rent.Created)) {
-		syc.err = syc.right.crUpNs(mtime, syc.leftRight, acl)
+		syc.err = syc.right.crUpNs(mtime, syc.leftRight, rAcl)
 	}
 }
 
@@ -121,7 +137,7 @@ func (syc *syncCtx) crUpContent(isRTL bool) error {
 	defer in.Close()
 	var closeErr error
 	out, err := tgt.dss.GetContentWriter(
-		tgt.fullPath(), ori.meta.GetMtime(), syc.mapACL(ori.meta.GetAcl()),
+		tgt.fullPath(), ori.meta.GetMtime(), syc.mapACL(ori.meta.GetAcl(), isRTL),
 		func(err error, size int64, ch string) {
 			if err != nil || size != ori.meta.GetSize() || (ori.meta.GetChUnsafe() != "" && ch != ori.meta.GetChUnsafe()) {
 				closeErr = fmt.Errorf("%s error %w size %d ch %s", tErrPrefix, err, size, ch)
