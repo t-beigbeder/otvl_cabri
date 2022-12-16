@@ -53,15 +53,19 @@ func dssMkRun(ctx context.Context) error {
 	if mp, err = MasterPassword(dssMkUow(ctx), opts.BaseOptions, 0); err != nil {
 		return err
 	}
+	encrypted := dssType[0] == 'x'
 	if dssType == "fsy" {
 		if dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, root); err != nil {
 			return err
 		}
 	} else if dssType == "olf" || dssType == "xolf" {
-		encrypted := dssType[0] == 'x'
-		if dss, err = cabridss.CreateOlfDss(cabridss.OlfConfig{
-			DssBaseConfig: cabridss.DssBaseConfig{LocalPath: root, Encrypted: encrypted, ConfigPassword: mp},
-			Root:          root, Size: opts.Size}); err != nil {
+		oc, err := GetOlfConfig(opts.BaseOptions, 0, root, mp)
+		if err != nil {
+			return err
+		}
+		oc.Encrypted = encrypted
+		oc.Size = opts.Size
+		if dss, err = cabridss.CreateOlfDss(oc); err != nil {
 			return err
 		}
 	} else if dssType == "obs" {
@@ -69,6 +73,7 @@ func dssMkRun(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		oc.Encrypted = encrypted
 		if dss, err = cabridss.CreateObsDss(oc); err != nil {
 			return err
 		}
@@ -77,6 +82,7 @@ func dssMkRun(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		sc.Encrypted = encrypted
 		if dss, err = cabridss.CreateObsDss(sc); err != nil {
 			return err
 		}
@@ -205,7 +211,7 @@ func DSSUnlockStartup(cr *joule.CLIRunner[DSSUnlockOptions]) error {
 	_ = cr.AddUow("command",
 		func(ctx context.Context, work joule.UnitOfWork, i interface{}) (interface{}, error) {
 			(*uiCtxFrom[DSSUnlockOptions, *DSSUnlockVars](ctx)).vars = &DSSUnlockVars{baseVars: baseVars{uow: work}}
-			return nil, dssMknsRun(ctx)
+			return nil, dssUnlockRun(ctx)
 		})
 	return nil
 }
@@ -235,7 +241,7 @@ func dssUnlockRun(ctx context.Context) error {
 		err error
 		mp  string
 	)
-	if mp, err = MasterPassword(dssMknsUow(ctx), opts.BaseOptions, 0); err != nil {
+	if mp, err = MasterPassword(dssUnlockUow(ctx), opts.BaseOptions, 0); err != nil {
 		return err
 	}
 	if dssType == "olf" {
@@ -284,6 +290,148 @@ func dssUnlockRun(ctx context.Context) error {
 
 }
 
+type DSSAuditOptions struct {
+	BaseOptions
+}
+
+type DSSAuditVars struct {
+	baseVars
+}
+
+func DSSAuditStartup(cr *joule.CLIRunner[DSSAuditOptions]) error {
+	_ = cr.AddUow("command",
+		func(ctx context.Context, work joule.UnitOfWork, i interface{}) (interface{}, error) {
+			(*uiCtxFrom[DSSAuditOptions, *DSSAuditVars](ctx)).vars = &DSSAuditVars{baseVars: baseVars{uow: work}}
+			return nil, dssAuditRun(ctx)
+		})
+	return nil
+}
+
+func DSSAuditShutdown(cr *joule.CLIRunner[DSSAuditOptions]) error {
+	return cr.GetUow("command").GetError()
+}
+
+func dssAuditCtx(ctx context.Context) *uiContext[DSSAuditOptions, *DSSAuditVars] {
+	return uiCtxFrom[DSSAuditOptions, *DSSAuditVars](ctx)
+}
+
+func dssAuditOpts(ctx context.Context) DSSAuditOptions { return (*dssAuditCtx(ctx)).opts }
+
+func dssAuditUow(ctx context.Context) joule.UnitOfWork {
+	return getUnitOfWork[DSSAuditOptions, *DSSAuditVars](ctx)
+}
+
+func dssAuditOut(ctx context.Context, s string) { dssAuditUow(ctx).UiStrOut(s) }
+
+func dssAuditRun(ctx context.Context) error {
+	dss, err := NewHDss[DSSAuditOptions, *DSSAuditVars](ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer dss.Close()
+	_, perr := dss.AuditIndex()
+	if perr != nil {
+		return perr
+	}
+	return nil
+
+}
+
+type DSSScanOptions struct {
+	BaseOptions
+}
+
+type DSSScanVars struct {
+	baseVars
+}
+
+func DSSScanStartup(cr *joule.CLIRunner[DSSScanOptions]) error {
+	_ = cr.AddUow("command",
+		func(ctx context.Context, work joule.UnitOfWork, i interface{}) (interface{}, error) {
+			(*uiCtxFrom[DSSScanOptions, *DSSScanVars](ctx)).vars = &DSSScanVars{baseVars: baseVars{uow: work}}
+			return nil, dssScanRun(ctx)
+		})
+	return nil
+}
+
+func DSSScanShutdown(cr *joule.CLIRunner[DSSScanOptions]) error {
+	return cr.GetUow("command").GetError()
+}
+
+func dssScanCtx(ctx context.Context) *uiContext[DSSScanOptions, *DSSScanVars] {
+	return uiCtxFrom[DSSScanOptions, *DSSScanVars](ctx)
+}
+
+func dssScanOpts(ctx context.Context) DSSScanOptions { return (*dssScanCtx(ctx)).opts }
+
+func dssScanUow(ctx context.Context) joule.UnitOfWork {
+	return getUnitOfWork[DSSScanOptions, *DSSScanVars](ctx)
+}
+
+func dssScanOut(ctx context.Context, s string) { dssScanUow(ctx).UiStrOut(s) }
+
+func dssScanRun(ctx context.Context) error {
+	dss, err := NewHDss[DSSScanOptions, *DSSScanVars](ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer dss.Close()
+	sti, perr := dss.ScanStorage()
+	if perr != nil {
+		return perr
+	}
+	_ = sti
+	return nil
+
+}
+
+type DSSReindexOptions struct {
+	BaseOptions
+}
+
+type DSSReindexVars struct {
+	baseVars
+}
+
+func DSSReindexStartup(cr *joule.CLIRunner[DSSReindexOptions]) error {
+	_ = cr.AddUow("command",
+		func(ctx context.Context, work joule.UnitOfWork, i interface{}) (interface{}, error) {
+			(*uiCtxFrom[DSSReindexOptions, *DSSReindexVars](ctx)).vars = &DSSReindexVars{baseVars: baseVars{uow: work}}
+			return nil, dssReindexRun(ctx)
+		})
+	return nil
+}
+
+func DSSReindexShutdown(cr *joule.CLIRunner[DSSReindexOptions]) error {
+	return cr.GetUow("command").GetError()
+}
+
+func dssReindexCtx(ctx context.Context) *uiContext[DSSReindexOptions, *DSSReindexVars] {
+	return uiCtxFrom[DSSReindexOptions, *DSSReindexVars](ctx)
+}
+
+func dssReindexOpts(ctx context.Context) DSSReindexOptions { return (*dssReindexCtx(ctx)).opts }
+
+func dssReindexUow(ctx context.Context) joule.UnitOfWork {
+	return getUnitOfWork[DSSReindexOptions, *DSSReindexVars](ctx)
+}
+
+func dssReindexOut(ctx context.Context, s string) { dssReindexUow(ctx).UiStrOut(s) }
+
+func dssReindexRun(ctx context.Context) error {
+	dss, err := NewHDss[DSSReindexOptions, *DSSReindexVars](ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer dss.Close()
+	sti, perr := dss.Reindex()
+	if perr != nil {
+		return perr
+	}
+	_ = sti
+	return nil
+}
+
 type DSSCleanOptions struct {
 	BaseOptions
 }
@@ -296,7 +444,7 @@ func DSSCleanStartup(cr *joule.CLIRunner[DSSCleanOptions]) error {
 	_ = cr.AddUow("command",
 		func(ctx context.Context, work joule.UnitOfWork, i interface{}) (interface{}, error) {
 			(*uiCtxFrom[DSSCleanOptions, *DSSCleanVars](ctx)).vars = &DSSCleanVars{baseVars: baseVars{uow: work}}
-			return nil, dssMknsRun(ctx)
+			return nil, dssCleanRun(ctx)
 		})
 	return nil
 }
@@ -326,7 +474,7 @@ func dssCleanRun(ctx context.Context) error {
 		err    error
 		mp     string
 	)
-	if mp, err = MasterPassword(dssMknsUow(ctx), opts, 0); err != nil {
+	if mp, err = MasterPassword(dssCleanUow(ctx), opts, 0); err != nil {
 		return err
 	}
 	if dssType == "obs" {

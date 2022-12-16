@@ -114,6 +114,58 @@ func GetUiRunEnv[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context, encrypted
 	return
 }
 
+func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
+	ctx context.Context, setCfgFunc func(bc cabridss.DssBaseConfig),
+) (cabridss.HDss, error) {
+	uictx := uiCtxFrom[OT, VT](ctx)
+	bo := uictx.opts.getBaseOptions()
+	args := uictx.args
+	dssType, root, _ := CheckDssSpec(args[0])
+	ure, err := GetUiRunEnv[OT, VT](ctx, dssType[0] == 'x')
+	if err != nil {
+		return nil, err
+	}
+	var dss cabridss.HDss
+	if dssType == "olf" {
+		oc, err := GetOlfConfig(bo, 0, root, ure.MasterPassword)
+		if err != nil {
+			return nil, err
+		}
+		if setCfgFunc != nil {
+			setCfgFunc(oc.DssBaseConfig)
+		}
+		oc.DssBaseConfig.Unlock = true
+		if dss, err = cabridss.NewOlfDss(oc, 0, nil); err != nil {
+			return nil, err
+		}
+	} else if dssType == "obs" {
+		oc, err := GetObsConfig(bo, 0, root, ure.MasterPassword)
+		if err != nil {
+			return nil, err
+		}
+		if setCfgFunc != nil {
+			setCfgFunc(oc.DssBaseConfig)
+		}
+		if dss, err = cabridss.NewObsDss(oc, 0, nil); err != nil {
+			return nil, err
+		}
+	} else if dssType == "smf" {
+		sc, err := GetSmfConfig(bo, 0, root, ure.MasterPassword)
+		if err != nil {
+			return nil, err
+		}
+		if setCfgFunc != nil {
+			setCfgFunc(sc.DssBaseConfig)
+		}
+		if dss, err = cabridss.NewObsDss(sc, 0, nil); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("DSS type %s is not (yet) supported", dssType)
+	}
+	return dss, nil
+}
+
 func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string, aclusers []string) (cabridss.HDss, error) {
 	oc, err := GetOlfConfig(opts, index, root, mp)
 	if err != nil {

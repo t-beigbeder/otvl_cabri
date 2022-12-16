@@ -144,7 +144,11 @@ func configPut(ctx context.Context) error {
 		}
 	}
 
-	ure.UserConfig.PutIdentity(cabridss.IdentityConfig{Alias: args[0], PKey: args[1], Secret: secret})
+	if args[0] != "__internal__" {
+		ure.UserConfig.PutIdentity(cabridss.IdentityConfig{Alias: args[0], PKey: args[1], Secret: secret})
+	} else {
+		ure.UserConfig.Internal = cabridss.IdentityConfig{Alias: args[0], PKey: args[1], Secret: secret}
+	}
 	return cabridss.SaveUserConfig(cabridss.DssBaseConfig{ConfigPassword: ure.MasterPassword}, ure.ConfigDir, ure.UserConfig)
 }
 

@@ -98,6 +98,90 @@ var dssUnlockCmd = &coral.Command{
 	SilenceUsage: true,
 }
 
+var dssAuditOptions cabriui.DSSAuditOptions
+
+var dssAuditCmd = &coral.Command{
+	Use:   "audit",
+	Short: "audit a DSS check files against index",
+	Long:  `audit a DSS check files against index`,
+	Args: func(cmd *coral.Command, args []string) error {
+		if len(args) != 1 {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("a DSS namespace must be provided")
+		}
+		_, _, err := cabriui.CheckDssSpec(args[0])
+		if err != nil {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("%v\nsyntax: dss-type:/path/to/dss@path/in/dss\nfor instance\n\tfsy:/home/guest@Downloads", err)
+		}
+		return nil
+	},
+	RunE: func(cmd *coral.Command, args []string) error {
+		dssAuditOptions.BaseOptions = baseOptions
+		return cabriui.CLIRun[cabriui.DSSAuditOptions, *cabriui.DSSAuditVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssAuditOptions, args,
+			cabriui.DSSAuditStartup, cabriui.DSSAuditShutdown)
+	},
+	SilenceUsage: true,
+}
+
+var dssScanOptions cabriui.DSSScanOptions
+
+var dssScanCmd = &coral.Command{
+	Use:   "scan",
+	Short: "scan a DSS",
+	Long:  `scan a DSS`,
+	Args: func(cmd *coral.Command, args []string) error {
+		if len(args) != 1 {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("a DSS namespace must be provided")
+		}
+		_, _, err := cabriui.CheckDssSpec(args[0])
+		if err != nil {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("%v\nsyntax: dss-type:/path/to/dss@path/in/dss\nfor instance\n\tfsy:/home/guest@Downloads", err)
+		}
+		return nil
+	},
+	RunE: func(cmd *coral.Command, args []string) error {
+		dssScanOptions.BaseOptions = baseOptions
+		return cabriui.CLIRun[cabriui.DSSScanOptions, *cabriui.DSSScanVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssScanOptions, args,
+			cabriui.DSSScanStartup, cabriui.DSSScanShutdown)
+	},
+	SilenceUsage: true,
+}
+
+var dssReindexOptions cabriui.DSSReindexOptions
+
+var dssReindexCmd = &coral.Command{
+	Use:   "reindex",
+	Short: "reindex a DSS",
+	Long:  `reindex a DSS`,
+	Args: func(cmd *coral.Command, args []string) error {
+		if len(args) != 1 {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("a DSS namespace must be provided")
+		}
+		_, _, err := cabriui.CheckDssSpec(args[0])
+		if err != nil {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("%v\nsyntax: dss-type:/path/to/dss@path/in/dss\nfor instance\n\tfsy:/home/guest@Downloads", err)
+		}
+		return nil
+	},
+	RunE: func(cmd *coral.Command, args []string) error {
+		dssReindexOptions.BaseOptions = baseOptions
+		return cabriui.CLIRun[cabriui.DSSReindexOptions, *cabriui.DSSReindexVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssReindexOptions, args,
+			cabriui.DSSReindexStartup, cabriui.DSSReindexShutdown)
+	},
+	SilenceUsage: true,
+}
+
 var dssCleanOptions cabriui.DSSCleanOptions
 
 var dssCleanCmd = &coral.Command{
@@ -135,5 +219,8 @@ func init() {
 	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.RepairIndex, "repair", false, "repair the index if persistent")
 	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.RepairReadOnly, "read", true, "don't repair, show diagnostic")
 	dssCmd.AddCommand(dssUnlockCmd)
+	dssCmd.AddCommand(dssAuditCmd)
+	dssCmd.AddCommand(dssScanCmd)
+	dssCmd.AddCommand(dssReindexCmd)
 	dssCmd.AddCommand(dssCleanCmd)
 }

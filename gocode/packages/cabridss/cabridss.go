@@ -192,6 +192,9 @@ type HDss interface {
 
 	// ScanStorage scans the DSS storage and loads meta and content sha256 sum
 	ScanStorage() (StorageInfo, *ErrorCollector)
+
+	// Reindex scans the DSS storage and loads meta and content sha256 sum into the index
+	Reindex() (StorageInfo, *ErrorCollector)
 }
 
 var appFs = afero.NewOsFs()

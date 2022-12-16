@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/tidwall/buntdb"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -162,6 +163,7 @@ type PixClients struct {
 }
 
 type pIndex struct {
+	path    string
 	db      *buntdb.DB
 	clients PixClients
 	closed  bool
@@ -767,7 +769,51 @@ func NewPIndex(path string, unlock, autoRepair bool) (Index, error) {
 			return nil, fmt.Errorf("in NewPIndex: %v", err)
 		}
 	}
-	return &pIndex{db: db, clients: clients}, nil
+	return &pIndex{path: path, db: db, clients: clients}, nil
+}
+
+func reindexPIndex(path string, metaTimes map[string]map[int64]bool, metas map[string]map[int64][]byte) error {
+	index, err := NewPIndex(path, true, false)
+	if err != nil {
+		return err
+	}
+	index.Close()
+	if err := os.Remove(path); err != nil {
+		return fmt.Errorf("in reindexPIndex: %w", err)
+	}
+	db, err := buntdb.Open(path)
+	if err != nil {
+		return fmt.Errorf("in reindexPIndex: %w", err)
+	}
+	db.Close()
+	index, err = NewPIndex(path, false, false)
+	if err != nil {
+		return err
+	}
+	index.Close()
+	db, err = buntdb.Open(path)
+	if err != nil {
+		return fmt.Errorf("in reindexPIndex: %w", err)
+	}
+	defer db.Close()
+	err = db.Update(func(tx *buntdb.Tx) error {
+		for nph, mts := range metaTimes {
+			var newMts []int64
+			for mt, _ := range mts {
+				newMts = append(newMts, mt)
+				sTime := internal.Int64ToStr16(mt)
+				mb := metas[nph][mt]
+				if _, _, err := tx.Set(fmt.Sprintf("m/%s.%s", nph, sTime), string(mb), nil); err != nil {
+					return err
+				}
+			}
+			if _, _, err := tx.Set(fmt.Sprintf("mts/%s", nph), ts2sts(newMts), nil); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return nil
 }
 
 type nIndex struct{}

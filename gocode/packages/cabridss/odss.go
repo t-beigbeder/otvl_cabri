@@ -31,6 +31,7 @@ type oDssBaseProxy interface {
 	isEncrypted() bool
 	auditIndex() (map[string][]AuditIndexInfo, error)
 	scanStorage() (StorageInfo, *ErrorCollector)
+	reindex() (StorageInfo, *ErrorCollector)
 	// other
 	doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error
 	setIndex(config DssBaseConfig, localPath string) error // to be called by oDssSpecificProxy.initialize
@@ -149,6 +150,8 @@ func (ods ODss) IsRepoEncrypted() bool { return ods.proxy.isRepoEncrypted() }
 func (ods ODss) AuditIndex() (map[string][]AuditIndexInfo, error) { return ods.proxy.auditIndex() }
 
 func (ods ODss) ScanStorage() (StorageInfo, *ErrorCollector) { return ods.proxy.scanStorage() }
+
+func (ods ODss) Reindex() (StorageInfo, *ErrorCollector) { return ods.proxy.reindex() }
 
 type oDssBaseImpl struct {
 	me            oDssProxy
@@ -888,6 +891,38 @@ func (odbi *oDssBaseImpl) scanStorage() (StorageInfo, *ErrorCollector) {
 	}
 	if len(*errs) > 0 {
 		return StorageInfo{}, errs
+	}
+	return sti, nil
+}
+
+func (odbi *oDssBaseImpl) reindex() (StorageInfo, *ErrorCollector) {
+	sti := StorageInfo{
+		Path2Meta:    map[string][]byte{},
+		Path2Content: map[string]string{},
+		ExistingCs:   map[string]bool{},
+		Path2Error:   map[string]error{},
+	}
+	errs := &ErrorCollector{}
+	pi, ok := odbi.index.(*pIndex)
+	if !ok {
+		errs.Collect(fmt.Errorf("in reindex: index is not persistent"))
+	}
+	odbi.me.scanPhysicalStorage(sti, errs)
+	if len(*errs) > 0 {
+		return StorageInfo{}, errs
+	}
+	metas := sti.loadStoredInMemory()
+	metaTimes := map[string]map[int64]bool{}
+	for k, mm := range metas {
+		for t, _ := range mm {
+			if _, ok := metaTimes[k]; !ok {
+				metaTimes[k] = map[int64]bool{}
+			}
+			metaTimes[k][t] = true
+		}
+	}
+	if err := reindexPIndex(pi.path, metaTimes, metas); err != nil {
+		errs.Collect(fmt.Errorf("in reindex: %w", err))
 	}
 	return sti, nil
 }
