@@ -4,4 +4,4 @@ The reference documentation for the CLI is provided [here](cliref.md).
 
 ## Creating a local DSS
 
-cabri 
+to be completed 

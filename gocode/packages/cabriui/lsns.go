@@ -7,7 +7,6 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -20,6 +19,15 @@ type LsnsOptions struct {
 	Checksum  bool
 	Reverse   bool
 	LastTime  string
+}
+
+func (los LsnsOptions) hasLastTime() bool { return true }
+
+func (los LsnsOptions) getLastTime() (lastTime int64) {
+	if los.LastTime != "" {
+		lastTime, _ = CheckTimeStamp(los.LastTime)
+	}
+	return
 }
 
 type LsnsVars struct {
@@ -60,62 +68,18 @@ func lsnsErr(ctx context.Context, s string) { lsnsUow(ctx).UiStrErr(s) }
 func lsns(ctx context.Context, dssPath string) error {
 	var (
 		err error
-		ure UiRunEnv
 	)
 	vars := lsnsVars(ctx)
 	vars.dssType, vars.root, vars.npath, _ = CheckDssPath(dssPath)
-	if ure, err = GetUiRunEnv[LsnsOptions, *LsnsVars](ctx, vars.dssType[0] == 'x'); err != nil {
+	if _, err = GetUiRunEnv[LsnsOptions, *LsnsVars](ctx, vars.dssType[0] == 'x'); err != nil {
 		return err
-	}
-	var lasttime int64
-	slt := lsnsOpts(ctx).LastTime
-	if slt != "" {
-		lasttime, _ = CheckTimeStamp(slt)
 	}
 	if vars.dssType == "fsy" {
 		if vars.dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, vars.root); err != nil {
 			return err
 		}
-	} else if vars.dssType == "olf" {
-		oc, err := GetOlfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, ure.MasterPassword)
-		if err != nil {
-			return err
-		}
-		if vars.dss, err = cabridss.NewOlfDss(oc, lasttime, ure.Users); err != nil {
-			return err
-		}
-	} else if vars.dssType == "xolf" {
-		vars.dss, err = NewXolfDss(lsnsOpts(ctx).BaseOptions, 0, lasttime, vars.root, ure.MasterPassword, ure.Users)
-		if err != nil {
-			return err
-		}
-	} else if vars.dssType == "obs" {
-		oc, err := GetObsConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, ure.MasterPassword)
-		if err != nil {
-			return err
-		}
-		if vars.dss, err = cabridss.NewObsDss(oc, lasttime, ure.Users); err != nil {
-			return err
-		}
-	} else if vars.dssType == "smf" {
-		sc, err := GetSmfConfig(lsnsOpts(ctx).BaseOptions, 0, vars.root, ure.MasterPassword)
-		if err != nil {
-			return err
-		}
-		if vars.dss, err = cabridss.NewObsDss(sc, lasttime, ure.Users); err != nil {
-			return err
-		}
-	} else if vars.dssType == "webapi+http" {
-		frags := strings.Split(vars.root[2:], "/")
-		wc, err := GetWebConfig(lsnsOpts(ctx).BaseOptions, 0, frags[0], frags[1], ure.MasterPassword)
-		if err != nil {
-			return err
-		}
-		if vars.dss, err = cabridss.NewWebDss(wc, 0, ure.Users); err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("DSS type %s is not (yet) supported", vars.dssType)
+	} else if vars.dss, err = NewHDss[LsnsOptions, *LsnsVars](ctx, nil, nil); err != nil {
+		return err
 	}
 
 	sorted := isLsnsSorted(ctx)

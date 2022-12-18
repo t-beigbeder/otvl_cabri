@@ -669,7 +669,11 @@ func (odbi *oDssBaseImpl) close() error {
 func (odbi *oDssBaseImpl) getIndex() Index { return odbi.index }
 
 func (odbi *oDssBaseImpl) setIndex(baseConfig DssBaseConfig, localPath string) (err error) {
-	if baseConfig.GetIndex == nil {
+	if baseConfig.XImpl == "bdb" {
+		odbi.index, err = GetPIndex(baseConfig, localPath)
+	} else if baseConfig.XImpl == "memory" {
+		odbi.index = NewMIndex()
+	} else if baseConfig.GetIndex == nil {
 		odbi.index = NewNIndex()
 	} else {
 		odbi.index, err = baseConfig.GetIndex(baseConfig, localPath)

@@ -94,50 +94,18 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (cab
 			return nil, "", ure, err
 		}
 		ure.DefaultSyncUser = fmt.Sprintf("x-uid:%d", os.Getuid())
-	} else if dssType == "olf" {
-		oc, err := GetOlfConfig(syncOpts(ctx).BaseOptions, *obsIx, root, ure.MasterPassword)
-		if err != nil {
-			return nil, "", ure, err
-		}
-		if dss, err = cabridss.NewOlfDss(oc, lasttime, ure.Users); err != nil {
-			return nil, "", ure, err
-		}
-		*obsIx += 1
-	} else if dssType == "xolf" {
-		if dss, err = NewXolfDss(syncOpts(ctx).BaseOptions, *obsIx, lasttime, root, ure.MasterPassword, ure.Users); err != nil {
-			return nil, "", ure, err
-		}
-		*obsIx += 1
-	} else if dssType == "obs" {
-		oc, err := GetObsConfig(syncOpts(ctx).BaseOptions, *obsIx, root, ure.MasterPassword)
-		if err != nil {
-			return nil, "", ure, err
-		}
-		if dss, err = cabridss.NewObsDss(oc, lasttime, ure.Users); err != nil {
-			*obsIx += 1
-			return nil, "", ure, err
-		}
-		*obsIx += 1
-	} else if dssType == "smf" {
-		sc, err := GetSmfConfig(syncOpts(ctx).BaseOptions, *obsIx, root, ure.MasterPassword)
-		if err != nil {
-			return nil, "", ure, err
-		}
-		if dss, err = cabridss.NewObsDss(sc, lasttime, ure.Users); err != nil {
-			return nil, "", ure, err
-		}
-	} else if dssType == "webapi+http" {
-		frags := strings.Split(root[2:], "/")
-		wc, err := GetWebConfig(syncOpts(ctx).BaseOptions, 0, frags[0], frags[1], ure.MasterPassword)
-		if err != nil {
-			return nil, "", ure, err
-		}
-		if dss, err = cabridss.NewWebDss(wc, 0, ure.Users); err != nil {
-			return nil, "", ure, err
-		}
 	} else {
-		err = fmt.Errorf("DSS type %s is not (yet) supported", dssType)
-		return nil, "", ure, err
+		dss, err = NewHDss[SyncOptions, *SyncVars](ctx, nil, func() (int64, int, int) {
+			dx := 0
+			if isRight {
+				dx = 1
+			}
+			return lasttime, dx, *obsIx
+		})
+		*obsIx += 1
+		if err != nil {
+			return nil, "", ure, err
+		}
 	}
 	return dss, path, ure, nil
 }

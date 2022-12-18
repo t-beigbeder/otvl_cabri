@@ -3,7 +3,7 @@
 Cabri is an hybrid (local and cloud) Data Storage System,
 also providing a fast and secure synchronization service.
 
-Cabri is currently in beta release, encryption is not yet available through CLI.
+Cabri is currently in beta release, maintenance features are not yet fully available through CLI.
 Documentation is a work in progress.
 
 Instructions for getting started with the CLI are provided [here](doc/gscli.md).

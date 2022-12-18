@@ -31,8 +31,14 @@ func (bos BaseOptions) getBaseOptions() BaseOptions {
 	return bos
 }
 
+func (bos BaseOptions) hasLastTime() bool { return false }
+
+func (bos BaseOptions) getLastTime() int64 { panic("inconsistent") }
+
 type BaseOptionsEr interface {
 	getBaseOptions() BaseOptions
+	hasLastTime() bool
+	getLastTime() int64
 }
 
 type baseVars struct {
@@ -96,7 +102,7 @@ func CheckDssSpec(dssSpec string) (dssType, root string, err error) {
 		err = fmt.Errorf("DSS specification %s is invalid", dssSpec)
 		return
 	}
-	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "xolf" && frags[0] != "obs" && frags[0] != "smf" {
+	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "xolf" && frags[0] != "obs" && frags[0] != "xobs" && frags[0] != "smf" {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", frags[0])
 		return
 	}
@@ -114,7 +120,7 @@ func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
 	if len(frags) > 2 {
 		frags[1] = strings.Join(frags[1:], ":")
 	}
-	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "xolf" && frags[0] != "obs" && frags[0] != "smf" && frags[0] != "webapi+http" {
+	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "xolf" && frags[0] != "obs" && frags[0] != "xobs" && frags[0] != "smf" && frags[0] != "webapi+http" {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", frags[0])
 		return
 	}
@@ -196,21 +202,23 @@ func CheckTimeStamp(value string) (unix int64, err error) {
 	if unix, err = strconv.ParseInt(value, 10, 64); err == nil {
 		return
 	}
-	err = fmt.Errorf("timestamp %s must be either RFC3339 or a unix time integer", value)
+	err = fmt.Errorf("timestamp %s must be either RFC3339 (eg 2020-08-13T11:56:41Z) or a unix time integer", value)
 	return
 }
 
 func GetBaseConfig(opts BaseOptions, index int, root, localPath, mp string) (cabridss.DssBaseConfig, error) {
 	cd, err := ConfigDir(opts)
 	if err != nil {
-		return cabridss.DssBaseConfig{}, nil
+		return cabridss.DssBaseConfig{}, err
 	}
 	dbc := cabridss.DssBaseConfig{
 		ConfigDir:      cd,
 		ConfigPassword: mp,
-		LocalPath:      localPath}
+		LocalPath:      localPath,
+	}
 
 	if len(opts.IndexImplems) > index {
+		dbc.XImpl = opts.IndexImplems[index]
 		if opts.IndexImplems[index] == "no" {
 			dbc.GetIndex = func(config cabridss.DssBaseConfig, _ string) (cabridss.Index, error) {
 				return cabridss.NewNIndex(), nil

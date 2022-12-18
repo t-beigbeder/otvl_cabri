@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
-	"strings"
 	"time"
 )
 
@@ -59,16 +59,16 @@ func dssMkRun(ctx context.Context) error {
 			return err
 		}
 	} else if dssType == "olf" || dssType == "xolf" {
-		oc, err := GetOlfConfig(opts.BaseOptions, 0, root, mp)
-		if err != nil {
-			return err
+		oc, lerr := GetOlfConfig(opts.BaseOptions, 0, root, mp)
+		if lerr != nil {
+			return lerr
 		}
 		oc.Encrypted = encrypted
 		oc.Size = opts.Size
 		if dss, err = cabridss.CreateOlfDss(oc); err != nil {
 			return err
 		}
-	} else if dssType == "obs" {
+	} else if dssType == "obs" || dssType == "xobs" {
 		oc, err := GetObsConfig(opts.BaseOptions, 0, root, mp)
 		if err != nil {
 			return err
@@ -143,46 +143,8 @@ func dssMknsRun(ctx context.Context) error {
 		if dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, root); err != nil {
 			return err
 		}
-	} else if dssType == "olf" {
-		oc, err := GetOlfConfig(opts.BaseOptions, 0, root, ure.MasterPassword)
-		if err != nil {
-			return err
-		}
-		if dss, err = cabridss.NewOlfDss(oc, 0, ure.Users); err != nil {
-			return err
-		}
-	} else if dssType == "xolf" {
-		dss, err = NewXolfDss(opts.BaseOptions, 0, 0, root, ure.MasterPassword, ure.Users)
-		if err != nil {
-			return err
-		}
-	} else if dssType == "obs" {
-		oc, err := GetObsConfig(opts.BaseOptions, 0, root, ure.MasterPassword)
-		if err != nil {
-			return err
-		}
-		if dss, err = cabridss.NewObsDss(oc, 0, ure.Users); err != nil {
-			return err
-		}
-	} else if dssType == "smf" {
-		sc, err := GetSmfConfig(opts.BaseOptions, 0, root, ure.MasterPassword)
-		if err != nil {
-			return err
-		}
-		if dss, err = cabridss.NewObsDss(sc, 0, ure.Users); err != nil {
-			return err
-		}
-	} else if dssType == "webapi+http" {
-		frags := strings.Split(root[2:], "/")
-		wc, err := GetWebConfig(opts.BaseOptions, 0, frags[0], frags[1], ure.MasterPassword)
-		if err != nil {
-			return err
-		}
-		if dss, err = cabridss.NewWebDss(wc, 0, ure.Users); err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("DSS type %s is not (yet) supported", dssType)
+	} else if dss, err = NewHDss[DSSMknsOptions, *DSSMknsVars](ctx, nil, nil); err != nil {
+		return err
 	}
 	acl, err := ure.ACLOrDefault()
 	if err != nil {
@@ -234,45 +196,14 @@ func dssUnlockOut(ctx context.Context, s string) { dssUnlockUow(ctx).UiStrOut(s)
 
 func dssUnlockRun(ctx context.Context) error {
 	opts := dssUnlockOpts(ctx)
-	args := dssUnlockCtx(ctx).args
-	dssType, root, _ := CheckDssSpec(args[0])
 	var (
 		dss cabridss.HDss
 		err error
-		mp  string
 	)
-	if mp, err = MasterPassword(dssUnlockUow(ctx), opts.BaseOptions, 0); err != nil {
+	if dss, err = NewHDss[DSSMknsOptions, *DSSMknsVars](ctx, func(bc cabridss.DssBaseConfig) {
+		bc.Unlock = true
+	}, nil); err != nil {
 		return err
-	}
-	if dssType == "olf" {
-		oc, err := GetOlfConfig(opts.BaseOptions, 0, root, mp)
-		if err != nil {
-			return err
-		}
-		oc.DssBaseConfig.Unlock = true
-		if dss, err = cabridss.NewOlfDss(oc, 0, nil); err != nil {
-			return err
-		}
-	} else if dssType == "obs" {
-		oc, err := GetObsConfig(opts.BaseOptions, 0, root, mp)
-		if err != nil {
-			return err
-		}
-		oc.DssBaseConfig.Unlock = true
-		if dss, err = cabridss.NewObsDss(oc, 0, nil); err != nil {
-			return err
-		}
-	} else if dssType == "smf" {
-		sc, err := GetSmfConfig(opts.BaseOptions, 0, root, mp)
-		if err != nil {
-			return err
-		}
-		sc.DssBaseConfig.Unlock = true
-		if dss, err = cabridss.NewObsDss(sc, 0, nil); err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("DSS type %s is not (yet) supported", dssType)
 	}
 	if dss.GetIndex() != nil && dss.GetIndex().IsPersistent() && opts.RepairIndex {
 		ds, err := dss.GetIndex().Repair(opts.RepairReadOnly)
@@ -287,7 +218,6 @@ func dssUnlockRun(ctx context.Context) error {
 		return err
 	}
 	return nil
-
 }
 
 type DSSAuditOptions struct {
@@ -324,7 +254,7 @@ func dssAuditUow(ctx context.Context) joule.UnitOfWork {
 func dssAuditOut(ctx context.Context, s string) { dssAuditUow(ctx).UiStrOut(s) }
 
 func dssAuditRun(ctx context.Context) error {
-	dss, err := NewHDss[DSSAuditOptions, *DSSAuditVars](ctx, nil)
+	dss, err := NewHDss[DSSAuditOptions, *DSSAuditVars](ctx, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -371,7 +301,7 @@ func dssScanUow(ctx context.Context) joule.UnitOfWork {
 func dssScanOut(ctx context.Context, s string) { dssScanUow(ctx).UiStrOut(s) }
 
 func dssScanRun(ctx context.Context) error {
-	dss, err := NewHDss[DSSScanOptions, *DSSScanVars](ctx, nil)
+	dss, err := NewHDss[DSSScanOptions, *DSSScanVars](ctx, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -419,7 +349,7 @@ func dssReindexUow(ctx context.Context) joule.UnitOfWork {
 func dssReindexOut(ctx context.Context, s string) { dssReindexUow(ctx).UiStrOut(s) }
 
 func dssReindexRun(ctx context.Context) error {
-	dss, err := NewHDss[DSSReindexOptions, *DSSReindexVars](ctx, nil)
+	dss, err := NewHDss[DSSReindexOptions, *DSSReindexVars](ctx, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -429,6 +359,58 @@ func dssReindexRun(ctx context.Context) error {
 		return perr
 	}
 	_ = sti
+	return nil
+}
+
+type DSSLsHistoOptions struct {
+	BaseOptions
+	Recursive bool
+	Sorted    bool
+}
+
+type DSSLsHistoVars struct {
+	baseVars
+}
+
+func DSSLsHistoStartup(cr *joule.CLIRunner[DSSLsHistoOptions]) error {
+	_ = cr.AddUow("command",
+		func(ctx context.Context, work joule.UnitOfWork, i interface{}) (interface{}, error) {
+			(*uiCtxFrom[DSSLsHistoOptions, *DSSLsHistoVars](ctx)).vars = &DSSLsHistoVars{baseVars: baseVars{uow: work}}
+			return nil, dssLsHistoRun(ctx)
+		})
+	return nil
+}
+
+func DSSLsHistoShutdown(cr *joule.CLIRunner[DSSLsHistoOptions]) error {
+	return cr.GetUow("command").GetError()
+}
+
+func dssLsHistoCtx(ctx context.Context) *uiContext[DSSLsHistoOptions, *DSSLsHistoVars] {
+	return uiCtxFrom[DSSLsHistoOptions, *DSSLsHistoVars](ctx)
+}
+
+func dssLsHistoOpts(ctx context.Context) DSSLsHistoOptions { return (*dssLsHistoCtx(ctx)).opts }
+
+func dssLsHistoUow(ctx context.Context) joule.UnitOfWork {
+	return getUnitOfWork[DSSLsHistoOptions, *DSSLsHistoVars](ctx)
+}
+
+func dssLsHistoOut(ctx context.Context, s string) { dssLsHistoUow(ctx).UiStrOut(s) }
+
+func dssLsHistoRun(ctx context.Context) error {
+	dss, err := NewHDss[DSSLsHistoOptions, *DSSLsHistoVars](ctx, nil, nil)
+	if err != nil {
+		return err
+	}
+	defer dss.Close()
+	args := dssLsHistoCtx(ctx).args
+	_, _, npath, _ := CheckDssPath(args[0])
+
+	mHes, err := dss.GetHistory(npath, dssLsHistoOpts(ctx).Recursive)
+	if err != nil {
+		return err
+	}
+	dssLsHistoOut(ctx, fmt.Sprintf("%s\n", internal.MapSliceStringer[cabridss.HistoryInfo]{Map: mHes}))
 	return nil
 }
 

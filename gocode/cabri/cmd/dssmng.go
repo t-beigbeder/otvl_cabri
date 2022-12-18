@@ -182,6 +182,33 @@ var dssReindexCmd = &coral.Command{
 	SilenceUsage: true,
 }
 
+var dssLsHistoOptions cabriui.DSSLsHistoOptions
+
+var dssLsHistoCmd = &coral.Command{
+	Use:   "lshisto",
+	Short: "list namespace or entry full history information",
+	Long:  `list namespace or entry full history information`,
+	Args: func(cmd *coral.Command, args []string) error {
+		if len(args) != 1 {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("a DSS entry must be provided")
+		}
+		_, _, _, err := cabriui.CheckDssPath(args[0])
+		if err != nil {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("%v\nsyntax: dss-type:/path/to/dss@path/in/dss\nfor instance\n\tolf:/home/guest/olf@Downloads", err)
+		}
+		return nil
+	},
+	RunE: func(cmd *coral.Command, args []string) error {
+		dssLsHistoOptions.BaseOptions = baseOptions
+		return cabriui.CLIRun[cabriui.DSSLsHistoOptions, *cabriui.DSSLsHistoVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssLsHistoOptions, args,
+			cabriui.DSSLsHistoStartup, cabriui.DSSLsHistoShutdown)
+	},
+	SilenceUsage: true,
+}
 var dssCleanOptions cabriui.DSSCleanOptions
 
 var dssCleanCmd = &coral.Command{
@@ -222,5 +249,8 @@ func init() {
 	dssCmd.AddCommand(dssAuditCmd)
 	dssCmd.AddCommand(dssScanCmd)
 	dssCmd.AddCommand(dssReindexCmd)
+	dssLsHistoCmd.Flags().BoolVarP(&dssLsHistoOptions.Recursive, "recursive", "r", false, "recursively list subnamespaces information")
+	dssLsHistoCmd.Flags().BoolVarP(&dssLsHistoOptions.Sorted, "sorted", "s", false, "sort entries by name")
+	dssCmd.AddCommand(dssLsHistoCmd)
 	dssCmd.AddCommand(dssCleanCmd)
 }

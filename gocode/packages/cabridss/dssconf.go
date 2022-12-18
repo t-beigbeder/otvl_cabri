@@ -16,6 +16,7 @@ type DssBaseConfig struct {
 	AutoRepair     bool                                                        `json:"autoRepair"` // if unlock required, automatically repairs the index
 	ReIndex        bool                                                        `json:"-"`          // forces full content reindexation
 	GetIndex       func(config DssBaseConfig, localPath string) (Index, error) `json:"-"`          // non-default function to instantiate an index
+	XImpl          string                                                      `json:"xImpl"`      // index implementation code: bdb, memory, no
 	LibApi         bool                                                        `json:"-"`          // prevents using a web API server for local DSS access
 	WebProtocol    string                                                      `json:"-"`          // web API server protocol
 	WebHost        string                                                      `json:"-"`          // web API server host

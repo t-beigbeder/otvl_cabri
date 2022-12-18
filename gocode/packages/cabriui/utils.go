@@ -6,6 +6,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"os"
+	"strings"
 )
 
 type UiRunEnv struct {
@@ -82,9 +83,14 @@ func ConfigDir(opts BaseOptions) (string, error) {
 	}
 	fi, err := os.Stat(cd)
 	if err != nil {
-		return "", err
-	}
-	if !fi.IsDir() {
+		if opts.ConfigDir == "" {
+			if err = os.Mkdir(cd, 0o777); err != nil {
+				return "", err
+			}
+		} else {
+			return "", err
+		}
+	} else if !fi.IsDir() {
 		return "", fmt.Errorf("%s is not a directory", cd)
 	}
 	return cd, nil
@@ -115,49 +121,82 @@ func GetUiRunEnv[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context, encrypted
 }
 
 func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
-	ctx context.Context, setCfgFunc func(bc cabridss.DssBaseConfig),
+	ctx context.Context, setCfgFunc func(bc cabridss.DssBaseConfig), getLastTimeAndIndexFunc func() (int64, int, int),
 ) (cabridss.HDss, error) {
 	uictx := uiCtxFrom[OT, VT](ctx)
 	bo := uictx.opts.getBaseOptions()
 	args := uictx.args
-	dssType, root, _ := CheckDssSpec(args[0])
+	var (
+		dssType, root string
+		err           error
+		lasttime      int64
+		dssIx         int
+		obsIx         int
+	)
+	if getLastTimeAndIndexFunc != nil {
+		lasttime, dssIx, obsIx = getLastTimeAndIndexFunc()
+	} else {
+		if uictx.opts.hasLastTime() {
+			lasttime = uictx.opts.getLastTime()
+		}
+	}
+	dssType, root, _, err = CheckDssPath(args[dssIx])
+	if err != nil {
+		dssType, root, err = CheckDssSpec(args[dssIx])
+	}
 	ure, err := GetUiRunEnv[OT, VT](ctx, dssType[0] == 'x')
 	if err != nil {
 		return nil, err
 	}
 	var dss cabridss.HDss
 	if dssType == "olf" {
-		oc, err := GetOlfConfig(bo, 0, root, ure.MasterPassword)
+		oc, err := GetOlfConfig(bo, obsIx, root, ure.MasterPassword)
 		if err != nil {
 			return nil, err
 		}
 		if setCfgFunc != nil {
 			setCfgFunc(oc.DssBaseConfig)
 		}
-		oc.DssBaseConfig.Unlock = true
-		if dss, err = cabridss.NewOlfDss(oc, 0, nil); err != nil {
+		if dss, err = cabridss.NewOlfDss(oc, lasttime, nil); err != nil {
+			return nil, err
+		}
+	} else if dssType == "xolf" {
+		if dss, err = NewXolfDss(bo, obsIx, lasttime, root, ure.MasterPassword, ure.Users); err != nil {
 			return nil, err
 		}
 	} else if dssType == "obs" {
-		oc, err := GetObsConfig(bo, 0, root, ure.MasterPassword)
+		oc, err := GetObsConfig(bo, obsIx, root, ure.MasterPassword)
 		if err != nil {
 			return nil, err
 		}
 		if setCfgFunc != nil {
 			setCfgFunc(oc.DssBaseConfig)
 		}
-		if dss, err = cabridss.NewObsDss(oc, 0, nil); err != nil {
+		if dss, err = cabridss.NewObsDss(oc, lasttime, nil); err != nil {
+			return nil, err
+		}
+	} else if dssType == "xobs" {
+		if dss, err = NewXobsDss(bo, obsIx, lasttime, root, ure.MasterPassword, ure.Users); err != nil {
 			return nil, err
 		}
 	} else if dssType == "smf" {
-		sc, err := GetSmfConfig(bo, 0, root, ure.MasterPassword)
+		sc, err := GetSmfConfig(bo, obsIx, root, ure.MasterPassword)
 		if err != nil {
 			return nil, err
 		}
 		if setCfgFunc != nil {
 			setCfgFunc(sc.DssBaseConfig)
 		}
-		if dss, err = cabridss.NewObsDss(sc, 0, nil); err != nil {
+		if dss, err = cabridss.NewObsDss(sc, lasttime, nil); err != nil {
+			return nil, err
+		}
+	} else if dssType == "webapi+http" {
+		frags := strings.Split(root[2:], "/")
+		wc, err := GetWebConfig(bo, obsIx, frags[0], frags[1], ure.MasterPassword)
+		if err != nil {
+			return nil, err
+		}
+		if dss, err = cabridss.NewWebDss(wc, lasttime, ure.Users); err != nil {
 			return nil, err
 		}
 	} else {
@@ -189,6 +228,36 @@ func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string, ac
 				LibApiDssConfig: cabridss.LibApiDssConfig{
 					IsOlf:  true,
 					OlfCfg: oc,
+				},
+			},
+		},
+		lasttime, aclusers)
+	return dss, err
+}
+
+func NewXobsDss(opts BaseOptions, index int, lasttime int64, root, mp string, aclusers []string) (cabridss.HDss, error) {
+	oc, err := GetObsConfig(opts, index, root, mp)
+	if err != nil {
+		return nil, err
+	}
+	bc, err := GetBaseConfig(opts, index, root, root, mp)
+	if err != nil {
+		return nil, err
+	}
+	if bc.GetIndex == nil {
+		oc.GetIndex = cabridss.GetPIndex
+	}
+	dss, err := cabridss.NewEDss(
+		cabridss.EDssConfig{
+			WebDssConfig: cabridss.WebDssConfig{
+				DssBaseConfig: cabridss.DssBaseConfig{
+					LibApi:         true,
+					ConfigDir:      oc.ConfigDir,
+					ConfigPassword: mp,
+				},
+				LibApiDssConfig: cabridss.LibApiDssConfig{
+					IsObs:  true,
+					ObsCfg: oc,
 				},
 			},
 		},

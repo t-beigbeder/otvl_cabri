@@ -42,6 +42,7 @@ func (odoi *oDssOlfImpl) initialize(me oDssProxy, config interface{}, lsttime in
 	odoi.repoEncrypted = pc.Encrypted
 	odoi.root = olfConfig.Root
 	odoi.size = pc.Size
+	olfConfig.XImpl = pc.XImpl
 	if err := odoi.setIndex(olfConfig.DssBaseConfig, ""); err != nil {
 		return fmt.Errorf("in Initialize: %w", err)
 	}
