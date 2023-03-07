@@ -209,6 +209,41 @@ var dssLsHistoCmd = &coral.Command{
 	},
 	SilenceUsage: true,
 }
+
+var dssRmHistoOptions cabriui.DSSRmHistoOptions
+
+var dssRmHistoCmd = &coral.Command{
+	Use:   "rmhisto",
+	Short: "removes history entries for a given time period",
+	Long:  `removes history entries for a given time period`,
+	Args: func(cmd *coral.Command, args []string) error {
+		if len(args) != 1 {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("a DSS entry must be provided")
+		}
+		_, _, _, err := cabriui.CheckDssPath(args[0])
+		if err != nil {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("%v\nsyntax: dss-type:/path/to/dss@path/in/dss\nfor instance\n\tolf:/home/guest/olf@Downloads", err)
+		}
+		return nil
+	},
+	RunE: func(cmd *coral.Command, args []string) error {
+		dssRmHistoOptions.BaseOptions = baseOptions
+		if _, err := cabriui.CheckTimeStamp(dssRmHistoOptions.StartTime); err != nil {
+			return err
+		}
+		if _, err := cabriui.CheckTimeStamp(dssRmHistoOptions.EndTime); err != nil {
+			return err
+		}
+		return cabriui.CLIRun[cabriui.DSSRmHistoOptions, *cabriui.DSSRmHistoVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssRmHistoOptions, args,
+			cabriui.DSSRmHistoStartup, cabriui.DSSRmHistoShutdown)
+	},
+	SilenceUsage: true,
+}
+
 var dssCleanOptions cabriui.DSSCleanOptions
 
 var dssCleanCmd = &coral.Command{
@@ -252,5 +287,10 @@ func init() {
 	dssLsHistoCmd.Flags().BoolVarP(&dssLsHistoOptions.Recursive, "recursive", "r", false, "recursively list subnamespaces information")
 	dssLsHistoCmd.Flags().BoolVarP(&dssLsHistoOptions.Sorted, "sorted", "s", false, "sort entries by name")
 	dssCmd.AddCommand(dssLsHistoCmd)
+	dssRmHistoCmd.Flags().BoolVarP(&dssRmHistoOptions.Recursive, "recursive", "r", false, "recursively remove the history of all namespace children")
+	dssRmHistoCmd.Flags().BoolVarP(&dssRmHistoOptions.DryRun, "dryrun", "d", false, "don't remove the history, just report work to be done")
+	dssRmHistoCmd.Flags().StringVar(&dssRmHistoOptions.StartTime, "st", "", "inclusive index time above which entries must be removed, default to all past entries")
+	dssRmHistoCmd.Flags().StringVar(&dssRmHistoOptions.EndTime, "et", "", "the inclusive index time below which entries must be removed, default to all future entries")
+	dssCmd.AddCommand(dssRmHistoCmd)
 	dssCmd.AddCommand(dssCleanCmd)
 }

@@ -17,6 +17,7 @@ type LibApiDssConfig struct {
 	IsOlf  bool
 	OlfCfg OlfConfig
 	IsObs  bool
+	IsSmf  bool
 	ObsCfg ObsConfig
 }
 
@@ -393,12 +394,17 @@ func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isCli
 				return nil, nil, err
 			}
 		} else if config.IsObs {
-			config.OlfCfg.DssBaseConfig.Encrypted = config.DssBaseConfig.Encrypted
+			config.ObsCfg.DssBaseConfig.Encrypted = config.DssBaseConfig.Encrypted
+			if dss, err = NewObsDss(config.ObsCfg, lsttime, aclusers); err != nil {
+				return nil, nil, err
+			}
+		} else if config.IsSmf {
+			config.ObsCfg.DssBaseConfig.Encrypted = config.DssBaseConfig.Encrypted
 			if dss, err = NewObsDss(config.ObsCfg, lsttime, aclusers); err != nil {
 				return nil, nil, err
 			}
 		} else {
-			return nil, nil, fmt.Errorf("LibApi configuration is neither olf or obs")
+			return nil, nil, fmt.Errorf("LibApi configuration is neither olf, obs or even smf")
 		}
 	}
 	return &impl, dss, nil

@@ -52,5 +52,14 @@ for instance
 
 func init() {
 	rootCmd.AddCommand(webApiCmd)
+	webApiCmd.Flags().StringVar(&baseOptions.ConfigDir, "cdir", "", "load configuration files from this directory instead of .cabri in home directory")
+	webApiCmd.Flags().StringVarP(&baseOptions.PassFile, "pfile", "", "", "file containing the master password")
+	webApiCmd.Flags().BoolVar(&baseOptions.Password, "password", false, "force master password prompt")
+	webApiCmd.Flags().StringArrayVar(&baseOptions.IndexImplems, "ximpl", nil, "list of non-default object storage index implementations")
+	webApiCmd.Flags().StringArrayVar(&baseOptions.ObsRegions, "obsrg", nil, "list of object storage regions")
+	webApiCmd.Flags().StringArrayVar(&baseOptions.ObsEndpoints, "obsep", nil, "list of object storage endpoints")
+	webApiCmd.Flags().StringArrayVar(&baseOptions.ObsContainers, "obsct", nil, "list of object storage containers")
+	webApiCmd.Flags().StringArrayVar(&baseOptions.ObsAccessKeys, "obsak", nil, "list of object storage access keys")
+	webApiCmd.Flags().StringArrayVar(&baseOptions.ObsSecretKeys, "obssk", nil, "list of object storage secret keys")
 	webApiCmd.Flags().BoolVar(&webApiOptions.HasLog, "haslog", false, "output http access log for the API")
 }

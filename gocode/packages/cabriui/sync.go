@@ -95,13 +95,12 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (cab
 		}
 		ure.DefaultSyncUser = fmt.Sprintf("x-uid:%d", os.Getuid())
 	} else {
-		dss, err = NewHDss[SyncOptions, *SyncVars](ctx, nil, func() (int64, int, int) {
-			dx := 0
-			if isRight {
-				dx = 1
-			}
-			return lasttime, dx, *obsIx
-		})
+		dx := 0
+		if isRight {
+			dx = 1
+		}
+		nhArgs := NewHDssArgs{DssIx: dx, ObsIx: *obsIx, Lasttime: lasttime}
+		dss, err = NewHDss[SyncOptions, *SyncVars](ctx, nil, nhArgs)
 		*obsIx += 1
 		if err != nil {
 			return nil, "", ure, err

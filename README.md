@@ -8,6 +8,8 @@ Documentation is a work in progress.
 
 Instructions for getting started with the CLI are provided [here](doc/gscli.md).
 
+Instructions for building the application for various platforms are provided [here](doc/build.md).
+
 ## General presentation
 
 ### Open Source
@@ -44,8 +46,8 @@ conditions.
 
 ### Remote access
 
-Cabri provides an HTTP API that primarily enables remote access to specific physical devices,
-but also enables multi-user consistent access to shared data.
+Cabri provides an HTTP remote acccess that primarily enables multi-user access to shared data,
+but it also may be used for remote access to specific physical devices.
 
 When S3 API for cloud object storage is not considered reliable, secure, or fast enough from a local network,
 remote access via a proxy in the cloud can also be used, so that S3 calls are performed fully in the cloud.
@@ -70,6 +72,8 @@ The users are the owners of their secret keys.
 Secret keys are never used outside the scope of the component requesting or updating data.
 This also means that when using encryption, confidential data is never exposed to third parties
 neither in transit nor at rest.
+The remark also applies to the HTTP remote access in which case all DSS data is kept encrypted
+as soon as it leaves the client or until it is delivered to it.
 
 Internally, Cabri makes use of [age](https://age-encryption.org/) technology
 whose specification can be found [here](https://github.com/C2SP/C2SP/blob/main/age.md).

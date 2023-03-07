@@ -215,8 +215,10 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestWebDssStoreMeta" ||
 			t.Name() == "TestNewWebDssClientOlf" ||
 			t.Name() == "TestNewWebDssClientObs" ||
+			t.Name() == "TestNewWebDssClientSmf" ||
 			t.Name() == "TestNewWebDssApiClientOlf" ||
 			t.Name() == "TestNewWebDssApiClientObs" ||
+			t.Name() == "TestNewWebDssApiClientSmf1" ||
 			t.Name() == "TestWebClientOlfHistory" ||
 			t.Name() == "TestWebClientObsHistory" ||
 			t.Name() == "TestWebDssApiClientOlfHistory" ||
@@ -227,8 +229,10 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestWebTestSleep" ||
 			t.Name() == "TestEDssClientOlfBase" ||
 			t.Name() == "TestEDssClientObsBase" ||
+			t.Name() == "TestEDssClientSmfBase1" ||
 			t.Name() == "TestEDssApiClientOlfBase" ||
-			t.Name() == "TestEDssApiClientObsBase1" ||
+			t.Name() == "TestEDssApiClientObsBase" ||
+			t.Name() == "TestEDssApiClientSmfBase1" ||
 			t.Name() == "TestEDssClientOlfHistory" ||
 			t.Name() == "TestEDssApiClientOlfHistory" ||
 			t.Name() == "TestEDssClientOlfMultiHistory" ||

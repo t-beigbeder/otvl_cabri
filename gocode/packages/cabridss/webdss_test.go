@@ -151,6 +151,40 @@ func TestNewWebDssClientObs(t *testing.T) {
 	})
 }
 
+func TestNewWebDssClientSmf(t *testing.T) {
+	var sv WebServer
+	var err error
+	defer func() {
+		if sv != nil {
+			sv.Shutdown()
+		}
+	}()
+	if err := runTestBasic(t,
+		func(tfs *testfs.Fs) error {
+			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
+				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+			}
+			sv, err = createWebDssServer(":3000", "",
+				CreateNewParams{
+					Create: true, DssType: "smf", LocalPath: tfs.Path(), GetIndex: getPIndex,
+				},
+			)
+			return err
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			dss, err := NewWebDss(
+				WebDssConfig{
+					DssBaseConfig: DssBaseConfig{
+						ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+						WebPort:   "3000",
+					}, NoClientLimit: true},
+				0, nil)
+			return dss, err
+		}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNewWebDssApiClientOlf(t *testing.T) {
 	ucpCount := 0
 	if err := runTestBasic(t,
@@ -225,6 +259,41 @@ func TestNewWebDssApiClientObs(t *testing.T) {
 	internal.Retry(t, func(t *testing.T) error {
 		return runTestNewWebDssApiClientObs(t)
 	})
+}
+
+func TestNewWebDssApiClientSmf(t *testing.T) {
+	if err := runTestBasic(t,
+		func(tfs *testfs.Fs) error {
+			config := getOC()
+			config.LocalPath = tfs.Path()
+			config.DssBaseConfig.GetIndex = GetPIndex
+			dss, err := CreateObsDss(config)
+			if err != nil {
+				return err
+			}
+			dss.Close()
+			return nil
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			dbc := getOC()
+			dbc.LocalPath = tfs.Path()
+			dbc.DssBaseConfig.GetIndex = GetPIndex
+			dss, err := NewWebDss(
+				WebDssConfig{
+					DssBaseConfig: DssBaseConfig{
+						LibApi:    true,
+						ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+					},
+					LibApiDssConfig: LibApiDssConfig{
+						IsSmf:  true,
+						ObsCfg: dbc,
+					},
+				},
+				0, nil)
+			return dss, err
+		}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestWebClientOlfHistory(t *testing.T) {

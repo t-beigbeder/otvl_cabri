@@ -143,7 +143,7 @@ func dssMknsRun(ctx context.Context) error {
 		if dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, root); err != nil {
 			return err
 		}
-	} else if dss, err = NewHDss[DSSMknsOptions, *DSSMknsVars](ctx, nil, nil); err != nil {
+	} else if dss, err = NewHDss[DSSMknsOptions, *DSSMknsVars](ctx, nil, NewHDssArgs{}); err != nil {
 		return err
 	}
 	acl, err := ure.ACLOrDefault()
@@ -202,7 +202,7 @@ func dssUnlockRun(ctx context.Context) error {
 	)
 	if dss, err = NewHDss[DSSMknsOptions, *DSSMknsVars](ctx, func(bc cabridss.DssBaseConfig) {
 		bc.Unlock = true
-	}, nil); err != nil {
+	}, NewHDssArgs{}); err != nil {
 		return err
 	}
 	if dss.GetIndex() != nil && dss.GetIndex().IsPersistent() && opts.RepairIndex {
@@ -254,7 +254,7 @@ func dssAuditUow(ctx context.Context) joule.UnitOfWork {
 func dssAuditOut(ctx context.Context, s string) { dssAuditUow(ctx).UiStrOut(s) }
 
 func dssAuditRun(ctx context.Context) error {
-	dss, err := NewHDss[DSSAuditOptions, *DSSAuditVars](ctx, nil, nil)
+	dss, err := NewHDss[DSSAuditOptions, *DSSAuditVars](ctx, nil, NewHDssArgs{})
 	if err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ func dssScanUow(ctx context.Context) joule.UnitOfWork {
 func dssScanOut(ctx context.Context, s string) { dssScanUow(ctx).UiStrOut(s) }
 
 func dssScanRun(ctx context.Context) error {
-	dss, err := NewHDss[DSSScanOptions, *DSSScanVars](ctx, nil, nil)
+	dss, err := NewHDss[DSSScanOptions, *DSSScanVars](ctx, nil, NewHDssArgs{})
 	if err != nil {
 		return err
 	}
@@ -349,7 +349,7 @@ func dssReindexUow(ctx context.Context) joule.UnitOfWork {
 func dssReindexOut(ctx context.Context, s string) { dssReindexUow(ctx).UiStrOut(s) }
 
 func dssReindexRun(ctx context.Context) error {
-	dss, err := NewHDss[DSSReindexOptions, *DSSReindexVars](ctx, nil, nil)
+	dss, err := NewHDss[DSSReindexOptions, *DSSReindexVars](ctx, nil, NewHDssArgs{})
 	if err != nil {
 		return err
 	}
@@ -398,7 +398,7 @@ func dssLsHistoUow(ctx context.Context) joule.UnitOfWork {
 func dssLsHistoOut(ctx context.Context, s string) { dssLsHistoUow(ctx).UiStrOut(s) }
 
 func dssLsHistoRun(ctx context.Context) error {
-	dss, err := NewHDss[DSSLsHistoOptions, *DSSLsHistoVars](ctx, nil, nil)
+	dss, err := NewHDss[DSSLsHistoOptions, *DSSLsHistoVars](ctx, nil, NewHDssArgs{})
 	if err != nil {
 		return err
 	}
@@ -411,6 +411,61 @@ func dssLsHistoRun(ctx context.Context) error {
 		return err
 	}
 	dssLsHistoOut(ctx, fmt.Sprintf("%s\n", internal.MapSliceStringer[cabridss.HistoryInfo]{Map: mHes}))
+	return nil
+}
+
+type DSSRmHistoOptions struct {
+	BaseOptions
+	Recursive bool
+	DryRun    bool
+	StartTime string
+	EndTime   string
+}
+
+type DSSRmHistoVars struct {
+	baseVars
+}
+
+func DSSRmHistoStartup(cr *joule.CLIRunner[DSSRmHistoOptions]) error {
+	_ = cr.AddUow("command",
+		func(ctx context.Context, work joule.UnitOfWork, i interface{}) (interface{}, error) {
+			(*uiCtxFrom[DSSRmHistoOptions, *DSSRmHistoVars](ctx)).vars = &DSSRmHistoVars{baseVars: baseVars{uow: work}}
+			return nil, dssRmHistoRun(ctx)
+		})
+	return nil
+}
+
+func DSSRmHistoShutdown(cr *joule.CLIRunner[DSSRmHistoOptions]) error {
+	return cr.GetUow("command").GetError()
+}
+
+func dssRmHistoCtx(ctx context.Context) *uiContext[DSSRmHistoOptions, *DSSRmHistoVars] {
+	return uiCtxFrom[DSSRmHistoOptions, *DSSRmHistoVars](ctx)
+}
+
+func dssRmHistoOpts(ctx context.Context) DSSRmHistoOptions { return (*dssRmHistoCtx(ctx)).opts }
+
+func dssRmHistoUow(ctx context.Context) joule.UnitOfWork {
+	return getUnitOfWork[DSSRmHistoOptions, *DSSRmHistoVars](ctx)
+}
+
+func dssRmHistoOut(ctx context.Context, s string) { dssRmHistoUow(ctx).UiStrOut(s) }
+
+func dssRmHistoRun(ctx context.Context) error {
+	dss, err := NewHDss[DSSRmHistoOptions, *DSSRmHistoVars](ctx, nil, NewHDssArgs{})
+	if err != nil {
+		return err
+	}
+	defer dss.Close()
+	args := dssRmHistoCtx(ctx).args
+	_, _, npath, _ := CheckDssPath(args[0])
+	st, _ := CheckTimeStamp(dssRmHistoOpts(ctx).StartTime)
+	et, _ := CheckTimeStamp(dssRmHistoOpts(ctx).EndTime)
+	mHes, err := dss.RemoveHistory(npath, dssRmHistoOpts(ctx).Recursive, dssRmHistoOpts(ctx).DryRun, st, et)
+	if err != nil {
+		return err
+	}
+	dssRmHistoOut(ctx, fmt.Sprintf("%s\n", internal.MapSliceStringer[cabridss.HistoryInfo]{Map: mHes}))
 	return nil
 }
 

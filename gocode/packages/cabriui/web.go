@@ -50,11 +50,18 @@ func webApiErr(ctx context.Context, s string) { webApiUow(ctx).UiStrErr(s) }
 func webApi(ctx context.Context, args []string) error {
 	opts := webApiOpts(ctx)
 	vars := webApiVars(ctx)
+	ure, err := GetUiRunEnv[WebApiOptions, *WebApiVars](ctx, false)
+	if err != nil {
+		return err
+	}
+	_ = ure
 	for i := 0; i < len(args); i++ {
 		dssType, addr, localPath, root, _ := CheckDssUrlMapping(args[i])
 		var params cabridss.CreateNewParams
 		if dssType == "obs" {
 			params = cabridss.CreateNewParams{DssType: "obs", LocalPath: localPath, GetIndex: cabridss.GetPIndex}
+		} else if dssType == "olf" {
+			params = cabridss.CreateNewParams{DssType: "olf", Root: localPath, GetIndex: cabridss.GetPIndex}
 		} else {
 			panic("FIXME")
 		}
@@ -68,13 +75,11 @@ func webApi(ctx context.Context, args []string) error {
 		server, ok := vars.servers[addr]
 		if ok {
 			server.ConfigureApi(root, config, cabridss.WebDssServerConfigurator, nil)
-			//server.ConfigureApi("test", config, cabridss.WebTestServerConfigurator, nil)
 		} else {
 			vars.servers[addr], err = cabridss.NewWebDssServer(addr, root, config)
 			if err != nil {
 				return err
 			}
-			//vars.servers[addr].ConfigureApi("test", config, cabridss.WebTestServerConfigurator, nil)
 		}
 	}
 	<-ctx.Done()
