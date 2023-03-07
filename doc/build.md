@@ -2,7 +2,7 @@
 
 ## Building from source
 
-The is currently the only way to get the application running.
+This is currently the only way to get the application running.
 
 Instructions provided below must be run on a Linux system.
 

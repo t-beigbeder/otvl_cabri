@@ -34,7 +34,7 @@ You can list it with the lsns command:
 
 ## Synchronizing a local directory with the DSS
 
-Local directory is possible using a `fsy` DSS referring to this directory,
+Local directory access is possible using a `fsy` DSS referring to this directory,
 the following namespace is the root in the DSS, so the directory itself:
 
     $ cabri cli lsns fsy:/home/guest/simple_files@
