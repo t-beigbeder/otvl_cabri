@@ -120,29 +120,25 @@ func GetUiRunEnv[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context, encrypted
 	return
 }
 
+type NewHDssArgs struct {
+	Lasttime int64
+	DssIx    int
+	ObsIx    int
+}
+
 func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
-	ctx context.Context, setCfgFunc func(bc cabridss.DssBaseConfig), getLastTimeAndIndexFunc func() (int64, int, int),
+	ctx context.Context, setCfgFunc func(bc cabridss.DssBaseConfig), nhArgs NewHDssArgs,
 ) (cabridss.HDss, error) {
 	uictx := uiCtxFrom[OT, VT](ctx)
 	bo := uictx.opts.getBaseOptions()
-	args := uictx.args
+	ucArgs := uictx.args
 	var (
 		dssType, root string
 		err           error
-		lasttime      int64
-		dssIx         int
-		obsIx         int
 	)
-	if getLastTimeAndIndexFunc != nil {
-		lasttime, dssIx, obsIx = getLastTimeAndIndexFunc()
-	} else {
-		if uictx.opts.hasLastTime() {
-			lasttime = uictx.opts.getLastTime()
-		}
-	}
-	dssType, root, _, err = CheckDssPath(args[dssIx])
+	dssType, root, _, err = CheckDssPath(ucArgs[nhArgs.DssIx])
 	if err != nil {
-		dssType, root, err = CheckDssSpec(args[dssIx])
+		dssType, root, err = CheckDssSpec(ucArgs[nhArgs.DssIx])
 	}
 	ure, err := GetUiRunEnv[OT, VT](ctx, dssType[0] == 'x')
 	if err != nil {
@@ -150,53 +146,53 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 	}
 	var dss cabridss.HDss
 	if dssType == "olf" {
-		oc, err := GetOlfConfig(bo, obsIx, root, ure.MasterPassword)
+		oc, err := GetOlfConfig(bo, nhArgs.ObsIx, root, ure.MasterPassword)
 		if err != nil {
 			return nil, err
 		}
 		if setCfgFunc != nil {
 			setCfgFunc(oc.DssBaseConfig)
 		}
-		if dss, err = cabridss.NewOlfDss(oc, lasttime, nil); err != nil {
+		if dss, err = cabridss.NewOlfDss(oc, nhArgs.Lasttime, nil); err != nil {
 			return nil, err
 		}
 	} else if dssType == "xolf" {
-		if dss, err = NewXolfDss(bo, obsIx, lasttime, root, ure.MasterPassword, ure.Users); err != nil {
+		if dss, err = NewXolfDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, ure.Users); err != nil {
 			return nil, err
 		}
 	} else if dssType == "obs" {
-		oc, err := GetObsConfig(bo, obsIx, root, ure.MasterPassword)
+		oc, err := GetObsConfig(bo, nhArgs.ObsIx, root, ure.MasterPassword)
 		if err != nil {
 			return nil, err
 		}
 		if setCfgFunc != nil {
 			setCfgFunc(oc.DssBaseConfig)
 		}
-		if dss, err = cabridss.NewObsDss(oc, lasttime, nil); err != nil {
+		if dss, err = cabridss.NewObsDss(oc, nhArgs.Lasttime, nil); err != nil {
 			return nil, err
 		}
 	} else if dssType == "xobs" {
-		if dss, err = NewXobsDss(bo, obsIx, lasttime, root, ure.MasterPassword, ure.Users); err != nil {
+		if dss, err = NewXobsDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, ure.Users); err != nil {
 			return nil, err
 		}
 	} else if dssType == "smf" {
-		sc, err := GetSmfConfig(bo, obsIx, root, ure.MasterPassword)
+		sc, err := GetSmfConfig(bo, nhArgs.ObsIx, root, ure.MasterPassword)
 		if err != nil {
 			return nil, err
 		}
 		if setCfgFunc != nil {
 			setCfgFunc(sc.DssBaseConfig)
 		}
-		if dss, err = cabridss.NewObsDss(sc, lasttime, nil); err != nil {
+		if dss, err = cabridss.NewObsDss(sc, nhArgs.Lasttime, nil); err != nil {
 			return nil, err
 		}
 	} else if dssType == "webapi+http" {
 		frags := strings.Split(root[2:], "/")
-		wc, err := GetWebConfig(bo, obsIx, frags[0], frags[1], ure.MasterPassword)
+		wc, err := GetWebConfig(bo, nhArgs.ObsIx, frags[0], frags[1], ure.MasterPassword)
 		if err != nil {
 			return nil, err
 		}
-		if dss, err = cabridss.NewWebDss(wc, lasttime, ure.Users); err != nil {
+		if dss, err = cabridss.NewWebDss(wc, nhArgs.Lasttime, ure.Users); err != nil {
 			return nil, err
 		}
 	} else {

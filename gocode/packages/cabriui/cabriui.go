@@ -31,14 +31,8 @@ func (bos BaseOptions) getBaseOptions() BaseOptions {
 	return bos
 }
 
-func (bos BaseOptions) hasLastTime() bool { return false }
-
-func (bos BaseOptions) getLastTime() int64 { panic("inconsistent") }
-
 type BaseOptionsEr interface {
 	getBaseOptions() BaseOptions
-	hasLastTime() bool
-	getLastTime() int64
 }
 
 type baseVars struct {

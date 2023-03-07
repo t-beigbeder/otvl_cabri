@@ -21,8 +21,6 @@ type LsnsOptions struct {
 	LastTime  string
 }
 
-func (los LsnsOptions) hasLastTime() bool { return true }
-
 func (los LsnsOptions) getLastTime() (lastTime int64) {
 	if los.LastTime != "" {
 		lastTime, _ = CheckTimeStamp(los.LastTime)
@@ -74,11 +72,12 @@ func lsns(ctx context.Context, dssPath string) error {
 	if _, err = GetUiRunEnv[LsnsOptions, *LsnsVars](ctx, vars.dssType[0] == 'x'); err != nil {
 		return err
 	}
+	lastTime := lsnsOpts(ctx).getLastTime()
 	if vars.dssType == "fsy" {
 		if vars.dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, vars.root); err != nil {
 			return err
 		}
-	} else if vars.dss, err = NewHDss[LsnsOptions, *LsnsVars](ctx, nil, nil); err != nil {
+	} else if vars.dss, err = NewHDss[LsnsOptions, *LsnsVars](ctx, nil, NewHDssArgs{Lasttime: lastTime}); err != nil {
 		return err
 	}
 
