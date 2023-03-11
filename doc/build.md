@@ -6,7 +6,7 @@ This is currently the only way to get the application running.
 
 Instructions provided below must be run on a Linux system.
 
-Install a golang 1.18+ distribution, instructions are available
+Install a golang 1.20+ distribution, instructions are available
 [here](https://go.dev/doc/install). 
 
 Install the following golang support tool:
