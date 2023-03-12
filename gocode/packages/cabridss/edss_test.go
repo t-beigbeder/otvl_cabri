@@ -90,6 +90,42 @@ func TestEDssClientObsBase(t *testing.T) {
 	})
 }
 
+func TestEDssClientSmfBase(t *testing.T) {
+	var sv WebServer
+	var err error
+	defer func() {
+		if sv != nil {
+			sv.Shutdown()
+		}
+	}()
+	if err := runTestBasic(t,
+		func(tfs *testfs.Fs) error {
+			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
+				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+			}
+			sv, err = createWebDssServer(":3000", "",
+				CreateNewParams{
+					Create: true, DssType: "smf", LocalPath: tfs.Path(), GetIndex: getPIndex, Encrypted: true,
+				},
+			)
+			return err
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			dss, err := NewEDss(
+				EDssConfig{
+					WebDssConfig: WebDssConfig{
+						DssBaseConfig: DssBaseConfig{
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+							WebPort:   "3000",
+						}, NoClientLimit: true},
+				},
+				0, nil)
+			return dss, err
+		}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestEDssApiClientOlfBase(t *testing.T) {
 	if err := runTestBasic(t,
 		func(tfs *testfs.Fs) error {
@@ -171,6 +207,45 @@ func TestEDssApiClientObsBase(t *testing.T) {
 	internal.Retry(t, func(t *testing.T) error {
 		return runTestEDssApiClientObsBase(t)
 	})
+}
+
+func TestEDssApiClientSmfBase(t *testing.T) {
+	if err := runTestBasic(t,
+		func(tfs *testfs.Fs) error {
+			config := getOC()
+			config.LocalPath = tfs.Path()
+			config.DssBaseConfig.GetIndex = GetPIndex
+			config.Encrypted = true
+			dss, err := CreateObsDss(config)
+			if err != nil {
+				return err
+			}
+			dss.Close()
+			return nil
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			dbc := getOC()
+			dbc.LocalPath = tfs.Path()
+			dbc.DssBaseConfig.GetIndex = GetPIndex
+			dbc.DssBaseConfig.Encrypted = true
+			dss, err := NewEDss(
+				EDssConfig{
+					WebDssConfig{
+						DssBaseConfig: DssBaseConfig{
+							LibApi:    true,
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+						},
+						LibApiDssConfig: LibApiDssConfig{
+							IsSmf:  true,
+							ObsCfg: dbc,
+						},
+					},
+				},
+				0, nil)
+			return dss, err
+		}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestEDssClientOlfHistory(t *testing.T) {

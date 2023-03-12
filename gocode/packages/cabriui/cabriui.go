@@ -2,6 +2,7 @@ package cabriui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
@@ -76,7 +77,11 @@ func CLIRun[OT BaseOptionsEr, VT baseVarsEr](
 	}
 
 	cr := joule.NewCLIRunner(opts, args, cliIn, cliOut, cliErr, cliStartup, cliShutdown)
-	return cr.Run()
+	err := cr.Run()
+	if errors.Is(err, cabridss.ErrPasswordRequired) {
+		return err // nothing, just to know
+	}
+	return err
 }
 
 func uiCtxFrom[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context) *uiContext[OT, VT] {

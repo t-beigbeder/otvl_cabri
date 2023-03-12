@@ -164,19 +164,19 @@ func EncryptMsgWithPass(msg string, pass string) ([]byte, error) {
 func DecryptMsgWithPass(jbs []byte, pass string) (string, error) {
 	id, err := age.NewScryptIdentity(pass)
 	if err != nil {
-		return "", fmt.Errorf("in DecryptMsgWithPath: %w", err)
+		return "", fmt.Errorf("in DecryptMsgWithPass: %w", err)
 	}
 	var bs []byte
 	if err = json.Unmarshal(jbs, &bs); err != nil {
-		return "", fmt.Errorf("in DecryptMsgWithPath: %w", err)
+		return "", fmt.Errorf("in DecryptMsgWithPass: %w", err)
 	}
 	rd, err := age.Decrypt(bytes.NewReader(bs), id)
 	if err != nil {
-		return "", fmt.Errorf("in DecryptMsgWithPath: %w", err)
+		return "", fmt.Errorf("in DecryptMsgWithPass: %w", err)
 	}
 	bss, err := io.ReadAll(rd)
 	if err != nil {
-		return "", fmt.Errorf("in DecryptMsgWithPath: %w", err)
+		return "", fmt.Errorf("in DecryptMsgWithPass: %w", err)
 	}
 	return string(bss), nil
 }

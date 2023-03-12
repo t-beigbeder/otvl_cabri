@@ -82,6 +82,9 @@ func getUserConfigInfo(config DssBaseConfig, configDir string) (UserConfig, bool
 	}
 	encrypted := false
 	if err = json.Unmarshal(bs, &uc); err != nil {
+		if config.ConfigPassword == "" {
+			return uc, false, ErrPasswordRequired
+		}
 		sbs, err2 := DecryptMsgWithPass(bs, config.ConfigPassword)
 		if err2 != nil {
 			return uc, false, err2

@@ -52,3 +52,77 @@ so that a reverse synchronization will restore the files with the same permissio
 You will then find all files from the `fsy` DSS synchronized in the `olf` DSS:
 
     $ cabri cli lsns -rs olf:/media/guest/usbkey/simple_backup@
+
+## Handling secrets securely
+
+Storing content in the cloud requires access to object storage secret keys.
+Encrypting content requires using the user's secret key.
+The CLI must have convenient but secure access to both kind of secrets,
+under the user's control.
+They are stored in a configuration file named `clientConfig`,
+stored by default in the `.cabri` directory of the user's home directory. 
+
+This file should be protected with a master password, as following
+
+    $ cabri cli config --encrypt
+    please enter the master password:
+    please enter the master password again: 
+
+WARNING: if you loose this password, you will definitely loose stored secrets
+that you didn't backup by other means, for instance your encryption's secret keys
+if you generated them with the CLI.
+
+Once the configuration file is encrypted, you must provide the master password
+to any CLI command that needs accessing it, for instance:
+
+    $ cabri cli config --dump
+    Error: password required to perform this action
+
+This can be done interactively:
+
+    $ cabri cli config --dump --password
+    please enter the master password:
+
+or through a password file:
+
+    $ mkdir /home/guest/secrets && chmod go-rwx /home/guest/secrets
+    $ echo "mysecret" > /home/guest/secrets/cabri
+    $ cabri cli config --dump --pfile /home/guest/secrets/cabri
+
+Dumping the configuration is done as
+
+    $ cabri cli config --dump --password
+    please enter the master password:
+    {
+    "clientId": "<a unique id for this CLI client's configuration>",
+    "Identities": [
+    {
+    "alias": "",
+    "pKey": "<user's default public key>",
+    "secret": "<user's default secret key>"
+    }
+    ],
+    "Internal": {
+    "alias": "__internal__",
+    "pKey": "<default public key for this CLI client's configuration>",
+    "secret": "<an internal secret key for this CLI client's configuration>"
+    }
+    }
+
+Explanations about the configuration are provided on the page
+[client configuration](cliconf.md).
+
+You can manage those identities, including the `__internal__` one, with the same command,
+using proposed flags:
+
+    $ cabri cli config --help
+    ...
+    Flags:
+    -d, --decrypt   decrypts the configuration file with master password
+    --dump      dumps the configuration file
+    -e, --encrypt   encrypts the configuration file with master password
+    --gen       generate a new identity for one or several aliases
+    --get       display an identity for one or several aliases
+    --put       <alias> <pkey> [<secret>] import or update an identity for an alias, secret may be unknown
+    --remove    remove an identity alias
+

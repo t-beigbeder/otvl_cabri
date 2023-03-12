@@ -3,6 +3,7 @@ package cabriui
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
@@ -206,6 +207,9 @@ func configRun(ctx context.Context) error {
 		err = configRemove(ctx)
 	}
 	if err != nil {
+		if errors.Is(err, cabridss.ErrPasswordRequired) {
+			return cabridss.ErrPasswordRequired
+		}
 		return err
 	}
 	return nil

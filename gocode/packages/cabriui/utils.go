@@ -172,7 +172,7 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 			return nil, err
 		}
 	} else if dssType == "xobs" {
-		if dss, err = NewXobsDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, ure.Users); err != nil {
+		if dss, err = NewXobsDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, false, ure.Users); err != nil {
 			return nil, err
 		}
 	} else if dssType == "smf" {
@@ -184,6 +184,10 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 			setCfgFunc(sc.DssBaseConfig)
 		}
 		if dss, err = cabridss.NewObsDss(sc, nhArgs.Lasttime, nil); err != nil {
+			return nil, err
+		}
+	} else if dssType == "xsmf" {
+		if dss, err = NewXobsDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, true, ure.Users); err != nil {
 			return nil, err
 		}
 	} else if dssType == "webapi+http" {
@@ -231,8 +235,16 @@ func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string, ac
 	return dss, err
 }
 
-func NewXobsDss(opts BaseOptions, index int, lasttime int64, root, mp string, aclusers []string) (cabridss.HDss, error) {
-	oc, err := GetObsConfig(opts, index, root, mp)
+func NewXobsDss(opts BaseOptions, index int, lasttime int64, root, mp string, isSmf bool, aclusers []string) (cabridss.HDss, error) {
+	var (
+		oc  cabridss.ObsConfig
+		err error
+	)
+	if !isSmf {
+		oc, err = GetObsConfig(opts, index, root, mp)
+	} else {
+		oc, err = GetSmfConfig(opts, index, root, mp)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +264,8 @@ func NewXobsDss(opts BaseOptions, index int, lasttime int64, root, mp string, ac
 					ConfigPassword: mp,
 				},
 				LibApiDssConfig: cabridss.LibApiDssConfig{
-					IsObs:  true,
+					IsObs:  !isSmf,
+					IsSmf:  isSmf,
 					ObsCfg: oc,
 				},
 			},
