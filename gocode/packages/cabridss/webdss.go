@@ -400,6 +400,9 @@ func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isCli
 			}
 		} else if config.IsSmf {
 			config.ObsCfg.DssBaseConfig.Encrypted = config.DssBaseConfig.Encrypted
+			config.ObsCfg.GetS3Session = func() IS3Session {
+				return NewS3sMockFs(config.ObsCfg.LocalPath, nil)
+			}
 			if dss, err = NewObsDss(config.ObsCfg, lsttime, aclusers); err != nil {
 				return nil, nil, err
 			}
