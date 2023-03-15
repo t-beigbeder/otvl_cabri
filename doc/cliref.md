@@ -31,3 +31,34 @@ in which case `<location>` is the directory where DSS configuration, index,
 metadata and data files are stored.
   - example: `/home/guest/cabri_tests/smf_backup`
 - xolf, xobj and xsmf stand for encrypted DSS of the corresponding type
+
+## Object storage creation parameters
+
+You will need to provide the following information for access to the object storage:
+
+    --obsrg <object storage region>
+    --obsep <object storage endpoint>
+    --obsct <object storage swift container or aws bucket>
+    --obsak <object storage access key>
+    --obssk <object storage secret key>
+
+This information will be kept encrypted in the local DSS configuration
+for further use.
+NB: it is encrypted with the client `__internal__` identity,
+so the client configuration should be encrypted itself with a master password
+if your local environment is not secure.
+See [client configuration](cliconf.md) for more information.
+
+## Namespace specification
+
+A namespace specification simply has the form:
+
+    <DSS specification>@<path_to_the_namespace>
+
+knowing that the trailing slash has to be omitted for commands
+dealing exclusively with namespaces.
+
+Examples:
+    - fsy:/home/guest/simple_directory@
+    - olf:/media/guest/usbkey/simple_backup@
+    - obs:/home/guest/cabri_config/simple_backup@sub_namespace

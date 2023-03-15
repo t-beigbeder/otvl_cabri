@@ -37,11 +37,11 @@ You can list it with the lsns command:
 Local directory access is possible using a `fsy` DSS referring to this directory,
 the following namespace is the root in the DSS, so the directory itself:
 
-    $ cabri cli lsns fsy:/home/guest/simple_files@
+    $ cabri cli lsns fsy:/home/guest/simple_directory@
 
 Synchronization is performed by providing a source and a target namespaces in their respective DSS:
 
-    $ cabri cli sync -r fsy:/home/guest/simple_files@ olf:/media/guest/usbkey/simple_backup@ --macl :
+    $ cabri cli sync -r fsy:/home/guest/simple_directory@ olf:/media/guest/usbkey/simple_backup@ --macl :
 
 The `--macl` flags maps a source ACL user with a target one.
 For a `fsy` DSS, the empty ACL user corresponds to the current user id.
@@ -126,3 +126,15 @@ using proposed flags:
     --put       <alias> <pkey> [<secret>] import or update an identity for an alias, secret may be unknown
     --remove    remove an identity alias
 
+## Synchronizing a local directory with cloud object storage
+
+First create the DSS with the command `cabri cli dss make`,
+referring to a DSS type `obs`,
+and providing required information (see the [CLI reference](cliref.md)):
+
+- `<DSS local storage location>`
+- object storage access information
+
+for instance:
+    
+    cabri cli --password --obsrg GRA --obsep https://s3.gra.cloud.ovh.net --obsct simple_backup_container --obsak access_key --obssk secret_key dss make obs:/home/guest/cabri_config/simple_backup
