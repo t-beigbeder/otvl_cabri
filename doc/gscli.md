@@ -137,4 +137,18 @@ and providing required information (see the [CLI reference](cliref.md)):
 
 for instance:
     
-    cabri cli --password --obsrg GRA --obsep https://s3.gra.cloud.ovh.net --obsct simple_backup_container --obsak access_key --obssk secret_key dss make obs:/home/guest/cabri_config/simple_backup
+    $ cabri cli --password \
+        --obsrg GRA --obsep https://s3.gra.cloud.ovh.net \
+        --obsct simple_backup_container \
+        --obsak access_key --obssk secret_key \
+        dss make obs:/home/guest/cabri_config/simple_backup
+
+Once the DSS is created, object storage information is kept in its configuration,
+no need to mention it again for further use.
+Synchronization is performed by providing a source and a target namespaces as seen above:
+
+    $ cabri cli sync -r fsy:/home/guest/simple_directory@ obs:/home/guest/cabri_config/simple_backup@
+
+You will then find all files from the `fsy` DSS synchronized in the `obs` DSS:
+
+    $ cabri cli lsns -rs obs:/home/guest/cabri_config/simple_backup@
