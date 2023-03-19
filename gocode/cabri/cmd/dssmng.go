@@ -274,6 +274,7 @@ var dssCleanCmd = &coral.Command{
 }
 
 func init() {
+	cliCmd.AddCommand(dssCmd)
 	dssMkCmd.Flags().StringVarP(&dssMkOptions.Size, "size", "s", "", "size is \"s\" for small, \"m\" for medium or \"l\" for large")
 	dssCmd.AddCommand(dssMkCmd)
 	dssMknsCmd.Flags().StringArrayVarP(&dssMknsOptions.Children, "children", "c", nil, "children")
