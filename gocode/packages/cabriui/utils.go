@@ -127,7 +127,7 @@ type NewHDssArgs struct {
 }
 
 func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
-	ctx context.Context, setCfgFunc func(bc cabridss.DssBaseConfig), nhArgs NewHDssArgs,
+	ctx context.Context, setCfgFunc func(bc *cabridss.DssBaseConfig), nhArgs NewHDssArgs,
 ) (cabridss.HDss, error) {
 	uictx := uiCtxFrom[OT, VT](ctx)
 	bo := uictx.opts.getBaseOptions()
@@ -151,7 +151,7 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 			return nil, err
 		}
 		if setCfgFunc != nil {
-			setCfgFunc(oc.DssBaseConfig)
+			setCfgFunc(&oc.DssBaseConfig)
 		}
 		if dss, err = cabridss.NewOlfDss(oc, nhArgs.Lasttime, nil); err != nil {
 			return nil, err
@@ -166,7 +166,7 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 			return nil, err
 		}
 		if setCfgFunc != nil {
-			setCfgFunc(oc.DssBaseConfig)
+			setCfgFunc(&oc.DssBaseConfig)
 		}
 		if dss, err = cabridss.NewObsDss(oc, nhArgs.Lasttime, nil); err != nil {
 			return nil, err
@@ -181,7 +181,7 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 			return nil, err
 		}
 		if setCfgFunc != nil {
-			setCfgFunc(sc.DssBaseConfig)
+			setCfgFunc(&sc.DssBaseConfig)
 		}
 		if dss, err = cabridss.NewObsDss(sc, nhArgs.Lasttime, nil); err != nil {
 			return nil, err

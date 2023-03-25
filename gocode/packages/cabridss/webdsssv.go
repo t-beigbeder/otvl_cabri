@@ -191,8 +191,8 @@ func sScanPhysicalStorage(c echo.Context) error {
 	return c.JSON(http.StatusOK, &mSPS{Sti: sti, Errs: *errs})
 }
 
-func WebDssServerConfigurator(e *echo.Echo, root string, config interface{}) error {
-	dss := config.(WebDssServerConfig).Dss
+func WebDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {
+	dss := configs[root].(WebDssServerConfig).Dss
 	_ = dss
 	e.GET(root+"initialize/:clId", sInitialize)
 	e.PUT(root+"recordClient/:clId", sRecordClient)
@@ -212,7 +212,7 @@ func WebDssServerConfigurator(e *echo.Echo, root string, config interface{}) err
 
 func NewWebDssServer(addr, root string, config WebDssServerConfig) (WebServer, error) {
 	s := NewEServer(addr, config.HasLog)
-	s.ConfigureApi(root, config, WebDssServerConfigurator, func(customConfig interface{}) error {
+	s.ConfigureApi(root, config, WebDssServerConfigurator, func(customConfigs map[string]interface{}) error {
 		err := config.Dss.Close()
 		if config.ShutdownCallback != nil {
 			err = config.ShutdownCallback(err)

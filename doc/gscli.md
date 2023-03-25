@@ -139,7 +139,7 @@ and providing required information (see the [CLI reference](cliref.md)):
 for instance:
     
     $ cabri cli --password \
-        --obsrg GRA --obsep https://s3.gra.cloud.ovh.net \
+        --obsrg gra --obsep https://s3.gra.cloud.ovh.net \
         --obsct simple_backup_container \
         --obsak access_key --obssk secret_key \
         dss make obs:/home/guest/cabri_config/simple_backup
@@ -152,7 +152,7 @@ to your object storage.
 
 Once the DSS is created, object storage information is kept in its configuration,
 no need to mention it again for further use, except if it changes, for instance the access or secret keys.
-To display or change this configuration, use the `dss config` command:
+To display or change this configuration, use the `dss config` command, for instance:
 
     $ cabri cli --password \
         --obsak new_access_key --obssk new_secret_key \
@@ -165,3 +165,41 @@ Synchronization is performed by providing a source and a target namespaces as se
 You will then find all files from the `fsy` DSS synchronized in the `obs` DSS:
 
     $ cabri cli lsns -rs obs:/home/guest/cabri_config/simple_backup@
+
+## Multi-user synchronization with an HTTP server
+
+An HTTP server can make a common DSS available to be synchronized
+with the respective DSS of several users.
+The flow of data can be from one user to the others through the common server,
+but the synchronization may also be performed in both directions between each DSS,
+using the `--bidir` flag.
+
+The following describes the setup and use of a simple HTTP server for the demonstration,
+however, in most cases, a secure transport should be used with HTTPS.
+A simple [HTTPS implementation](https.md) is provided,
+but a dedicated proxy in front of the Cabri server, like [traefik](https://traefik.io/traefik/),
+apache or nginx, may be required or more effective.
+
+The server setup is very simple:
+
+- create a DSS, local or cloud object storage
+- launch the cabri server with a mapping between a URL path and the DSS
+- use DSS commands referring to the server's DSS using a special `webapi+http` prefix for the DSS type,
+and the URL path chosen above
+
+Local DSS need to be indexed for the server to be able to communicate efficiently with their clients.
+
+For instance:
+
+    $ mkdir /home/guest/olf_server
+    $ cabri cli dss make olf:/home/guest/olf_server -s s --ximpl bdb
+    $ cabri webapi olf+http://localhost:3000/home/guest/olf_server@demo &
+    $ cabri cli dss mkns webapi+http://localhost:3000/demo@
+
+A single server may serve several DSS at the same time, for instance, extending the previous example:
+
+    $ mkdir /home/guest/olf_server2
+    $ cabri cli dss make olf:/home/guest/olf_server2 -s s --ximpl bdb
+    $ cabri webapi olf+http://localhost:3000/home/guest/olf_server@demo \
+        olf+http://localhost:3000/home/guest/olf_server2@demo2 &
+    $ cabri cli lsns webapi+http://localhost:3000/demo@

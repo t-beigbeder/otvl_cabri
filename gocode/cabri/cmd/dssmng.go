@@ -323,5 +323,6 @@ func init() {
 	dssCmd.AddCommand(dssRmHistoCmd)
 	dssCmd.AddCommand(dssConfigCmd)
 	dssCmd.AddCommand(dssCleanCmd)
+	dssConfigCmd.Flags().BoolVar(&dssConfigOptions.Raw, "raw", false, "displays the raw configuration")
 	dssCmd.AddCommand(dssConfigCmd)
 }

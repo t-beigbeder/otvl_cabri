@@ -20,21 +20,21 @@ type WebServer interface {
 	Shutdown() error
 	ConfigureApi(
 		root string, customConfig interface{},
-		ctor func(e *echo.Echo, root string, customConfig interface{}) error,
-		shutdownCallback func(customConfig interface{}) error,
+		ctor func(e *echo.Echo, root string, customConfigs map[string]interface{}) error,
+		shutdownCallback func(customConfigs map[string]interface{}) error,
 	) error
 	getEcho() *echo.Echo
 }
 
 type eServer struct {
-	e                *echo.Echo
-	customConfig     interface{}
-	shutdownCallback func(customConfig interface{}) error
-	addr             string
-	root             string
-	shutReq          chan interface{}
-	shutResp         chan interface{}
-	closed           bool
+	e                 *echo.Echo
+	customConfigs     map[string]interface{}
+	shutdownCallbacks map[string]func(customConfigs map[string]interface{}) error
+	addr              string
+	root              string
+	shutReq           chan interface{}
+	shutResp          chan interface{}
+	closed            bool
 }
 
 type eCustomContext struct {
@@ -121,25 +121,28 @@ func (esv *eServer) Shutdown() error {
 	if esv.closed {
 		return nil
 	}
-	var err error
-	if esv.shutdownCallback != nil {
-		err = esv.shutdownCallback(esv.customConfig)
+	errs := ErrorCollector{}
+	for _, shutdownCallback := range esv.shutdownCallbacks {
+		if shutdownCallback != nil {
+			if err := shutdownCallback(esv.customConfigs); err != nil {
+				errs.Collect(err)
+			}
+		}
 	}
 	close(esv.shutReq)
 	<-esv.shutResp
 	esv.closed = true
-	return err
+	if errs.Any() {
+		return fmt.Errorf("in Shutdown: %s", errs.Error())
+	}
+	return nil
 }
 
 func (esv *eServer) ConfigureApi(
 	root string, customConfig interface{},
-	ctor func(e *echo.Echo, root string, customConfig interface{}) error,
-	shutdownCallback func(customConfig interface{}) error,
+	ctor func(e *echo.Echo, root string, customConfigs map[string]interface{}) error,
+	shutdownCallback func(customConfigs map[string]interface{}) error,
 ) error {
-	esv.customConfig = customConfig
-	if shutdownCallback != nil {
-		esv.shutdownCallback = shutdownCallback
-	}
 	if root == "" {
 		root = "/"
 	} else if root[0] != '/' {
@@ -149,7 +152,9 @@ func (esv *eServer) ConfigureApi(
 		root += "/"
 	}
 	esv.root = root
-	if err := ctor(esv.e, root, customConfig); err != nil {
+	esv.customConfigs[root] = customConfig
+	esv.shutdownCallbacks[root] = shutdownCallback
+	if err := ctor(esv.e, root, esv.customConfigs); err != nil {
 		return fmt.Errorf("in ConfigureApi: %v", err)
 	}
 	esv.e.GET(root+"check", func(c echo.Context) error {
@@ -160,7 +165,10 @@ func (esv *eServer) ConfigureApi(
 
 func NewEServer(addr string, hasLog bool) WebServer {
 	e := echo.New()
-	esv := &eServer{e: e, addr: addr}
+	esv := &eServer{e: e, addr: addr,
+		customConfigs:     map[string]interface{}{},
+		shutdownCallbacks: map[string]func(customConfigs map[string]interface{}) error{},
+	}
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			cc := &eCustomContext{Context: c, esv: esv}
@@ -180,7 +188,7 @@ func GetCustomConfig(c echo.Context) interface{} {
 	if !ok {
 		panic("here")
 	}
-	return cc.esv.customConfig
+	return cc.esv.customConfigs[cc.esv.root]
 }
 
 func NewServerErr(where string, err error) error {

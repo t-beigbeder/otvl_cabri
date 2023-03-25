@@ -9,7 +9,9 @@ import (
 
 type WebApiOptions struct {
 	BaseOptions
-	HasLog bool
+	HasLog   bool
+	CertFile string
+	KeyFile  string
 }
 
 type WebApiVars struct {
@@ -59,15 +61,18 @@ func webApi(ctx context.Context, args []string) error {
 		dssType, addr, localPath, root, _ := CheckDssUrlMapping(args[i])
 		var params cabridss.CreateNewParams
 		if dssType == "obs" {
-			params = cabridss.CreateNewParams{DssType: "obs", LocalPath: localPath, GetIndex: cabridss.GetPIndex}
+			params = cabridss.CreateNewParams{DssType: "obs", LocalPath: localPath}
 		} else if dssType == "olf" {
-			params = cabridss.CreateNewParams{DssType: "olf", Root: localPath, GetIndex: cabridss.GetPIndex}
+			params = cabridss.CreateNewParams{DssType: "olf", Root: localPath}
 		} else {
 			panic("FIXME")
 		}
 		dss, err := cabridss.CreateOrNewDss(params)
 		if err != nil {
 			return err
+		}
+		if dss.(cabridss.HDss).GetIndex() == nil || !dss.(cabridss.HDss).GetIndex().IsPersistent() {
+			return fmt.Errorf("DSS for url %s is not persistent", args[i])
 		}
 		config := cabridss.WebDssServerConfig{Dss: dss.(cabridss.HDss), HasLog: opts.HasLog, ShutdownCallback: func(err error) error {
 			return err
@@ -81,6 +86,7 @@ func webApi(ctx context.Context, args []string) error {
 				return err
 			}
 		}
+		// FIXME: close other DSS properly in case of error to unlock
 	}
 	<-ctx.Done()
 	for addr, server := range vars.servers {

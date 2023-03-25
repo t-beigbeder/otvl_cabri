@@ -136,6 +136,8 @@ func (c *ErrorCollector) Error() (err string) {
 	return err
 }
 
+func (c *ErrorCollector) Any() bool { return len(*c) != 0 }
+
 type WriteCloserErrCb func(err error, size int64, ch string, me *WriteCloserWithCb) error
 
 type WriteCloserWithCb struct {

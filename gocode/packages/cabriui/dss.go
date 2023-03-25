@@ -200,7 +200,7 @@ func dssUnlockRun(ctx context.Context) error {
 		dss cabridss.HDss
 		err error
 	)
-	if dss, err = NewHDss[DSSMknsOptions, *DSSMknsVars](ctx, func(bc cabridss.DssBaseConfig) {
+	if dss, err = NewHDss[DSSUnlockOptions, *DSSUnlockVars](ctx, func(bc *cabridss.DssBaseConfig) {
 		bc.Unlock = true
 	}, NewHDssArgs{}); err != nil {
 		return err
@@ -532,6 +532,7 @@ func dssCleanRun(ctx context.Context) error {
 
 type DSSConfigOptions struct {
 	BaseOptions
+	Raw bool
 }
 
 type DSSConfigVars struct {
@@ -586,6 +587,17 @@ func dssConfigRun(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+	} else if dssConfigOpts(ctx).Raw && dssType == "olf" {
+		olfConfig, err := GetOlfConfig(opts, 0, root, mp)
+		if err != nil {
+			return err
+		}
+		var pc cabridss.OlfConfig
+		if err := cabridss.LoadDssConfig(olfConfig.DssBaseConfig, &pc); err != nil {
+			return err
+		}
+		dssConfigOut(ctx, fmt.Sprintf("%+v\n", pc))
+		return nil
 	} else {
 		return fmt.Errorf("DSS type %s is not (yet) supported", dssType)
 	}
@@ -618,8 +630,12 @@ func dssConfigRun(ctx context.Context) error {
 			return err
 		}
 	}
-	dssConfigOut(ctx, fmt.Sprintf(
-		"--obsrg %s --obsep %s --obsct %s --obsak %s --obssk %s\n",
-		pc.Region, pc.Endpoint, pc.Container, pc.AccessKey, pc.SecretKey))
+	if !dssConfigOpts(ctx).Raw {
+		dssConfigOut(ctx, fmt.Sprintf(
+			"--obsrg %s --obsep %s --obsct %s --obsak %s --obssk %s\n",
+			pc.Region, pc.Endpoint, pc.Container, pc.AccessKey, pc.SecretKey))
+	} else {
+		dssConfigOut(ctx, fmt.Sprintf("%+v\n", pc))
+	}
 	return nil
 }
