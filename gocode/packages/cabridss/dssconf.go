@@ -25,14 +25,11 @@ type DssBaseConfig struct {
 	Encrypted      bool                                                        `json:"encrypted"`  // repository is encrypted
 }
 
-func SaveDssConfig(bc DssBaseConfig, dssConfig interface{}) error {
+func writeDssConfig(bc DssBaseConfig, dssConfig interface{}) error {
 	if err := checkDir(bc.LocalPath); err != nil {
 		return fmt.Errorf("in SaveDssConfig: %w", err)
 	}
 	configFile := ufpath.Join(bc.LocalPath, "config")
-	if _, err := os.Stat(configFile); err == nil {
-		return fmt.Errorf("in SaveDssConfig: cannot create file %s", configFile)
-	}
 	bs, err := json.Marshal(dssConfig)
 	if err != nil {
 		return fmt.Errorf("in SaveDssConfig: %w", err)
@@ -49,6 +46,22 @@ func SaveDssConfig(bc DssBaseConfig, dssConfig interface{}) error {
 		return fmt.Errorf("in SaveDssConfig: %w", err)
 	}
 	return nil
+}
+
+func SaveDssConfig(bc DssBaseConfig, dssConfig interface{}) error {
+	configFile := ufpath.Join(bc.LocalPath, "config")
+	if _, err := os.Stat(configFile); err == nil {
+		return fmt.Errorf("in SaveDssConfig: cannot create file %s", configFile)
+	}
+	return writeDssConfig(bc, dssConfig)
+}
+
+func OverwriteDssConfig(bc DssBaseConfig, dssConfig interface{}) error {
+	configFile := ufpath.Join(bc.LocalPath, "config")
+	if _, err := os.Stat(configFile); err != nil {
+		return fmt.Errorf("in SaveDssConfig: cannot load file %s", configFile)
+	}
+	return writeDssConfig(bc, dssConfig)
 }
 
 func LoadDssConfig(bc DssBaseConfig, persistentConfig interface{}) error {

@@ -33,5 +33,4 @@ func init() {
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsContainers, "obsct", nil, "list of object storage containers")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsAccessKeys, "obsak", nil, "list of object storage access keys")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsSecretKeys, "obssk", nil, "list of object storage secret keys")
-	cliCmd.AddCommand(dssCmd)
 }

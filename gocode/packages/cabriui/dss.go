@@ -529,3 +529,97 @@ func dssCleanRun(ctx context.Context) error {
 	}
 	return cabridss.CleanObsDss(config)
 }
+
+type DSSConfigOptions struct {
+	BaseOptions
+}
+
+type DSSConfigVars struct {
+	baseVars
+}
+
+func DSSConfigStartup(cr *joule.CLIRunner[DSSConfigOptions]) error {
+	_ = cr.AddUow("command",
+		func(ctx context.Context, work joule.UnitOfWork, i interface{}) (interface{}, error) {
+			(*uiCtxFrom[DSSConfigOptions, *DSSConfigVars](ctx)).vars = &DSSConfigVars{baseVars: baseVars{uow: work}}
+			return nil, dssConfigRun(ctx)
+		})
+	return nil
+}
+
+func DSSConfigShutdown(cr *joule.CLIRunner[DSSConfigOptions]) error {
+	return cr.GetUow("command").GetError()
+}
+
+func dssConfigCtx(ctx context.Context) *uiContext[DSSConfigOptions, *DSSConfigVars] {
+	return uiCtxFrom[DSSConfigOptions, *DSSConfigVars](ctx)
+}
+
+func dssConfigOpts(ctx context.Context) DSSConfigOptions { return (*dssConfigCtx(ctx)).opts }
+
+func dssConfigUow(ctx context.Context) joule.UnitOfWork {
+	return getUnitOfWork[DSSConfigOptions, *DSSConfigVars](ctx)
+}
+
+func dssConfigOut(ctx context.Context, s string) { dssConfigUow(ctx).UiStrOut(s) }
+
+func dssConfigRun(ctx context.Context) error {
+	opts := dssConfigOpts(ctx).BaseOptions
+	args := dssConfigCtx(ctx).args
+	dssType, root, _ := CheckDssSpec(args[0])
+	var (
+		config  cabridss.ObsConfig
+		err     error
+		mp      string
+		changed bool
+	)
+	if mp, err = MasterPassword(dssConfigUow(ctx), opts, 0); err != nil {
+		return err
+	}
+	if dssType == "obs" {
+		config, err = GetObsConfig(opts, 0, root, mp)
+		if err != nil {
+			return err
+		}
+	} else if dssType == "smf" {
+		config, err = GetSmfConfig(opts, 0, root, mp)
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("DSS type %s is not (yet) supported", dssType)
+	}
+	var pc cabridss.ObsConfig
+	if err := cabridss.LoadDssConfig(config.DssBaseConfig, &pc); err != nil {
+		return err
+	}
+	if config.Endpoint != "" {
+		pc.Endpoint = config.Endpoint
+		changed = true
+	}
+	if config.Region != "" {
+		pc.Region = config.Region
+		changed = true
+	}
+	if config.AccessKey != "" {
+		pc.AccessKey = config.AccessKey
+		changed = true
+	}
+	if config.SecretKey != "" {
+		pc.SecretKey = config.SecretKey
+		changed = true
+	}
+	if config.Container != "" {
+		pc.Container = config.Container
+		changed = true
+	}
+	if changed {
+		if err := cabridss.OverwriteDssConfig(config.DssBaseConfig, &pc); err != nil {
+			return err
+		}
+	}
+	dssConfigOut(ctx, fmt.Sprintf(
+		"--obsrg %s --obsep %s --obsct %s --obsak %s --obssk %s\n",
+		pc.Region, pc.Endpoint, pc.Container, pc.AccessKey, pc.SecretKey))
+	return nil
+}

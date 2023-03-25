@@ -37,17 +37,18 @@ You can list it with the lsns command:
 Local directory access is possible using a `fsy` DSS referring to this directory,
 the following namespace is the root in the DSS, so the directory itself:
 
-    $ cabri cli lsns fsy:/home/guest/simple_files@
+    $ cabri cli lsns fsy:/home/guest/simple_directory@
 
 Synchronization is performed by providing a source and a target namespaces in their respective DSS:
 
-    $ cabri cli sync -r fsy:/home/guest/simple_files@ olf:/media/guest/usbkey/simple_backup@ --macl :
+    $ cabri cli sync -r fsy:/home/guest/simple_directory@ olf:/media/guest/usbkey/simple_backup@ --macl :
 
 The `--macl` flags maps a source ACL user with a target one.
 For a `fsy` DSS, the empty ACL user corresponds to the current user id.
 For the target `olf` DSS, we map the previous one to the empty ACL user.
 This enables to back up files with their original system permission as metadata
 so that a reverse synchronization will restore the files with the same permissions.
+By the way this mapping is applied by default so there is no need to mention it in that case.
 
 You will then find all files from the `fsy` DSS synchronized in the `olf` DSS:
 
@@ -126,3 +127,41 @@ using proposed flags:
     --put       <alias> <pkey> [<secret>] import or update an identity for an alias, secret may be unknown
     --remove    remove an identity alias
 
+## Synchronizing a local directory with cloud object storage
+
+First create the DSS with the command `cabri cli dss make`,
+referring to a DSS type `obs`,
+and providing required information (see the [CLI reference](cliref.md)):
+
+- `<DSS local storage location>`
+- object storage access information
+
+for instance:
+    
+    $ cabri cli --password \
+        --obsrg GRA --obsep https://s3.gra.cloud.ovh.net \
+        --obsct simple_backup_container \
+        --obsak access_key --obssk secret_key \
+        dss make obs:/home/guest/cabri_config/simple_backup
+
+In the case of aws, the container would be the bucket name, and the endpoint would be built similarly,
+for instance: `https://s3.eu-west-3.amazonaws.com/`
+
+Please refer to your cloud provider documentation for configuring and securing the access
+to your object storage.
+
+Once the DSS is created, object storage information is kept in its configuration,
+no need to mention it again for further use, except if it changes, for instance the access or secret keys.
+To display or change this configuration, use the `dss config` command:
+
+    $ cabri cli --password \
+        --obsak new_access_key --obssk new_secret_key \
+        dss config obs:/home/guest/cabri_config/simple_backup
+
+Synchronization is performed by providing a source and a target namespaces as seen above:
+
+    $ cabri cli sync -r fsy:/home/guest/simple_directory@ obs:/home/guest/cabri_config/simple_backup@
+
+You will then find all files from the `fsy` DSS synchronized in the `obs` DSS:
+
+    $ cabri cli lsns -rs obs:/home/guest/cabri_config/simple_backup@

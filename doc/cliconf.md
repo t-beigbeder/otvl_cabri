@@ -27,4 +27,4 @@ and to load the index of those changes (metadata only) locally
   - each identity may be used by CLI tools with its alias
   - decrypting the content requires the use of the corresponding secret key
   - the empty alias is the user's default key-pair
-- The `__internal__` alias is used to encrypt DSS configuration
+- The `__internal__` alias is used to encrypt the configurations of the DSS you create locally
