@@ -273,6 +273,34 @@ var dssCleanCmd = &coral.Command{
 	SilenceUsage: true,
 }
 
+var dssConfigOptions cabriui.DSSConfigOptions
+
+var dssConfigCmd = &coral.Command{
+	Use:   "config",
+	Short: "updates and/or displays the DSS configuration",
+	Long:  `updates and/or displays the DSS configuration`,
+	Args: func(cmd *coral.Command, args []string) error {
+		if len(args) != 1 {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("a DSS specification must be provided")
+		}
+		_, _, err := cabriui.CheckDssSpec(args[0])
+		if err != nil {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("%v\nsyntax: dss-type:/path/to/dss\nfor instance\n\tolf:/home/guest/olf", err)
+		}
+		return nil
+	},
+	RunE: func(cmd *coral.Command, args []string) error {
+		dssConfigOptions.BaseOptions = baseOptions
+		return cabriui.CLIRun[cabriui.DSSConfigOptions, *cabriui.DSSConfigVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssConfigOptions, args,
+			cabriui.DSSConfigStartup, cabriui.DSSConfigShutdown)
+	},
+	SilenceUsage: true,
+}
+
 func init() {
 	cliCmd.AddCommand(dssCmd)
 	dssMkCmd.Flags().StringVarP(&dssMkOptions.Size, "size", "s", "", "size is \"s\" for small, \"m\" for medium or \"l\" for large")
@@ -293,5 +321,7 @@ func init() {
 	dssRmHistoCmd.Flags().StringVar(&dssRmHistoOptions.StartTime, "st", "", "inclusive index time above which entries must be removed, default to all past entries")
 	dssRmHistoCmd.Flags().StringVar(&dssRmHistoOptions.EndTime, "et", "", "the inclusive index time below which entries must be removed, default to all future entries")
 	dssCmd.AddCommand(dssRmHistoCmd)
+	dssCmd.AddCommand(dssConfigCmd)
 	dssCmd.AddCommand(dssCleanCmd)
+	dssCmd.AddCommand(dssConfigCmd)
 }
