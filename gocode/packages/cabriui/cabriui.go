@@ -26,6 +26,8 @@ type BaseOptions struct {
 	ObsContainers []string
 	ObsAccessKeys []string
 	ObsSecretKeys []string
+	TlsCert       string // certificate file on https server or untrusted CA on https client
+	TlsNoCheck    bool   // no check of certifcate by https client
 }
 
 func (bos BaseOptions) getBaseOptions() BaseOptions {
@@ -96,18 +98,17 @@ func getUnitOfWork[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context) joule.U
 }
 
 func CheckDssSpec(dssSpec string) (dssType, root string, err error) {
-	frags := strings.Split(dssSpec, ":")
-	if len(frags) != 2 {
+	var npath string
+	if dssType, root, npath, err = CheckDssPath(dssSpec + "@"); err != nil || npath != "" {
 		err = fmt.Errorf("DSS specification %s is invalid", dssSpec)
 		return
 	}
-	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "xolf" && frags[0] != "obs" && frags[0] != "xobs" && frags[0] != "smf" {
-		err = fmt.Errorf("DSS type %s is not (yet) supported", frags[0])
-		return
-	}
-	dssType = frags[0]
-	root = frags[1]
 	return
+}
+
+var dssTypes map[string]int = map[string]int{
+	"fsy": 1, "olf": 1, "xolf": 1, "obs": 1, "xobs": 1, "smf": 1, "xsmf": 1,
+	"webapi+http": 1, "webapi+https": 1,
 }
 
 func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
@@ -119,12 +120,12 @@ func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
 	if len(frags) > 2 {
 		frags[1] = strings.Join(frags[1:], ":")
 	}
-	if frags[0] != "fsy" && frags[0] != "olf" && frags[0] != "xolf" && frags[0] != "obs" && frags[0] != "xobs" && frags[0] != "smf" && frags[0] != "webapi+http" {
+	if tt, ok := dssTypes[frags[0]]; !ok || tt != 1 {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", frags[0])
 		return
 	}
 	dssType = frags[0]
-	if dssType == "webapi+http" && (!strings.HasPrefix(frags[1], "//") || len(strings.Split(frags[1][2:], "/")) < 2) {
+	if (dssType == "webapi+http" || dssType == "webapi+https") && (!strings.HasPrefix(frags[1], "//") || len(strings.Split(frags[1][2:], "/")) < 2) {
 		err = fmt.Errorf("DSS type %s requires //host[:port]/[path] url syntax (in %s)", frags[0], frags[1])
 		return
 	}
@@ -162,13 +163,13 @@ func CheckUiACL(sacl []string) (acl []cabridss.ACLEntry, err error) {
 	return
 }
 
-func CheckDssUrlMapping(dum string) (dssType, addr, localPath, root string, err error) {
+func CheckDssUrlMapping(dum string) (dssType, addr, localPath, root string, isTls bool, err error) {
 	frags := strings.Split(dum, "://")
-	if len(frags) != 2 || !strings.HasSuffix(frags[0], "+http") {
+	if len(frags) != 2 || (!strings.HasSuffix(frags[0], "+http") && !strings.HasSuffix(frags[0], "+https")) {
 		err = fmt.Errorf("DSS URL mapping %s is invalid", dum)
 		return
 	}
-	dssType = frags[0][:len(frags[0])-5]
+	dssType = frags[0][:strings.Index(frags[0], "+http")]
 	if dssType != "fsy" && dssType != "olf" && dssType != "obs" && dssType != "smf" {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", dssType)
 		return
@@ -186,6 +187,7 @@ func CheckDssUrlMapping(dum string) (dssType, addr, localPath, root string, err 
 	}
 	localPath = r2Frags[0]
 	root = r2Frags[1]
+	isTls = strings.HasSuffix(frags[0], "+https")
 	return
 }
 
@@ -293,7 +295,7 @@ func GetSmfConfig(opts BaseOptions, index int, root, mp string) (cabridss.ObsCon
 	return config, nil
 }
 
-func GetWebConfig(opts BaseOptions, index int, addr, root, mp string) (cabridss.WebDssConfig, error) {
+func GetWebConfig(opts BaseOptions, index int, isTls bool, addr, root, mp string) (cabridss.WebDssConfig, error) {
 	bc, err := GetBaseConfig(opts, index, "", "", mp)
 	if err != nil {
 		return cabridss.WebDssConfig{}, err
@@ -303,6 +305,11 @@ func GetWebConfig(opts BaseOptions, index int, addr, root, mp string) (cabridss.
 	host := frags[0]
 	if len(frags) > 1 {
 		port = frags[1]
+	}
+	if isTls {
+		bc.WebProtocol = "https"
+		bc.TlsCert = opts.TlsCert
+		bc.TlsNoCheck = opts.TlsNoCheck
 	}
 	bc.WebHost = host
 	bc.WebPort = port

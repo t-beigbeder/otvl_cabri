@@ -37,7 +37,7 @@ require (
 	golang.org/x/text v0.8.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 )
-//
+
 //replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss => ./packages/cabridss
 //
 //replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrisync => ./packages/cabrisync

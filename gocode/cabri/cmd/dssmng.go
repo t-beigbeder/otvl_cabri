@@ -309,6 +309,7 @@ func init() {
 	dssCmd.AddCommand(dssMknsCmd)
 	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.RepairIndex, "repair", false, "repair the index if persistent")
 	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.RepairReadOnly, "read", true, "don't repair, show diagnostic")
+	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.LockForTest, "lock", false, "lock for test purpose")
 	dssCmd.AddCommand(dssUnlockCmd)
 	dssCmd.AddCommand(dssAuditCmd)
 	dssCmd.AddCommand(dssScanCmd)

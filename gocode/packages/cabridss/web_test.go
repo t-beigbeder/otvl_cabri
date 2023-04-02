@@ -111,7 +111,7 @@ func sErrorServer(c echo.Context) error {
 	return NewServerErr("sErrorApp", fmt.Errorf("a server error"))
 }
 
-func testEchoConfigurator(e *echo.Echo, root string, _ interface{}) error {
+func testEchoConfigurator(e *echo.Echo, root string, _ map[string]interface{}) error {
 	e.GET(root+"version", sGetTVersion)
 	e.GET(root+"echo/:kparam", sGetTEcho)
 	e.PUT(root+"echo/:kparam", sPutTEcho)
@@ -122,19 +122,73 @@ func testEchoConfigurator(e *echo.Echo, root string, _ interface{}) error {
 
 func TestNewWebApiClient(t *testing.T) {
 	optionalSkip(t)
-	s := NewEServer(":3000", true)
+	s := NewEServer(":3000", true, nil)
 	resShutdown := ""
-	s.ConfigureApi("/test", "0.0.90.90", testEchoConfigurator, func(config interface{}) error {
-		customConfig := config.(string)
-		resShutdown = fmt.Sprintf("Shutdown %s", customConfig)
+	s.ConfigureApi("/test", "v3", func(root string, customConfigs map[string]interface{}) error {
+		resShutdown = "Shutdown 0.0.90.90"
 		return nil
-	})
+	}, testEchoConfigurator)
 	defer s.Shutdown()
 	if err := s.Serve(); err != nil {
 		t.Fatal(err)
 	}
 
-	apc := NewWebApiClient("", "", "3000", "test", "sConfigClient")
+	apc, _ := NewWebApiClient("", "", "3000", nil, "test", "sConfigClient")
+	v, err := cGetTVersion(apc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = v
+	eo1, err := cGetTEcho(apc, EchoIn{Query: "vquery", Param: "vparam"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = eo1
+	eo2, err := cPutTEcho(apc, EchoIn{Query: "vquery", Param: "vparam", Body: "vbody"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = eo2
+	eo3, err := cPutTEchoConfig(apc)
+	if err != nil || !strings.Contains(eo3.Echo, "Body:sConfigClient") {
+		t.Fatal(err)
+	}
+	_ = eo3
+	ea, err := cErrorApp(apc)
+	if err == nil || err.Error() != "in DoAsJson: an app error" || ea.Error != "an app error" {
+		t.Fatal(err)
+	}
+	_ = ea
+	es, err := cErrorServer(apc)
+	if err == nil || err.Error() != "in DoAsJson: error status 500 Internal Server Error" || es.Error != "" {
+		t.Fatal(err)
+	}
+	_ = es
+	if err = s.Shutdown(); err != nil || resShutdown != "Shutdown 0.0.90.90" {
+		t.Fatalf("%v %s", err, resShutdown)
+	}
+}
+
+func TestNewWebTlsApiClient(t *testing.T) {
+	optionalSkip(t)
+	if os.Getenv("CABRIDSS_KEEP_DEV_TESTS") == "" {
+		t.Skip(fmt.Sprintf("Skipping %s because you didn't set CABRIDSS_KEEP_DEV_TESTS", t.Name()))
+	}
+	s := NewEServer("localhost:3443", true, &TlsConfig{"cert.pem", "key.pem", false})
+	resShutdown := ""
+	s.ConfigureApi("/test", "v3", func(root string, customConfigs map[string]interface{}) error {
+		resShutdown = "Shutdown 0.0.90.90"
+		return nil
+	}, testEchoConfigurator)
+	defer s.Shutdown()
+	if err := s.Serve(); err != nil {
+		t.Fatal(err)
+	}
+
+	apc, err := NewWebApiClient("https", "localhost", "3443", &TlsConfig{"cert.pem", "key.pem", false}, "test", "sConfigClient")
+	if err != nil {
+		t.Fatal(err)
+	}
 	v, err := cGetTVersion(apc)
 	if err != nil {
 		t.Fatal(err)
@@ -172,19 +226,18 @@ func TestNewWebApiClient(t *testing.T) {
 
 func TestWebApiClientBurst(t *testing.T) {
 	optionalSkip(t)
-	s := NewEServer(":3000", true)
+	s := NewEServer(":3000", true, nil)
 	resShutdown := ""
-	s.ConfigureApi("/test", "0.0.90.90", testEchoConfigurator, func(config interface{}) error {
-		customConfig := config.(string)
-		resShutdown = fmt.Sprintf("Shutdown %s", customConfig)
+	s.ConfigureApi("/test", "0.0.90.90", func(root string, customConfigs map[string]interface{}) error {
+		resShutdown = "Shutdown 0.0.90.90"
 		return nil
-	})
+	}, testEchoConfigurator)
 	defer s.Shutdown()
 	if err := s.Serve(); err != nil {
 		t.Fatal(err)
 	}
 
-	apc := NewWebApiClient("", "", "3000", "test", "sConfigClient")
+	apc, _ := NewWebApiClient("", "", "3000", nil, "test", "sConfigClient")
 	var err error
 	wg := sync.WaitGroup{}
 	wg.Add(220)
@@ -309,7 +362,7 @@ func sOutStream(c echo.Context) error {
 	return nil
 }
 
-func testStreamConfigurator(e *echo.Echo, root string, _ interface{}) error {
+func testStreamConfigurator(e *echo.Echo, root string, _ map[string]interface{}) error {
 	e.POST(root+"in", sPostStream)
 	e.POST(root+"out", sOutStream)
 	return nil
@@ -317,10 +370,8 @@ func testStreamConfigurator(e *echo.Echo, root string, _ interface{}) error {
 
 func runTestWebApiStream(t *testing.T) {
 	optionalSkip(t)
-	s := NewEServer(":3000", true)
-	err := s.ConfigureApi("", "0.0.90.90", testStreamConfigurator, func(config interface{}) error {
-		return nil
-	})
+	s := NewEServer(":3000", true, nil)
+	err := s.ConfigureApi("", "0.0.90.90", nil, testStreamConfigurator)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +379,7 @@ func runTestWebApiStream(t *testing.T) {
 	if err := s.Serve(); err != nil {
 		t.Fatal(err)
 	}
-	apc := NewWebApiClient("", "", "3000", "", nil)
+	apc, _ := NewWebApiClient("", "", "3000", nil, "", nil)
 	_, err = cPostStream(apc)
 	if err != nil {
 		t.Fatal(err)
@@ -351,14 +402,14 @@ func TestWebTestSleep(t *testing.T) {
 	if os.Getenv("CABRIDSS_KEEP_DEV_TESTS") == "" {
 		t.Skip(fmt.Sprintf("Skipping %s because you didn't set CABRIDSS_KEEP_DEV_TESTS", t.Name()))
 	}
-	s := NewEServer(":3000", true)
-	s.ConfigureApi("test", nil, WebTestServerConfigurator, func(customConfig interface{}) error { return nil })
+	s := NewEServer(":3000", true, nil)
+	s.ConfigureApi("test", nil, nil, WebTestServerConfigurator)
 	defer s.Shutdown()
 	if err := s.Serve(); err != nil {
 		t.Fatal(err)
 	}
 
-	apc := NewWebApiClient("", "", "3000", "test", nil)
+	apc, _ := NewWebApiClient("", "", "3000", nil, "test", nil)
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%ssleep/%d", apc.Url(), 500), nil)
 	resp, err := apc.(*apiClient).client.Do(req)
 	if err != nil {

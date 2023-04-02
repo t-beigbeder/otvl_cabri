@@ -21,6 +21,9 @@ type DssBaseConfig struct {
 	WebProtocol    string                                                      `json:"-"`          // web API server protocol
 	WebHost        string                                                      `json:"-"`          // web API server host
 	WebPort        string                                                      `json:"-"`          // web API server port
+	TlsCert        string                                                      `json:"-"`          // certificate file on https server or untrusted CA on https client
+	TlsKey         string                                                      `json:"-"`          // certificate key file on https server
+	TlsNoCheck     bool                                                        `json:"-"`          // no check of certificate by https client
 	WebRoot        string                                                      `json:"-"`          // web API server root
 	Encrypted      bool                                                        `json:"encrypted"`  // repository is encrypted
 }

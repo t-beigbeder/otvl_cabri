@@ -190,11 +190,14 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 		if dss, err = NewXobsDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, true, ure.Users); err != nil {
 			return nil, err
 		}
-	} else if dssType == "webapi+http" {
+	} else if strings.HasPrefix(dssType, "webapi+http") {
 		frags := strings.Split(root[2:], "/")
-		wc, err := GetWebConfig(bo, nhArgs.ObsIx, frags[0], frags[1], ure.MasterPassword)
+		wc, err := GetWebConfig(bo, nhArgs.ObsIx, dssType == "webapi+https", frags[0], frags[1], ure.MasterPassword)
 		if err != nil {
 			return nil, err
+		}
+		if setCfgFunc != nil {
+			setCfgFunc(&wc.DssBaseConfig)
 		}
 		if dss, err = cabridss.NewWebDss(wc, nhArgs.Lasttime, ure.Users); err != nil {
 			return nil, err

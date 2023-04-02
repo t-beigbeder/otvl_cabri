@@ -91,7 +91,7 @@ func dssTestMknsRun(
 		}
 	} else if dssType == "webapi+http" {
 		frags := strings.Split(root[2:], "/")
-		wc, err := GetWebConfig(opts.BaseOptions, 0, frags[0], frags[1], "")
+		wc, err := GetWebConfig(opts.BaseOptions, 0, false, frags[0], frags[1], "")
 		if err != nil {
 			return err
 		}

@@ -24,7 +24,7 @@ its role is to identify what (content and metadata) has been changed in the DSS
 since the last time that the client accessed it,
 and to load the index of those changes (metadata only) locally
 - Identities are public keys users can use to encrypt content for themselves or others
-  - each identity may be used by CLI tools with its alias
+  - each identity may be used by CLI tools through its alias
   - decrypting the content requires the use of the corresponding secret key
   - the empty alias is the user's default key-pair
 - The `__internal__` alias is used to encrypt the configurations of the DSS you create locally

@@ -96,7 +96,16 @@ func (wdi *webDssImpl) initialize(me oDssProxy, config interface{}, lsttime int6
 
 	var mIed *mInitialized
 	wdc.ClId = wdi.clId
-	wdi.apc = NewWebApiClient(wdc.WebProtocol, wdc.WebHost, wdc.WebPort, wdc.WebRoot, wdc)
+	remoteWdc := wdc
+	remoteWdc.Unlock = false
+	var tlsConfig *TlsConfig
+	if wdc.WebProtocol == "https" {
+		tlsConfig = &TlsConfig{cert: wdc.TlsCert, key: wdc.TlsKey, noClientCheck: wdc.TlsNoCheck}
+	}
+	wdi.apc, err = NewWebApiClient(wdc.WebProtocol, wdc.WebHost, wdc.WebPort, tlsConfig, wdc.WebRoot, remoteWdc)
+	if err != nil {
+		return fmt.Errorf("in initialize: %v", err)
+	}
 	if wdc.NoClientLimit {
 		wdi.apc.SetNoLimit()
 	}

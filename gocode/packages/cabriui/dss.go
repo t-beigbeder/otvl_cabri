@@ -163,6 +163,7 @@ type DSSUnlockOptions struct {
 	BaseOptions
 	RepairIndex    bool
 	RepairReadOnly bool
+	LockForTest    bool
 }
 
 type DSSUnlockVars struct {
@@ -201,9 +202,12 @@ func dssUnlockRun(ctx context.Context) error {
 		err error
 	)
 	if dss, err = NewHDss[DSSUnlockOptions, *DSSUnlockVars](ctx, func(bc *cabridss.DssBaseConfig) {
-		bc.Unlock = true
+		bc.Unlock = !opts.LockForTest
 	}, NewHDssArgs{}); err != nil {
 		return err
+	}
+	if opts.LockForTest {
+		return fmt.Errorf("leaving %s locked", dssUnlockCtx(ctx).args[0])
 	}
 	if dss.GetIndex() != nil && dss.GetIndex().IsPersistent() && opts.RepairIndex {
 		ds, err := dss.GetIndex().Repair(opts.RepairReadOnly)

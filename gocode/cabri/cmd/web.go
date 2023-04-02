@@ -19,10 +19,10 @@ var webApiCmd = &coral.Command{
 			return err
 		}
 		checkArg := func(arg string) error {
-			if _, _, _, _, err := cabriui.CheckDssUrlMapping(arg); err != nil {
+			if _, _, _, _, _, err := cabriui.CheckDssUrlMapping(arg); err != nil {
 				return fmt.Errorf(`
 %v
-DSS URL mapping syntax is: dss-type+http://server:port/local/path@root
+DSS URL mapping syntax is: dss-type+http[s]://server:port/local/path@root
 for instance
 	obs+http://localhost:3000/data/local/obs1@obs1`,
 					err,
@@ -61,5 +61,8 @@ func init() {
 	webApiCmd.Flags().StringArrayVar(&baseOptions.ObsContainers, "obsct", nil, "list of object storage containers")
 	webApiCmd.Flags().StringArrayVar(&baseOptions.ObsAccessKeys, "obsak", nil, "list of object storage access keys")
 	webApiCmd.Flags().StringArrayVar(&baseOptions.ObsSecretKeys, "obssk", nil, "list of object storage secret keys")
+	webApiCmd.Flags().StringVar(&baseOptions.TlsCert, "tlscrt", "", "certificate file on https server or untrusted CA on https client")
+	webApiCmd.Flags().BoolVar(&baseOptions.TlsNoCheck, "tlsnc", false, "no check of certificate by https client")
 	webApiCmd.Flags().BoolVar(&webApiOptions.HasLog, "haslog", false, "output http access log for the API")
+	webApiCmd.Flags().StringVar(&webApiOptions.TlsKey, "tlskey", "", "certificate key file")
 }

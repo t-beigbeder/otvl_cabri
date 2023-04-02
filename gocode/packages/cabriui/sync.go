@@ -154,10 +154,13 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 	}
 	rdss, rpath, rure, err := str2dss(ctx, rdssPath, true, &obsIx)
 	if err != nil {
+		ldss.Close()
 		return err
 	}
 	macl, err := uiMapACL(opts, lure, rure)
 	if err != nil {
+		ldss.Close()
+		rdss.Close()
 		return err
 	}
 	var beVerbose cabrisync.BeVerboseFunc

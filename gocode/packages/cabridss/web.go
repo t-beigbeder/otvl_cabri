@@ -2,6 +2,8 @@ package cabridss
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v4"
@@ -20,18 +22,41 @@ type WebServer interface {
 	Shutdown() error
 	ConfigureApi(
 		root string, customConfig interface{},
+		shutdownCallback func(root string, customConfigs map[string]interface{}) error,
 		ctor func(e *echo.Echo, root string, customConfigs map[string]interface{}) error,
-		shutdownCallback func(customConfigs map[string]interface{}) error,
 	) error
 	getEcho() *echo.Echo
 }
 
+type TlsConfig struct {
+	cert          string
+	key           string
+	noClientCheck bool
+}
+
+func getTlsClientConfig(tlsConfig *TlsConfig) (*tls.Config, error) {
+	if tlsConfig == nil {
+		return nil, nil
+	}
+	if tlsConfig.noClientCheck {
+		return &tls.Config{InsecureSkipVerify: true}, nil
+	}
+	caCert, err := os.ReadFile(tlsConfig.cert)
+	if err != nil {
+		return nil, fmt.Errorf("in getTlsConfig: %v", err)
+	}
+	caCertPool, _ := x509.SystemCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+	return &tls.Config{RootCAs: caCertPool}, nil
+}
+
 type eServer struct {
 	e                 *echo.Echo
+	tlsConfig         *TlsConfig
 	customConfigs     map[string]interface{}
-	shutdownCallbacks map[string]func(customConfigs map[string]interface{}) error
+	shutdownCallbacks map[string]func(root string, customConfigs map[string]interface{}) error
 	addr              string
-	root              string
+	firstRoot         string
 	shutReq           chan interface{}
 	shutResp          chan interface{}
 	closed            bool
@@ -86,7 +111,15 @@ func (esv *eServer) Serve() error {
 	esv.shutReq = make(chan interface{})
 	esv.shutResp = make(chan interface{})
 	go func() {
-		_ = esv.e.Start(esv.addr)
+		var err error
+		if esv.tlsConfig == nil {
+			err = esv.e.Start(esv.addr)
+		} else {
+			err = esv.e.StartTLS(esv.addr, esv.tlsConfig.cert, esv.tlsConfig.key)
+		}
+		if err != nil {
+			//fmt.Fprintf(os.Stderr, "Start or StartTLS %v\n", err)
+		}
 		close(esv.shutResp)
 	}()
 	if err := esv.checkPort(true); err != nil {
@@ -95,9 +128,24 @@ func (esv *eServer) Serve() error {
 		return fmt.Errorf("in Serve: %v", err)
 	}
 	host, port := esv.getHP()
-	url := fmt.Sprintf("http://%s:%s%scheck", host, port, esv.root)
+	protocol := "http"
+	var (
+		ht     *http.Transport
+		client Client
+	)
+	if esv.tlsConfig != nil {
+		protocol = "https"
+		tlsClientConfig, err := getTlsClientConfig(esv.tlsConfig)
+		if err != nil {
+			return fmt.Errorf("in Serve: %v", err)
+		}
+		ht = &http.Transport{TLSClientConfig: tlsClientConfig}
+		client = Client{Client: http.Client{Transport: ht}}
+	} else {
+		client = Client{Client: http.Client{}}
+	}
+	url := fmt.Sprintf("%s://%s:%s%scheck", protocol, host, port, esv.firstRoot)
 	for i := 0; i < 5; i++ {
-		client := http.Client{}
 		rsp, err := client.Get(url)
 		if err == nil && rsp.StatusCode == http.StatusOK {
 			break
@@ -122,9 +170,9 @@ func (esv *eServer) Shutdown() error {
 		return nil
 	}
 	errs := ErrorCollector{}
-	for _, shutdownCallback := range esv.shutdownCallbacks {
+	for root, shutdownCallback := range esv.shutdownCallbacks {
 		if shutdownCallback != nil {
-			if err := shutdownCallback(esv.customConfigs); err != nil {
+			if err := shutdownCallback(root, esv.customConfigs); err != nil {
 				errs.Collect(err)
 			}
 		}
@@ -140,8 +188,8 @@ func (esv *eServer) Shutdown() error {
 
 func (esv *eServer) ConfigureApi(
 	root string, customConfig interface{},
+	shutdownCallback func(root string, customConfigs map[string]interface{}) error,
 	ctor func(e *echo.Echo, root string, customConfigs map[string]interface{}) error,
-	shutdownCallback func(customConfigs map[string]interface{}) error,
 ) error {
 	if root == "" {
 		root = "/"
@@ -151,7 +199,9 @@ func (esv *eServer) ConfigureApi(
 	if root[len(root)-1] != '/' {
 		root += "/"
 	}
-	esv.root = root
+	if esv.firstRoot == "" {
+		esv.firstRoot = root
+	}
 	esv.customConfigs[root] = customConfig
 	esv.shutdownCallbacks[root] = shutdownCallback
 	if err := ctor(esv.e, root, esv.customConfigs); err != nil {
@@ -163,11 +213,11 @@ func (esv *eServer) ConfigureApi(
 	return nil
 }
 
-func NewEServer(addr string, hasLog bool) WebServer {
+func NewEServer(addr string, hasLog bool, tlsConfig *TlsConfig) WebServer {
 	e := echo.New()
-	esv := &eServer{e: e, addr: addr,
+	esv := &eServer{e: e, addr: addr, tlsConfig: tlsConfig,
 		customConfigs:     map[string]interface{}{},
-		shutdownCallbacks: map[string]func(customConfigs map[string]interface{}) error{},
+		shutdownCallbacks: map[string]func(root string, customConfigs map[string]interface{}) error{},
 	}
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -184,11 +234,18 @@ func NewEServer(addr string, hasLog bool) WebServer {
 }
 
 func GetCustomConfig(c echo.Context) interface{} {
-	cc, ok := c.(*eCustomContext)
+	cct, ok := c.(*eCustomContext)
+	var customConfig interface{}
+	for root, ccf := range cct.esv.customConfigs {
+		if strings.HasPrefix(c.Path(), root) {
+			customConfig = ccf
+			break
+		}
+	}
 	if !ok {
 		panic("here")
 	}
-	return cc.esv.customConfigs[cc.esv.root]
+	return customConfig
 }
 
 func NewServerErr(where string, err error) error {
@@ -348,10 +405,23 @@ func (apc *apiClient) GetConfig() interface{} { return apc.config }
 
 func (apc *apiClient) SetNoLimit() { apc.client.noLimit = true }
 
-func NewWebApiClient(protocol string, host string, port string, root string, config interface{}) WebApiClient {
+func NewWebApiClient(protocol string, host string, port string, tlsConfig *TlsConfig, root string, config interface{}) (WebApiClient, error) {
 	timeout := 300000 * time.Millisecond
-	client := Client{Client: http.Client{Timeout: timeout}}
-	return &apiClient{client: &client, protocol: protocol, host: host, port: port, root: root, config: config}
+	var (
+		ht     *http.Transport
+		client Client
+	)
+	if tlsConfig != nil {
+		tlsClientConfig, err := getTlsClientConfig(tlsConfig)
+		if err != nil {
+			return nil, fmt.Errorf("in NewWebApiClient: %v", err)
+		}
+		ht = &http.Transport{TLSClientConfig: tlsClientConfig}
+		client = Client{Client: http.Client{Timeout: timeout, Transport: ht}}
+	} else {
+		client = Client{Client: http.Client{Timeout: timeout}}
+	}
+	return &apiClient{client: &client, protocol: protocol, host: host, port: port, root: root, config: config}, nil
 }
 
 func sTestSleep(c echo.Context) error {
@@ -410,7 +480,7 @@ func sTemplate(c echo.Context) error {
 	return echo.NewHTTPError(http.StatusInternalServerError, "sTemplate: not yet implemented")
 }
 
-func WebTestServerConfigurator(e *echo.Echo, root string, config interface{}) error {
+func WebTestServerConfigurator(e *echo.Echo, root string, _ map[string]interface{}) error {
 	e.GET(root+"sleep/:msDuration", sTestSleep)
 	e.POST(root+"postStream/:size/:msDuration", sTestPostStream)
 	return nil

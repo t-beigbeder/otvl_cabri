@@ -182,12 +182,13 @@ apache or nginx, may be required or more effective.
 
 The server setup is very simple:
 
-- create a DSS, local or cloud object storage
+- create a DSS, local or cloud object storage, on the server host
 - launch the cabri server with a mapping between a URL path and the DSS
 - use DSS commands referring to the server's DSS using a special `webapi+http` prefix for the DSS type,
 and the URL path chosen above
 
-Local DSS need to be indexed for the server to be able to communicate efficiently with their clients.
+Local DSS need to be indexed for the server to be able to communicate efficiently
+with its clients, you have to use the `--ximpl bdb` flag at creation time, as mentioned above.
 
 For instance:
 
@@ -202,4 +203,13 @@ A single server may serve several DSS at the same time, for instance, extending 
     $ cabri cli dss make olf:/home/guest/olf_server2 -s s --ximpl bdb
     $ cabri webapi olf+http://localhost:3000/home/guest/olf_server@demo \
         olf+http://localhost:3000/home/guest/olf_server2@demo2 &
+    $ cabri cli dss mkns webapi+http://localhost:3000/demo2@
     $ cabri cli lsns webapi+http://localhost:3000/demo@
+
+Now you can synchronize a full directory with the server as seen above, for instance:
+
+    $ cabri cli sync -r fsy:/home/guest/simple_directory@ webapi+http://localhost:3000/demo@
+
+And another user will retrieve it:
+
+    $ cabri cli sync -r webapi+http://localhost:3000/demo@ fsy:/home/reader/retrieved_directory@

@@ -7,6 +7,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -16,7 +17,13 @@ func createWebDssServer(addr, root string, params CreateNewParams) (WebServer, e
 	if err != nil {
 		return nil, fmt.Errorf("createWebDssServer failed with error %v", err)
 	}
-	return NewWebDssServer(addr, root, WebDssServerConfig{Dss: dss.(HDss), HasLog: true})
+	httpConfig := WebDssHttpConfig{Addr: addr}
+	if strings.Contains(addr, "443") {
+		httpConfig.IsTls = true
+		httpConfig.TlsCert = "cert.pem"
+		httpConfig.TlsKey = "key.pem"
+	}
+	return NewWebDssServer(httpConfig, root, WebDssServerConfig{Dss: dss.(HDss), HasLog: true})
 }
 
 func TestNewWebDssServer(t *testing.T) {
@@ -47,6 +54,44 @@ func TestNewWebDssServer(t *testing.T) {
 	}
 	defer sv.Shutdown()
 	sv, err = createWebDssServer(":3000", "",
+		CreateNewParams{Create: false, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
+	)
+	if err == nil {
+		t.Fatal("should fail with error index.bdb locked")
+	}
+}
+
+func TestNewWebDssTlsServer(t *testing.T) {
+	optionalSkip(t)
+	if os.Getenv("CABRIDSS_KEEP_DEV_TESTS") == "" {
+		t.Skip(fmt.Sprintf("Skipping %s because you didn't set CABRIDSS_KEEP_DEV_TESTS", t.Name()))
+	}
+	tfs, err := testfs.CreateFs("TestNewWebDssTlsServer", tfsStartup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tfs.Delete()
+
+	getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
+		return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+	}
+
+	sv, err := createWebDssServer("localhost:3443", "",
+		CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sv.Shutdown()
+	// check unlocked
+	sv, err = createWebDssServer("localhost:3443", "",
+		CreateNewParams{Create: false, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sv.Shutdown()
+	sv, err = createWebDssServer("localhost:3443", "",
 		CreateNewParams{Create: false, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 	)
 	if err == nil {
@@ -98,6 +143,46 @@ func TestNewWebDssClientOlf(t *testing.T) {
 					DssBaseConfig: DssBaseConfig{
 						ConfigDir: ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
 						WebPort:   "3000",
+					}, NoClientLimit: true},
+				0, nil)
+			return dss, err
+		}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNewWebDssTlsClientOlf(t *testing.T) {
+	if os.Getenv("CABRIDSS_KEEP_DEV_TESTS") == "" {
+		t.Skip(fmt.Sprintf("Skipping %s because you didn't set CABRIDSS_KEEP_DEV_TESTS", t.Name()))
+	}
+	ucpCount := 0
+	var sv WebServer
+	var err error
+	defer func() {
+		if sv != nil {
+			sv.Shutdown()
+		}
+	}()
+	if err := runTestBasic(t,
+		func(tfs *testfs.Fs) error {
+			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
+				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+			}
+			sv, err = createWebDssServer("localhost:3443", "",
+				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
+			)
+			return err
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			ucpCount += 1
+			dss, err := NewWebDss(
+				WebDssConfig{
+					DssBaseConfig: DssBaseConfig{
+						ConfigDir:   ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
+						WebProtocol: "https",
+						WebHost:     "localhost",
+						WebPort:     "3443",
+						TlsCert:     "cert.pem",
 					}, NoClientLimit: true},
 				0, nil)
 			return dss, err

@@ -9,9 +9,8 @@ import (
 
 type WebApiOptions struct {
 	BaseOptions
-	HasLog   bool
-	CertFile string
-	KeyFile  string
+	HasLog bool
+	TlsKey string // certificate key file on https server
 }
 
 type WebApiVars struct {
@@ -58,10 +57,13 @@ func webApi(ctx context.Context, args []string) error {
 	}
 	_ = ure
 	for i := 0; i < len(args); i++ {
-		dssType, addr, localPath, root, _ := CheckDssUrlMapping(args[i])
+		dssType, addr, localPath, root, isTls, _ := CheckDssUrlMapping(args[i])
+		if isTls && (opts.TlsCert == "" || opts.TlsKey == "") {
+			return fmt.Errorf("mapping %s requires certificate and key files")
+		}
 		var params cabridss.CreateNewParams
-		if dssType == "obs" {
-			params = cabridss.CreateNewParams{DssType: "obs", LocalPath: localPath}
+		if dssType == "obs" || dssType == "smf" {
+			params = cabridss.CreateNewParams{DssType: dssType, LocalPath: localPath}
 		} else if dssType == "olf" {
 			params = cabridss.CreateNewParams{DssType: "olf", Root: localPath}
 		} else {
@@ -74,19 +76,26 @@ func webApi(ctx context.Context, args []string) error {
 		if dss.(cabridss.HDss).GetIndex() == nil || !dss.(cabridss.HDss).GetIndex().IsPersistent() {
 			return fmt.Errorf("DSS for url %s is not persistent", args[i])
 		}
-		config := cabridss.WebDssServerConfig{Dss: dss.(cabridss.HDss), HasLog: opts.HasLog, ShutdownCallback: func(err error) error {
-			return err
-		}}
+		config := cabridss.WebDssServerConfig{Dss: dss.(cabridss.HDss), HasLog: opts.HasLog}
 		server, ok := vars.servers[addr]
-		if ok {
-			server.ConfigureApi(root, config, cabridss.WebDssServerConfigurator, nil)
-		} else {
-			vars.servers[addr], err = cabridss.NewWebDssServer(addr, root, config)
+		if !ok {
+			httpConfig := cabridss.WebDssHttpConfig{
+				Addr:       addr,
+				IsTls:      isTls,
+				TlsCert:    opts.TlsCert,
+				TlsKey:     opts.TlsKey,
+				TlsNoCheck: opts.TlsNoCheck,
+			}
+			vars.servers[addr], err = cabridss.NewWebDssServer(httpConfig, root, config)
 			if err != nil {
+				dss.Close()
 				return err
 			}
+		} else {
+			server.ConfigureApi(root, config, func(root string, customConfigs map[string]interface{}) error {
+				return customConfigs[root].(cabridss.WebDssServerConfig).Dss.Close()
+			}, cabridss.WebDssServerConfigurator)
 		}
-		// FIXME: close other DSS properly in case of error to unlock
 	}
 	<-ctx.Done()
 	for addr, server := range vars.servers {

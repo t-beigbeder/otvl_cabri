@@ -10,10 +10,17 @@ import (
 	"strings"
 )
 
+type WebDssHttpConfig struct {
+	Addr       string // host[:port]
+	IsTls      bool   // https
+	TlsCert    string // certificate file on https server or untrusted CA on https client
+	TlsKey     string // certificate key file on https server
+	TlsNoCheck bool   // no check of certifcate by https client
+}
+
 type WebDssServerConfig struct {
-	Dss              HDss
-	HasLog           bool
-	ShutdownCallback func(err error) error
+	Dss    HDss
+	HasLog bool
 }
 
 func sInitialize(c echo.Context) error {
@@ -210,15 +217,20 @@ func WebDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	return nil
 }
 
-func NewWebDssServer(addr, root string, config WebDssServerConfig) (WebServer, error) {
-	s := NewEServer(addr, config.HasLog)
-	s.ConfigureApi(root, config, WebDssServerConfigurator, func(customConfigs map[string]interface{}) error {
-		err := config.Dss.Close()
-		if config.ShutdownCallback != nil {
-			err = config.ShutdownCallback(err)
+func NewWebDssServer(httpConfig WebDssHttpConfig, root string, config WebDssServerConfig) (WebServer, error) {
+	var tlsConfig *TlsConfig
+	if httpConfig.IsTls {
+		var err error
+		tlsConfig = &TlsConfig{cert: httpConfig.TlsCert, key: httpConfig.TlsKey, noClientCheck: httpConfig.TlsNoCheck}
+		if err != nil {
+			return nil, fmt.Errorf("in NewWebDssServer: %v", err)
 		}
-		return err
-	})
+	}
+	s := NewEServer(httpConfig.Addr, config.HasLog, tlsConfig)
+	s.ConfigureApi(root, config, func(root string, customConfigs map[string]interface{}) error {
+		return customConfigs[root].(WebDssServerConfig).Dss.Close()
+	},
+		WebDssServerConfigurator)
 	err := s.Serve()
 	return s, err
 }
