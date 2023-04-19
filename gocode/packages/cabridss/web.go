@@ -2,6 +2,7 @@ package cabridss
 
 import (
 	"context"
+	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -29,9 +30,11 @@ type WebServer interface {
 }
 
 type TlsConfig struct {
-	cert          string
-	key           string
-	noClientCheck bool
+	cert              string
+	key               string
+	noClientCheck     bool
+	basicAuthUser     string
+	basicAuthPassword string
 }
 
 func getTlsClientConfig(tlsConfig *TlsConfig) (*tls.Config, error) {
@@ -40,6 +43,9 @@ func getTlsClientConfig(tlsConfig *TlsConfig) (*tls.Config, error) {
 	}
 	if tlsConfig.noClientCheck {
 		return &tls.Config{InsecureSkipVerify: true}, nil
+	}
+	if tlsConfig.cert == "" {
+		return &tls.Config{}, nil
 	}
 	caCert, err := os.ReadFile(tlsConfig.cert)
 	if err != nil {
@@ -112,13 +118,22 @@ func (esv *eServer) Serve() error {
 	esv.shutResp = make(chan interface{})
 	go func() {
 		var err error
+		if esv.tlsConfig != nil && esv.tlsConfig.basicAuthUser != "" {
+			esv.e.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
+				if subtle.ConstantTimeCompare([]byte(username), []byte(esv.tlsConfig.basicAuthUser)) == 1 &&
+					subtle.ConstantTimeCompare([]byte(password), []byte(esv.tlsConfig.basicAuthPassword)) == 1 {
+					return true, nil
+				}
+				return false, nil
+			}))
+		}
 		if esv.tlsConfig == nil {
 			err = esv.e.Start(esv.addr)
 		} else {
 			err = esv.e.StartTLS(esv.addr, esv.tlsConfig.cert, esv.tlsConfig.key)
 		}
 		if err != nil {
-			//fmt.Fprintf(os.Stderr, "Start or StartTLS %v\n", err)
+			fmt.Fprintf(os.Stderr, "Start or StartTLS %v\n", err)
 		}
 		close(esv.shutResp)
 	}()
@@ -146,9 +161,20 @@ func (esv *eServer) Serve() error {
 	}
 	url := fmt.Sprintf("%s://%s:%s%scheck", protocol, host, port, esv.firstRoot)
 	for i := 0; i < 5; i++ {
-		rsp, err := client.Get(url)
-		if err == nil && rsp.StatusCode == http.StatusOK {
-			break
+		var (
+			req *http.Request
+			rsp *http.Response
+			err error
+		)
+		req, err = http.NewRequest("GET", url, nil)
+		if err == nil {
+			if esv.tlsConfig != nil && esv.tlsConfig.basicAuthUser != "" {
+				req.SetBasicAuth(esv.tlsConfig.basicAuthUser, esv.tlsConfig.basicAuthPassword)
+			}
+			rsp, err = client.Do(req)
+			if err == nil && rsp.StatusCode == http.StatusOK {
+				break
+			}
 		}
 		if i == 4 {
 			return fmt.Errorf("in Serve: check KO")
@@ -276,10 +302,12 @@ type WebApiClient interface {
 
 type Client struct {
 	http.Client
-	mux     sync.Mutex
-	nextId  int
-	actives map[int]bool
-	noLimit bool
+	mux               sync.Mutex
+	nextId            int
+	actives           map[int]bool
+	noLimit           bool
+	basicAuthUser     string
+	basicAuthPassword string
 }
 
 func (c *Client) limitActive() int {
@@ -309,6 +337,9 @@ func (c *Client) unlimitActive(id int) {
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	if !c.noLimit {
 		defer c.unlimitActive(c.limitActive())
+	}
+	if c.basicAuthUser != "" {
+		req.SetBasicAuth(c.basicAuthUser, c.basicAuthPassword)
 	}
 	return c.Client.Do(req)
 }
@@ -417,7 +448,11 @@ func NewWebApiClient(protocol string, host string, port string, tlsConfig *TlsCo
 			return nil, fmt.Errorf("in NewWebApiClient: %v", err)
 		}
 		ht = &http.Transport{TLSClientConfig: tlsClientConfig}
-		client = Client{Client: http.Client{Timeout: timeout, Transport: ht}}
+		client = Client{
+			Client:            http.Client{Timeout: timeout, Transport: ht},
+			basicAuthUser:     tlsConfig.basicAuthUser,
+			basicAuthPassword: tlsConfig.basicAuthPassword,
+		}
 	} else {
 		client = Client{Client: http.Client{Timeout: timeout}}
 	}

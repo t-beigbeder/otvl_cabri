@@ -8,24 +8,26 @@ import (
 )
 
 type DssBaseConfig struct {
-	ConfigDir      string                                                      `json:"-"`          // if not "" path to the user's configuration directory
-	ConfigPassword string                                                      `json:"-"`          // if master password is used to encrypt client configuration
-	LocalPath      string                                                      `json:"-"`          // local path for configuration and index, or "" if unused (index will be memory based)
-	RepoId         string                                                      `json:"repoId"`     // uuid of the repository
-	Unlock         bool                                                        `json:"-"`          // unlocks index concurrent updates lock
-	AutoRepair     bool                                                        `json:"autoRepair"` // if unlock required, automatically repairs the index
-	ReIndex        bool                                                        `json:"-"`          // forces full content reindexation
-	GetIndex       func(config DssBaseConfig, localPath string) (Index, error) `json:"-"`          // non-default function to instantiate an index
-	XImpl          string                                                      `json:"xImpl"`      // index implementation code: bdb, memory, no
-	LibApi         bool                                                        `json:"-"`          // prevents using a web API server for local DSS access
-	WebProtocol    string                                                      `json:"-"`          // web API server protocol
-	WebHost        string                                                      `json:"-"`          // web API server host
-	WebPort        string                                                      `json:"-"`          // web API server port
-	TlsCert        string                                                      `json:"-"`          // certificate file on https server or untrusted CA on https client
-	TlsKey         string                                                      `json:"-"`          // certificate key file on https server
-	TlsNoCheck     bool                                                        `json:"-"`          // no check of certificate by https client
-	WebRoot        string                                                      `json:"-"`          // web API server root
-	Encrypted      bool                                                        `json:"encrypted"`  // repository is encrypted
+	ConfigDir         string                                                      `json:"-"`          // if not "" path to the user's configuration directory
+	ConfigPassword    string                                                      `json:"-"`          // if master password is used to encrypt client configuration
+	LocalPath         string                                                      `json:"-"`          // local path for configuration and index, or "" if unused (index will be memory based)
+	RepoId            string                                                      `json:"repoId"`     // uuid of the repository
+	Unlock            bool                                                        `json:"-"`          // unlocks index concurrent updates lock
+	AutoRepair        bool                                                        `json:"autoRepair"` // if unlock required, automatically repairs the index
+	ReIndex           bool                                                        `json:"-"`          // forces full content reindexation
+	GetIndex          func(config DssBaseConfig, localPath string) (Index, error) `json:"-"`          // non-default function to instantiate an index
+	XImpl             string                                                      `json:"xImpl"`      // index implementation code: bdb, memory, no
+	LibApi            bool                                                        `json:"-"`          // prevents using a web API server for local DSS access
+	WebProtocol       string                                                      `json:"-"`          // web API server protocol
+	WebHost           string                                                      `json:"-"`          // web API server host
+	WebPort           string                                                      `json:"-"`          // web API server port
+	TlsCert           string                                                      `json:"-"`          // certificate file on https server or untrusted CA on https client
+	TlsKey            string                                                      `json:"-"`          // certificate key file on https server
+	TlsNoCheck        bool                                                        `json:"-"`          // no check of certificate by https client
+	BasicAuthUser     string                                                      `json:"-"`          // adds basic authentication
+	BasicAuthPassword string                                                      `json:"-"`          // basic authentication pasword
+	WebRoot           string                                                      `json:"-"`          // web API server root
+	Encrypted         bool                                                        `json:"encrypted"`  // repository is encrypted
 }
 
 func writeDssConfig(bc DssBaseConfig, dssConfig interface{}) error {

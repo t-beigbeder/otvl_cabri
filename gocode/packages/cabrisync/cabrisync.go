@@ -16,12 +16,13 @@ type SyncOptions struct {
 	Evaluate bool // don't synchronize, just report work to be done
 	BiDir    bool // bidirectional synchronization, the latest modified content wins,
 	// if false synchronization is done from left to right
-	KeepContent bool              // don't remove content deleted from one side in other side
-	NoCh        bool              // don't evaluate checksum when not available, compare content's size and modification time
-	NoACL       bool              // don't evaluate ACL, use default ACL
-	MapACL      map[string]string // left to right ACL user names mapping
-	BeVerbose   BeVerboseFunc     // callback for process verbosity
-	RefDiag     *SyncRefDiag      // a reference report for diagnosis
+	KeepContent bool                           // don't remove content deleted from one side in other side
+	NoCh        bool                           // don't evaluate checksum when not available, compare content's size and modification time
+	NoACL       bool                           // don't evaluate ACL, use default ACL
+	LeftMapACL  map[string][]cabridss.ACLEntry // left to right ACL user names mapping
+	RightMapACL map[string][]cabridss.ACLEntry // right to left ACL user names mapping
+	BeVerbose   BeVerboseFunc                  // callback for process verbosity
+	RefDiag     *SyncRefDiag                   // a reference report for diagnosis
 }
 
 func doSynchronize(ctx context.Context, ldss cabridss.Dss, lpath string, rdss cabridss.Dss, rpath string, options SyncOptions) (report SyncReport) {

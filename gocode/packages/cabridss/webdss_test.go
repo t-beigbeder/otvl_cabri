@@ -22,6 +22,8 @@ func createWebDssServer(addr, root string, params CreateNewParams) (WebServer, e
 		httpConfig.IsTls = true
 		httpConfig.TlsCert = "cert.pem"
 		httpConfig.TlsKey = "key.pem"
+		httpConfig.BasicAuthUser = "user"
+		httpConfig.BasicAuthPassword = "passw0rd"
 	}
 	return NewWebDssServer(httpConfig, root, WebDssServerConfig{Dss: dss.(HDss), HasLog: true})
 }
@@ -178,11 +180,13 @@ func TestNewWebDssTlsClientOlf(t *testing.T) {
 			dss, err := NewWebDss(
 				WebDssConfig{
 					DssBaseConfig: DssBaseConfig{
-						ConfigDir:   ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
-						WebProtocol: "https",
-						WebHost:     "localhost",
-						WebPort:     "3443",
-						TlsCert:     "cert.pem",
+						ConfigDir:         ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
+						WebProtocol:       "https",
+						WebHost:           "localhost",
+						WebPort:           "3443",
+						TlsCert:           "cert.pem",
+						BasicAuthUser:     "user",
+						BasicAuthPassword: "passw0rd",
 					}, NoClientLimit: true},
 				0, nil)
 			return dss, err

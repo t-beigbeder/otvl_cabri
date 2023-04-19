@@ -10,13 +10,15 @@ import (
 )
 
 type UiRunEnv struct {
-	Encrypted       bool
-	MasterPassword  string
-	ConfigDir       string
-	UserConfig      cabridss.UserConfig
-	Users           []string
-	UiACL           []cabridss.ACLEntry
-	DefaultSyncUser string // only used for synchro: OS uid for fsy DSS, empty otherwise
+	Encrypted         bool
+	MasterPassword    string
+	ConfigDir         string
+	UserConfig        cabridss.UserConfig
+	Users             []string
+	UiACL             []cabridss.ACLEntry
+	DefaultSyncUser   string // only used for synchro: OS uid for fsy DSS, empty otherwise
+	BasicAuthUser     string
+	BasicAuthPassword string
 }
 
 func (ure UiRunEnv) GetACL() []cabridss.ACLEntry {
@@ -117,6 +119,13 @@ func GetUiRunEnv[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context, encrypted
 	if _, err = ure.ACLOrDefault(); err != nil {
 		return
 	}
+	for _, idc := range ure.UserConfig.Identities {
+		if idc.Alias == "WebBasicAuth" {
+			ure.BasicAuthUser = idc.PKey
+			ure.BasicAuthPassword = idc.Secret
+			break
+		}
+	}
 	return
 }
 
@@ -192,7 +201,7 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 		}
 	} else if strings.HasPrefix(dssType, "webapi+http") {
 		frags := strings.Split(root[2:], "/")
-		wc, err := GetWebConfig(bo, nhArgs.ObsIx, dssType == "webapi+https", frags[0], frags[1], ure.MasterPassword)
+		wc, err := GetWebConfig(bo, nhArgs.ObsIx, dssType == "webapi+https", frags[0], frags[1], ure)
 		if err != nil {
 			return nil, err
 		}

@@ -109,12 +109,15 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (cab
 	return dss, path, ure, nil
 }
 
-func uiMapACL(opts SyncOptions, lure, rure UiRunEnv) (map[string]string, error) {
-	macl := map[string]string{}
+func uiMapACL(opts SyncOptions, lure, rure UiRunEnv) (lmacl, rmacl map[string][]cabridss.ACLEntry, err error) {
+	lmacl = map[string][]cabridss.ACLEntry{}
+	rmacl = map[string][]cabridss.ACLEntry{}
+	err = nil
 	for _, uim := range opts.MapACL {
 		uimes := strings.Split(uim, ":")
 		if len(uimes) != 2 {
-			return nil, fmt.Errorf("ACL user mapping %s has not the form <left-user:right-user>", uim)
+			err = fmt.Errorf("ACL user mapping %s has not the form <left-user:right-user>", uim)
+			return
 		}
 		lu, ru := uimes[0], uimes[1]
 		if lu == "" {
@@ -126,20 +129,23 @@ func uiMapACL(opts SyncOptions, lure, rure UiRunEnv) (map[string]string, error) 
 		if lure.Encrypted {
 			lup := lure.UserConfig.GetIdentity(lu).PKey
 			if lup == "" {
-				return nil, fmt.Errorf("no public key for left identity %s in ACL user mapping %s", lu, uim)
+				err = fmt.Errorf("no public key for left identity %s in ACL user mapping %s", lu, uim)
+				return
 			}
 			lu = lup
 		}
 		if rure.Encrypted {
 			rup := rure.UserConfig.GetIdentity(ru).PKey
 			if rup == "" {
-				return nil, fmt.Errorf("no public key for left identity %s in ACL user mapping %s", ru, uim)
+				err = fmt.Errorf("no public key for right identity %s in ACL user mapping %s", ru, uim)
+				return
 			}
 			ru = rup
 		}
-		macl[lu] = ru
+		lmacl[lu] = append(lmacl[lu], cabridss.ACLEntry{User: ru, Rights: cabridss.GetUserRights(rure.UiACL, ru)})
+		rmacl[ru] = append(rmacl[ru], cabridss.ACLEntry{User: lu, Rights: cabridss.GetUserRights(lure.UiACL, lu)})
 	}
-	return macl, nil
+	return
 }
 
 func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
@@ -147,6 +153,9 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 		err error
 	)
 	opts := syncOpts(ctx)
+	if opts.MapACL == nil {
+		opts.MapACL = []string{":"}
+	}
 	obsIx := 0
 	ldss, lpath, lure, err := str2dss(ctx, ldssPath, false, &obsIx)
 	if err != nil {
@@ -157,7 +166,7 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 		ldss.Close()
 		return err
 	}
-	macl, err := uiMapACL(opts, lure, rure)
+	lmacl, rmacl, err := uiMapACL(opts, lure, rure)
 	if err != nil {
 		ldss.Close()
 		rdss.Close()
@@ -179,7 +188,8 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 		KeepContent: opts.KeepContent,
 		NoCh:        opts.NoCh,
 		NoACL:       opts.NoACL,
-		MapACL:      macl,
+		LeftMapACL:  lmacl,
+		RightMapACL: rmacl,
 		BeVerbose:   beVerbose,
 	}
 	iOutputs := plumber.LaunchAndWait(ctx,

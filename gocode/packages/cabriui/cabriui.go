@@ -295,8 +295,8 @@ func GetSmfConfig(opts BaseOptions, index int, root, mp string) (cabridss.ObsCon
 	return config, nil
 }
 
-func GetWebConfig(opts BaseOptions, index int, isTls bool, addr, root, mp string) (cabridss.WebDssConfig, error) {
-	bc, err := GetBaseConfig(opts, index, "", "", mp)
+func GetWebConfig(opts BaseOptions, index int, isTls bool, addr, root string, ure UiRunEnv) (cabridss.WebDssConfig, error) {
+	bc, err := GetBaseConfig(opts, index, "", "", ure.MasterPassword)
 	if err != nil {
 		return cabridss.WebDssConfig{}, err
 	}
@@ -310,6 +310,8 @@ func GetWebConfig(opts BaseOptions, index int, isTls bool, addr, root, mp string
 		bc.WebProtocol = "https"
 		bc.TlsCert = opts.TlsCert
 		bc.TlsNoCheck = opts.TlsNoCheck
+		bc.BasicAuthUser = ure.BasicAuthUser
+		bc.BasicAuthPassword = ure.BasicAuthPassword
 	}
 	bc.WebHost = host
 	bc.WebPort = port

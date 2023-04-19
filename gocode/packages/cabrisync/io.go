@@ -35,25 +35,42 @@ func (sdc *sideCtx) getMeta() (err error) {
 	return nil
 }
 
+func mapACE(oace cabridss.ACLEntry, tu string, rightsMask cabridss.Rights) cabridss.ACLEntry {
+	return cabridss.ACLEntry{
+		User: tu,
+		Rights: cabridss.Rights{
+			Read:    oace.Rights.Read && rightsMask.Read,
+			Write:   oace.Rights.Write && rightsMask.Write,
+			Execute: oace.Rights.Execute && rightsMask.Execute,
+		},
+	}
+}
+
 func (syc *syncCtx) mapACL(oACL []cabridss.ACLEntry, isRight bool) []cabridss.ACLEntry {
 	if syc.options.NoACL {
 		return nil
 	}
-	var tACL []cabridss.ACLEntry
-	for _, oae := range oACL {
-		tae := oae
-		for lu, ru := range syc.options.MapACL {
-			if (isRight && ru == oae.User) || (!isRight && lu == oae.User) {
-				if isRight {
-					tae.User = lu
-				} else {
-					tae.User = ru
+	var tacl []cabridss.ACLEntry
+	for _, oace := range oACL {
+		macl := map[string][]cabridss.ACLEntry{}
+		if !isRight {
+			macl = syc.options.LeftMapACL
+		} else {
+			macl = syc.options.RightMapACL
+		}
+		done := false
+		for cou, cmacl := range macl {
+			if cou == oace.User {
+				for _, mace := range cmacl {
+					tacl = append(tacl, mapACE(oace, oace.User, mace.Rights))
 				}
 			}
 		}
-		tACL = append(tACL, tae)
+		if !done {
+			tacl = append(tacl, mapACE(oace, oace.User, cabridss.Rights{Execute: true, Read: true, Write: true}))
+		}
 	}
-	return tACL
+	return tacl
 }
 
 func (syc *syncCtx) evalMergeNsMeta(rent SyncReportEntry) (mtime int64, lAcl, rAcl []cabridss.ACLEntry) {

@@ -26,3 +26,12 @@ func Users(aes []ACLEntry) (users []string) {
 	}
 	return
 }
+
+func GetUserRights(aes []ACLEntry, user string) Rights {
+	for _, ae := range aes {
+		if ae.User == user {
+			return ae.Rights
+		}
+	}
+	return Rights{}
+}

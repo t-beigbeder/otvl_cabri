@@ -59,7 +59,7 @@ func webApi(ctx context.Context, args []string) error {
 	for i := 0; i < len(args); i++ {
 		dssType, addr, localPath, root, isTls, _ := CheckDssUrlMapping(args[i])
 		if isTls && (opts.TlsCert == "" || opts.TlsKey == "") {
-			return fmt.Errorf("mapping %s requires certificate and key files")
+			return fmt.Errorf("mapping %s requires certificate and key files", args[i])
 		}
 		var params cabridss.CreateNewParams
 		if dssType == "obs" || dssType == "smf" {
@@ -80,11 +80,13 @@ func webApi(ctx context.Context, args []string) error {
 		server, ok := vars.servers[addr]
 		if !ok {
 			httpConfig := cabridss.WebDssHttpConfig{
-				Addr:       addr,
-				IsTls:      isTls,
-				TlsCert:    opts.TlsCert,
-				TlsKey:     opts.TlsKey,
-				TlsNoCheck: opts.TlsNoCheck,
+				Addr:              addr,
+				IsTls:             isTls,
+				TlsCert:           opts.TlsCert,
+				TlsKey:            opts.TlsKey,
+				TlsNoCheck:        opts.TlsNoCheck,
+				BasicAuthUser:     ure.BasicAuthUser,
+				BasicAuthPassword: ure.BasicAuthPassword,
 			}
 			vars.servers[addr], err = cabridss.NewWebDssServer(httpConfig, root, config)
 			if err != nil {

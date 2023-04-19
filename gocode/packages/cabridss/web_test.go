@@ -174,7 +174,7 @@ func TestNewWebTlsApiClient(t *testing.T) {
 	if os.Getenv("CABRIDSS_KEEP_DEV_TESTS") == "" {
 		t.Skip(fmt.Sprintf("Skipping %s because you didn't set CABRIDSS_KEEP_DEV_TESTS", t.Name()))
 	}
-	s := NewEServer("localhost:3443", true, &TlsConfig{"cert.pem", "key.pem", false})
+	s := NewEServer("localhost:3443", true, &TlsConfig{"cert.pem", "key.pem", false, "joe", "secret"})
 	resShutdown := ""
 	s.ConfigureApi("/test", "v3", func(root string, customConfigs map[string]interface{}) error {
 		resShutdown = "Shutdown 0.0.90.90"
@@ -185,7 +185,7 @@ func TestNewWebTlsApiClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	apc, err := NewWebApiClient("https", "localhost", "3443", &TlsConfig{"cert.pem", "key.pem", false}, "test", "sConfigClient")
+	apc, err := NewWebApiClient("https", "localhost", "3443", &TlsConfig{"cert.pem", "key.pem", false, "joe", "secret"}, "test", "sConfigClient")
 	if err != nil {
 		t.Fatal(err)
 	}

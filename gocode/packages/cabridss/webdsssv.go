@@ -11,11 +11,13 @@ import (
 )
 
 type WebDssHttpConfig struct {
-	Addr       string // host[:port]
-	IsTls      bool   // https
-	TlsCert    string // certificate file on https server or untrusted CA on https client
-	TlsKey     string // certificate key file on https server
-	TlsNoCheck bool   // no check of certifcate by https client
+	Addr              string // host[:port]
+	IsTls             bool   // https
+	TlsCert           string // certificate file on https server or untrusted CA on https client
+	TlsKey            string // certificate key file on https server
+	TlsNoCheck        bool   // no check of certifcate by https client
+	BasicAuthUser     string
+	BasicAuthPassword string
 }
 
 type WebDssServerConfig struct {
@@ -221,7 +223,13 @@ func NewWebDssServer(httpConfig WebDssHttpConfig, root string, config WebDssServ
 	var tlsConfig *TlsConfig
 	if httpConfig.IsTls {
 		var err error
-		tlsConfig = &TlsConfig{cert: httpConfig.TlsCert, key: httpConfig.TlsKey, noClientCheck: httpConfig.TlsNoCheck}
+		tlsConfig = &TlsConfig{
+			cert:              httpConfig.TlsCert,
+			key:               httpConfig.TlsKey,
+			noClientCheck:     httpConfig.TlsNoCheck,
+			basicAuthUser:     httpConfig.BasicAuthUser,
+			basicAuthPassword: httpConfig.BasicAuthPassword,
+		}
 		if err != nil {
 			return nil, fmt.Errorf("in NewWebDssServer: %v", err)
 		}

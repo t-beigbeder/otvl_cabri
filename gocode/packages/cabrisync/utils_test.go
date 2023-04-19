@@ -18,7 +18,8 @@ func createWebDssServer(addr, root string, params cabridss.CreateNewParams) (cab
 	if err != nil {
 		return nil, fmt.Errorf("createWebDssServer failed with error %v", err)
 	}
-	s, err := cabridss.NewWebDssServer(addr, root, cabridss.WebDssServerConfig{Dss: dss.(cabridss.HDss), HasLog: false})
+	httpConfig := cabridss.WebDssHttpConfig{Addr: addr}
+	s, err := cabridss.NewWebDssServer(httpConfig, root, cabridss.WebDssServerConfig{Dss: dss.(cabridss.HDss), HasLog: false})
 	return s, err
 }
 
@@ -31,8 +32,8 @@ func optionalSleep(t *testing.T) {
 
 func optionalSkip(t *testing.T) {
 	if os.Getenv("CABRISYNC_SKIP_DEV_TESTS") != "" {
-		if t.Name() == "TestSynchronizeBasic1" ||
-			t.Name() == "TestSynchronizeBasicACL" ||
+		if t.Name() == "TestSynchronizeBasic" ||
+			t.Name() == "TestSynchronizeBasicACL1" ||
 			t.Name() == "TestSynchronizeBasicFsyOlf" ||
 			t.Name() == "TestSynchronizeBasicFsyOlfACL" ||
 			t.Name() == "TestSynchronizeBasicFsyObs" ||

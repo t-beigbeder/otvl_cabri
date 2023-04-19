@@ -213,3 +213,39 @@ Now you can synchronize a full directory with the server as seen above, for inst
 And another user will retrieve it:
 
     $ cabri cli sync -r webapi+http://localhost:3000/demo@ fsy:/home/reader/retrieved_directory@
+
+## Encrypting your data for unsafe storage
+
+If your data is confidential, and you have to store it on unsafe media
+such as unencrypted laptop drive, USB drive, public cloud storage,
+you have the option to encrypt a full Cabri DSS.
+It may be worth noting that encryption
+can be subject to legal concerns in various countries, take legal advice in doubt.
+
+In that case, all data and corresponding metadata such as entity names are encrypted.
+The encryption uses public key, meaning that the data may be decrypted by any of the owners
+of the corresponding public keys you have enabled during encryption (including yours, this may help).
+
+Moreover, as Cabri is Open Source and because unencrypted content never
+quits the workplace where you launch Cabri commands,
+you can be confident that your data is never exposed to unexpected access.
+This rule remains true even if you make use of the previously described HTTP server,
+which is valuable because a [MITM attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
+still wouldn't expose anything.
+
+To create an encrypted DSS, you make use CLI commands as usual but prefix the DSS type with an 'x",
+for instance, a local encrypted DSS using `xolf`:
+
+    $ mkdir /media/guest/usbkey/encrypted_backup
+    $ cabri cli dss make -s s xolf:/media/guest/usbkey/encrypted_backup
+
+Or using object storage with encryption using `xobs`:
+
+    $ cabri cli --password \
+        --obsrg gra --obsep https://s3.gra.cloud.ovh.net \
+        --obsct encrypted_backup_container \
+        --obsak access_key --obssk secret_key \
+        dss make xobs:/home/guest/cabri_config/encrypted_backup
+
+Now you are ready to synchronize your confidential data with this encrypted DSS.
+As it is a rather technical topic, it deserves a [page](encrypt.md) on its own.

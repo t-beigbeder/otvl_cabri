@@ -100,7 +100,13 @@ func (wdi *webDssImpl) initialize(me oDssProxy, config interface{}, lsttime int6
 	remoteWdc.Unlock = false
 	var tlsConfig *TlsConfig
 	if wdc.WebProtocol == "https" {
-		tlsConfig = &TlsConfig{cert: wdc.TlsCert, key: wdc.TlsKey, noClientCheck: wdc.TlsNoCheck}
+		tlsConfig = &TlsConfig{
+			cert:              wdc.TlsCert,
+			key:               wdc.TlsKey,
+			noClientCheck:     wdc.TlsNoCheck,
+			basicAuthUser:     wdc.BasicAuthUser,
+			basicAuthPassword: wdc.BasicAuthPassword,
+		}
 	}
 	wdi.apc, err = NewWebApiClient(wdc.WebProtocol, wdc.WebHost, wdc.WebPort, tlsConfig, wdc.WebRoot, remoteWdc)
 	if err != nil {
