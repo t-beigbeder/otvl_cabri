@@ -46,6 +46,15 @@ func mapACE(oace cabridss.ACLEntry, tu string, rightsMask cabridss.Rights) cabri
 	}
 }
 
+func appendAceOnce(tacl []cabridss.ACLEntry, ace cabridss.ACLEntry) []cabridss.ACLEntry {
+	for _, tace := range tacl {
+		if tace.User == ace.User {
+			return tacl
+		}
+	}
+	return append(tacl, ace)
+}
+
 func (syc *syncCtx) mapACL(oACL []cabridss.ACLEntry, isRight bool) []cabridss.ACLEntry {
 	if syc.options.NoACL {
 		return nil
@@ -61,13 +70,14 @@ func (syc *syncCtx) mapACL(oACL []cabridss.ACLEntry, isRight bool) []cabridss.AC
 		done := false
 		for cou, cmacl := range macl {
 			if cou == oace.User {
+				done = true
 				for _, mace := range cmacl {
-					tacl = append(tacl, mapACE(oace, oace.User, mace.Rights))
+					tacl = appendAceOnce(tacl, mapACE(oace, mace.User, mace.Rights))
 				}
 			}
 		}
 		if !done {
-			tacl = append(tacl, mapACE(oace, oace.User, cabridss.Rights{Execute: true, Read: true, Write: true}))
+			tacl = appendAceOnce(tacl, mapACE(oace, oace.User, cabridss.Rights{Execute: true, Read: true, Write: true}))
 		}
 	}
 	return tacl

@@ -10,6 +10,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"io"
 	"os"
+	"os/user"
 	"strings"
 	"testing"
 	"time"
@@ -754,4 +755,118 @@ func TestLoopSynchroInconsistentChildren(t *testing.T) {
 			t.Fatalf("round #%d: %v", i, err)
 		}
 	}
+}
+
+func TestMappedAcl(t *testing.T) {
+	optionalSkip(t)
+	startup := func(tfs *testfs.Fs) error {
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/simple"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/u1"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/u2"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/simple/d1"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/simple/d2"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/simple/d3"), 0755); err != nil {
+			return err
+		}
+
+		if err := tfs.RandTextFile("fsy/simple/d1/f1.txt", 41); err != nil {
+			return err
+		}
+		if err := tfs.RandTextFile("fsy/simple/d2/f2.txt", 42); err != nil {
+			return err
+		}
+		if err := tfs.RandTextFile("fsy/simple/d3/f3.txt", 43); err != nil {
+			return err
+		}
+
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "olf"), 0755); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	tfs, err := testfs.CreateFs("TestMappedAcl", startup)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfs.Delete()
+	olfp := ufpath.Join(tfs.Path(), "olf")
+	olf, err := cabridss.CreateOlfDss(cabridss.OlfConfig{DssBaseConfig: cabridss.DssBaseConfig{LocalPath: olfp}, Root: olfp, Size: "s"})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	olf.Mkns("", time.Now().Unix(), []string{"d1/", "d2/", "d3/"},
+		[]cabridss.ACLEntry{
+			{User: "u1", Rights: cabridss.Rights{Read: true, Write: true, Execute: true}},
+			{User: "u2", Rights: cabridss.Rights{Read: true, Write: true, Execute: true}},
+		})
+	fsy, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, ufpath.Join(tfs.Path(), "fsy/simple"))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	wr := cabridss.Rights{Read: true, Write: true, Execute: true}
+	rr := cabridss.Rights{Read: true, Write: false, Execute: true}
+	pu, _ := user.Current()
+	dsu := fmt.Sprintf("x-uid:%s", pu.Uid)
+	lmacl1 := map[string][]cabridss.ACLEntry{
+		dsu: {cabridss.ACLEntry{User: "u1", Rights: wr}, cabridss.ACLEntry{User: "u2", Rights: rr}},
+	}
+	lmacl2 := map[string][]cabridss.ACLEntry{
+		dsu: {cabridss.ACLEntry{User: "u1", Rights: rr}, cabridss.ACLEntry{User: "u2", Rights: wr}},
+	}
+	lmacl3 := map[string][]cabridss.ACLEntry{
+		dsu: {cabridss.ACLEntry{User: "u1", Rights: wr}, cabridss.ACLEntry{User: "u2", Rights: wr}},
+	}
+	rmacl := map[string][]cabridss.ACLEntry{
+		"u1": {cabridss.ACLEntry{User: dsu, Rights: wr}},
+		"u2": {cabridss.ACLEntry{User: dsu, Rights: wr}},
+	}
+	report := Synchronize(nil, fsy, "d1", olf, "d1", SyncOptions{InDepth: true, LeftMapACL: lmacl1, RightMapACL: rmacl})
+	report.TextOutput(io.Discard)
+	rs := report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d1", olf, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl1, RightMapACL: rmacl})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+
+	report = Synchronize(nil, fsy, "d2", olf, "d2", SyncOptions{InDepth: true, LeftMapACL: lmacl2, RightMapACL: rmacl})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d2", olf, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl2, RightMapACL: rmacl})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+
+	report = Synchronize(nil, fsy, "d3", olf, "d3", SyncOptions{InDepth: true, LeftMapACL: lmacl3, RightMapACL: rmacl})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d3", olf, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl3, RightMapACL: rmacl})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+
 }

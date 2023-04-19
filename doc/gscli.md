@@ -214,6 +214,8 @@ And another user will retrieve it:
 
     $ cabri cli sync -r webapi+http://localhost:3000/demo@ fsy:/home/reader/retrieved_directory@
 
+You will generally want to control access to data when using DSS in multi-user mode.
+ACL can be used for such a purpose and their basic use is explained on a dedicated [page](acl.md).
 ## Encrypting your data for unsafe storage
 
 If your data is confidential, and you have to store it on unsafe media

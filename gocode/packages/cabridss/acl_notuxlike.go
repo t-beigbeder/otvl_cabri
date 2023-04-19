@@ -6,5 +6,10 @@ import (
 	"os"
 )
 
-func getSysAcl(fi os.FileInfo) []ACLEntry         { return nil }
-func setSysAcl(path string, acl []ACLEntry) error { return nil }
+func getSysAcl(fi os.FileInfo) []ACLEntry {
+	return getSysAclNotUx(fi)
+}
+
+func setSysAcl(path string, acl []ACLEntry) error {
+	return setSysAclNotUx(path, acl)
+}

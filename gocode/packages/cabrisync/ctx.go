@@ -79,7 +79,7 @@ func (syc *syncCtx) pErr() error {
 	return nil
 }
 
-func (syc *syncCtx) cmpMeta() (updated, mUpdated bool) {
+func (syc *syncCtx) cmpMeta(isRight bool) (updated, mUpdated bool) {
 	lMeta, _ := syc.left.meta.(cabridss.Meta)
 	rMeta, _ := syc.right.meta.(cabridss.Meta)
 	if lMeta.Size != rMeta.Size || (lMeta.Ch != "" && lMeta.Ch != rMeta.Ch) {
@@ -93,18 +93,23 @@ func (syc *syncCtx) cmpMeta() (updated, mUpdated bool) {
 	if syc.options.NoACL {
 		return
 	}
-	mACL := syc.mapACL(rMeta.ACL, true)
-	mUpdated = !cabridss.CmpAcl(lMeta.ACL, mACL)
+	if !isRight {
+		mACL := syc.mapACL(lMeta.ACL, false)
+		mUpdated = !cabridss.CmpAcl(rMeta.ACL, mACL)
+	} else {
+		mACL := syc.mapACL(rMeta.ACL, true)
+		mUpdated = !cabridss.CmpAcl(lMeta.ACL, mACL)
+	}
 	return
 }
 
 func (syc *syncCtx) eval(rent *SyncReportEntry) {
 	if syc.left.exist {
 		if syc.right.exist {
-			rent.Updated, rent.MUpdated = syc.cmpMeta()
 			if syc.options.BiDir {
 				rent.isRTL = syc.right.meta.GetMtime() > syc.left.meta.GetMtime()
 			}
+			rent.Updated, rent.MUpdated = syc.cmpMeta(rent.isRTL)
 		} else {
 			rent.Created = true
 		}

@@ -137,3 +137,38 @@ func TestOlfACLBase(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestNotUx(t *testing.T) {
+	startup := func(tfs *testfs.Fs) error {
+		if err := tfs.RandTextFile("a.txt", 41); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	tfs, err := testfs.CreateFs("TestNotUx", startup)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfs.Delete()
+	pa := ufpath.Join(tfs.Path(), "a.txt")
+	fi, err := os.Stat(pa)
+	if err != nil {
+		t.Fatal(err)
+	}
+	acl := getSysAclNotUx(fi)
+	if len(acl) != 1 || !acl[0].Rights.Write {
+		t.Fatalf("acl %+v", acl)
+	}
+	acl[0].Rights.Write = false
+	if err = setSysAclNotUx(pa, acl); err != nil {
+		t.Fatal(err)
+	}
+	if fi, err = os.Stat(pa); err != nil {
+		t.Fatal(err)
+	}
+	acl = getSysAclNotUx(fi)
+	if len(acl) != 1 || acl[0].Rights.Write {
+		t.Fatalf("acl %+v", acl)
+	}
+}

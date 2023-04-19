@@ -158,6 +158,9 @@ func CheckUiACL(sacl []string) (acl []cabridss.ACLEntry, err error) {
 				return nil, fmt.Errorf("invalid character %c for access right (not in 'rwx')", char)
 			}
 		}
+		if rights == "" {
+			ur = cabridss.Rights{Read: true, Write: true, Execute: true}
+		}
 		acl = append(acl, cabridss.ACLEntry{User: u, Rights: ur})
 	}
 	return

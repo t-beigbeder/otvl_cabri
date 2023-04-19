@@ -142,8 +142,13 @@ func uiMapACL(opts SyncOptions, lure, rure UiRunEnv) (lmacl, rmacl map[string][]
 			}
 			ru = rup
 		}
-		lmacl[lu] = append(lmacl[lu], cabridss.ACLEntry{User: ru, Rights: cabridss.GetUserRights(rure.UiACL, ru)})
-		rmacl[ru] = append(rmacl[ru], cabridss.ACLEntry{User: lu, Rights: cabridss.GetUserRights(lure.UiACL, lu)})
+		dr := cabridss.Rights{
+			Read:    true,
+			Write:   true,
+			Execute: true,
+		}
+		lmacl[lu] = append(lmacl[lu], cabridss.ACLEntry{User: ru, Rights: cabridss.GetUserRights(rure.UiACL, ru, dr)})
+		rmacl[ru] = append(rmacl[ru], cabridss.ACLEntry{User: lu, Rights: cabridss.GetUserRights(lure.UiACL, lu, dr)})
 	}
 	return
 }

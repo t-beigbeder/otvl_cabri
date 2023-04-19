@@ -1,5 +1,10 @@
 package cabridss
 
+import (
+	"fmt"
+	"os"
+)
+
 type Rights struct {
 	Read    bool `json:"read"`
 	Write   bool `json:"write"`
@@ -27,11 +32,41 @@ func Users(aes []ACLEntry) (users []string) {
 	return
 }
 
-func GetUserRights(aes []ACLEntry, user string) Rights {
+func GetUserRights(aes []ACLEntry, user string, defaultRights Rights) Rights {
 	for _, ae := range aes {
 		if ae.User == user {
 			return ae.Rights
 		}
 	}
-	return Rights{}
+	return defaultRights
+}
+
+func getSysAclNotUx(fi os.FileInfo) []ACLEntry {
+	perm := fi.Mode().Perm()
+	ael := []ACLEntry{
+		{User: "", Rights: Rights{Read: perm&(1<<8) != 0, Write: perm&(1<<7) != 0, Execute: perm&(1<<6) != 0}},
+	}
+	return ael
+}
+
+func setSysAclNotUx(path string, acl []ACLEntry) error {
+	if len(acl) == 0 {
+		return nil
+	}
+	var mode os.FileMode
+	var err error
+	ur := GetUserRights(acl, "", Rights{})
+	if ur.Read {
+		mode |= 1 << 8
+	}
+	if ur.Write {
+		mode |= 1 << 7
+	}
+	if ur.Execute {
+		mode |= 1 << 6
+	}
+	if err = os.Chmod(path, mode); err != nil {
+		return fmt.Errorf("in setSysAclNotUx: %v", err)
+	}
+	return nil
 }
