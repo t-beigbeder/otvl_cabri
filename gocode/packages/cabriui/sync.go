@@ -20,8 +20,6 @@ type SyncOptions struct {
 	NoCh         bool
 	NoACL        bool
 	MapACL       []string
-	LeftUsers    []string
-	LeftACL      []string
 	Verbose      bool
 	VerboseLevel int
 	LeftTime     string
@@ -70,7 +68,7 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (cab
 	)
 	dssType, root, path, _ := CheckDssPath(dssPath)
 	// will setup users and ACL for right-side DSS
-	if ure, err = GetUiRunEnv[SyncOptions, *SyncVars](ctx, dssType[0] == 'x'); err != nil {
+	if ure, err = GetUiRunEnv[SyncOptions, *SyncVars](ctx, dssType[0] == 'x', !isRight); err != nil {
 		return nil, "", ure, err
 	}
 	if isRight {
@@ -80,7 +78,7 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (cab
 		if ure.UiACL, err = CheckUiACL(syncOpts(ctx).LeftACL); err != nil {
 			return nil, "", ure, err
 		}
-		ure.Users = syncOpts(ctx).LeftUsers
+		ure.UiUsers = syncOpts(ctx).LeftUsers
 		if _, err = ure.ACLOrDefault(); err != nil {
 			return nil, "", ure, err
 		}
@@ -126,6 +124,7 @@ func uiMapACL(opts SyncOptions, lure, rure UiRunEnv) (lmacl, rmacl map[string][]
 		if ru == "" {
 			ru = rure.DefaultSyncUser
 		}
+		lua, rua := lu, ru
 		if lure.Encrypted {
 			lup := lure.UserConfig.GetIdentity(lu).PKey
 			if lup == "" {
@@ -147,8 +146,8 @@ func uiMapACL(opts SyncOptions, lure, rure UiRunEnv) (lmacl, rmacl map[string][]
 			Write:   true,
 			Execute: true,
 		}
-		lmacl[lu] = append(lmacl[lu], cabridss.ACLEntry{User: ru, Rights: cabridss.GetUserRights(rure.UiACL, ru, dr)})
-		rmacl[ru] = append(rmacl[ru], cabridss.ACLEntry{User: lu, Rights: cabridss.GetUserRights(lure.UiACL, lu, dr)})
+		lmacl[lu] = append(lmacl[lu], cabridss.ACLEntry{User: ru, Rights: cabridss.GetUserRights(rure.UiACL, rua, dr)})
+		rmacl[ru] = append(rmacl[ru], cabridss.ACLEntry{User: lu, Rights: cabridss.GetUserRights(lure.UiACL, lua, dr)})
 	}
 	return
 }

@@ -1,6 +1,8 @@
 package testfs
 
 import (
+	"github.com/spf13/afero"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrifsu"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"math/rand"
 	"os"
@@ -55,6 +57,7 @@ func CreateFs(name string, startup func(f *Fs) error) (*Fs, error) {
 }
 
 func (f *Fs) Delete() error {
+	cabrifsu.EnableWrite(afero.NewOsFs(), f.path, true)
 	os.RemoveAll(f.path)
 	return nil
 }

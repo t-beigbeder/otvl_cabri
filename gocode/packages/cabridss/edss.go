@@ -39,25 +39,32 @@ func (edi *eDssImpl) isDuplicate(ch string) (bool, error) {
 
 func (edi *eDssImpl) isEncrypted() bool { return true }
 
+func (edi *eDssImpl) defaultUser() string {
+	for _, id := range edi.apc.GetConfig().(webDssClientConfig).identities {
+		if id.Alias == "" {
+			return id.PKey
+		}
+	}
+	return ""
+}
+
 func (edi *eDssImpl) defaultAcl(acl []ACLEntry) []ACLEntry {
 	if acl != nil {
 		return acl
 	}
-	for _, id := range edi.apc.GetConfig().(webDssClientConfig).identities {
-		if id.Alias == "" {
-			return []ACLEntry{{User: id.PKey, Rights: Rights{Read: true, Write: true}}}
-		}
+	if edi.defaultUser() == "" {
+		return nil
 	}
-	return nil
+	return []ACLEntry{{User: edi.defaultUser(), Rights: Rights{Read: true, Write: true}}}
 }
 
 func (edi *eDssImpl) secrets(users []string) (res []string) {
 	if len(users) == 0 {
-		users = Users(edi.defaultAcl(nil))
+		users = []string{edi.defaultUser()}
 	}
 	for _, user := range users {
 		for _, id := range edi.apc.GetConfig().(webDssClientConfig).identities {
-			if id.PKey == user {
+			if id.PKey == user && id.Secret != "" {
 				res = append(res, id.Secret)
 			}
 		}
@@ -66,15 +73,18 @@ func (edi *eDssImpl) secrets(users []string) (res []string) {
 }
 
 func (edi *eDssImpl) pkeys(users []string) (res []string) {
+	if len(users) == 0 {
+		if edi.defaultUser() == "" {
+			return
+		}
+		return []string{edi.defaultUser()}
+	}
 	for _, user := range users {
 		for _, id := range edi.apc.GetConfig().(webDssClientConfig).identities {
 			if id.PKey == user {
 				res = append(res, user)
 			}
 		}
-	}
-	if len(res) == 0 {
-		res = edi.pkeys(Users(edi.defaultAcl(nil)))
 	}
 	return
 }
@@ -228,7 +238,7 @@ func (edi *eDssImpl) spUpdateClient(cix Index, eud UpdatedData, isFull bool) err
 	udd := UpdatedData{Changed: map[string][]TimedMeta{}, Deleted: map[string]bool{}}
 	for _, etms := range eud.Changed {
 		for _, etm := range etms {
-			smbs, err := DecryptMsg([]byte(etm.Bytes), edi.secrets(Users(edi.defaultAcl(nil)))...)
+			smbs, err := DecryptMsg([]byte(etm.Bytes), edi.secrets(edi.aclusers)...)
 			if err != nil {
 				return fmt.Errorf("in spUpdateClient: %w", err)
 			}
@@ -257,7 +267,7 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 
 	eSti := sts.Sti
 	for epath, ebs := range eSti.Path2Meta {
-		smbs, err := DecryptMsg(ebs, edi.secrets(Users(edi.defaultAcl(nil)))...)
+		smbs, err := DecryptMsg(ebs, edi.secrets(edi.aclusers)...)
 		if err != nil {
 			pathErr(epath, err)
 			continue
@@ -323,10 +333,12 @@ func NewEDss(config EDssConfig, lsttime int64, aclusers []string) (HDss, error) 
 	}
 	wdcc := eDssClientConfig{webDssClientConfig{WebDssConfig: config.WebDssConfig, libDss: libDss}}
 	if err := proxy.initialize(proxy, wdcc, lsttime, aclusers); err != nil {
+		proxy.close()
 		return nil, fmt.Errorf("in NewWebDss: %w", err)
 	}
 	edi := proxy.(*eDssImpl)
 	if err := edi.openSession(aclusers); err != nil {
+		proxy.close()
 		return nil, fmt.Errorf("in NewWebDss: %w", err)
 	}
 	return &ODss{proxy: proxy}, nil

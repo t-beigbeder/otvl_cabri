@@ -69,7 +69,7 @@ func lsns(ctx context.Context, dssPath string) error {
 	)
 	vars := lsnsVars(ctx)
 	vars.dssType, vars.root, vars.npath, _ = CheckDssPath(dssPath)
-	if _, err = GetUiRunEnv[LsnsOptions, *LsnsVars](ctx, vars.dssType[0] == 'x'); err != nil {
+	if _, err = GetUiRunEnv[LsnsOptions, *LsnsVars](ctx, vars.dssType[0] == 'x', false); err != nil {
 		return err
 	}
 	if vars.dssType == "fsy" {
@@ -175,12 +175,15 @@ func plizedLsnsMetas(ctx context.Context, iNpaths interface{}) (iOutput interfac
 }
 
 func outMeta(ctx context.Context, meta cabridss.IMeta) {
-	getCh := lsnsOpts(ctx).Checksum
 	t := time.Unix(meta.GetMtime(), 0).Format("2006-01-02 15:04:05")
-	if !getCh {
-		lsnsOut(ctx, fmt.Sprintf("%12d %s %s\n", meta.GetSize(), t, meta.GetPath()))
+	ll := "\n"
+	if lsnsOpts(ctx).Long {
+		ll = fmt.Sprintf("\n            \t%v\n", meta.GetAcl())
+	}
+	if !lsnsOpts(ctx).Checksum {
+		lsnsOut(ctx, fmt.Sprintf("%12d %s %s%s", meta.GetSize(), t, meta.GetPath(), ll))
 	} else {
-		lsnsOut(ctx, fmt.Sprintf("%12d %s %s %s\n", meta.GetSize(), t, meta.GetCh(), meta.GetPath()))
+		lsnsOut(ctx, fmt.Sprintf("%12d %s %s %s%s", meta.GetSize(), t, meta.GetCh(), meta.GetPath(), ll))
 	}
 }
 

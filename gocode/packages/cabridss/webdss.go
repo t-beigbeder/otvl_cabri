@@ -143,6 +143,7 @@ func (wdi *webDssImpl) initialize(me oDssProxy, config interface{}, lsttime int6
 		return fmt.Errorf("in initialize: %v", err)
 	}
 	if err = wdi.me.spUpdateClient(cix, udd.UpdatedData, !mIed.ClientIsKnown); err != nil {
+		cix.Close()
 		return fmt.Errorf("in initialize: %v", err)
 	}
 	wdi.index = cix

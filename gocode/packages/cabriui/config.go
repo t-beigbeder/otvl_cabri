@@ -78,7 +78,7 @@ func configDecrypt(ctx context.Context) error {
 }
 
 func configDump(ctx context.Context) error {
-	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false, false)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func configDump(ctx context.Context) error {
 }
 
 func configGen(ctx context.Context) error {
-	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false, false)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func configGen(ctx context.Context) error {
 }
 
 func configGet(ctx context.Context) error {
-	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false, false)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func configGet(ctx context.Context) error {
 }
 
 func configPut(ctx context.Context) error {
-	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false, false)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func configPut(ctx context.Context) error {
 }
 
 func configRemove(ctx context.Context) error {
-	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false)
+	ure, err := GetUiRunEnv[ConfigOptions, *ConfigVars](ctx, false, false)
 	if err != nil {
 		return err
 	}

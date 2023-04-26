@@ -51,7 +51,7 @@ func webApiErr(ctx context.Context, s string) { webApiUow(ctx).UiStrErr(s) }
 func webApi(ctx context.Context, args []string) error {
 	opts := webApiOpts(ctx)
 	vars := webApiVars(ctx)
-	ure, err := GetUiRunEnv[WebApiOptions, *WebApiVars](ctx, false)
+	ure, err := GetUiRunEnv[WebApiOptions, *WebApiVars](ctx, false, false)
 	if err != nil {
 		return err
 	}

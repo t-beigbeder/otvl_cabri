@@ -42,6 +42,8 @@ require (
 //
 //replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrisync => ./packages/cabrisync
 //
+//replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrifsu => ./packages/cabrifsu
+//
 //replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabritbx => ./packages/cabritbx
 //
 //replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabriui => ./packages/cabriui

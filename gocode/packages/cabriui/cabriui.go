@@ -28,6 +28,9 @@ type BaseOptions struct {
 	ObsSecretKeys []string
 	TlsCert       string // certificate file on https server or untrusted CA on https client
 	TlsNoCheck    bool   // no check of certifcate by https client
+	// Left entities located here in case of sync CLI for convenience
+	LeftUsers []string
+	LeftACL   []string
 }
 
 func (bos BaseOptions) getBaseOptions() BaseOptions {

@@ -136,7 +136,7 @@ func dssMknsRun(ctx context.Context) error {
 		err error
 		ure UiRunEnv
 	)
-	if ure, err = GetUiRunEnv[DSSMknsOptions, *DSSMknsVars](ctx, dssType[0] == 'x'); err != nil {
+	if ure, err = GetUiRunEnv[DSSMknsOptions, *DSSMknsVars](ctx, dssType[0] == 'x', false); err != nil {
 		return err
 	}
 	if dssType == "fsy" {

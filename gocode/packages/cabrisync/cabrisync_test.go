@@ -33,9 +33,10 @@ func newUcp(tfs *testfs.Fs) (ucp string, uc cabridss.UserConfig, err error) {
 		}
 		ids = uc1.Identities
 	}
-	id, err := cabridss.GenIdentity(fmt.Sprintf("id-%d", ucpCount))
-	ids = append(ids, id)
-	for _, id = range ids {
+	id1, err := cabridss.GenIdentity("u1")
+	id2, err := cabridss.GenIdentity("u2")
+	ids = append(ids, id1, id2)
+	for _, id := range ids {
 		cabridss.UserConfigPutIdentity(cabridss.DssBaseConfig{}, ucp, id)
 	}
 	uc, _ = cabridss.GetUserConfig(cabridss.DssBaseConfig{}, ucp)
@@ -159,13 +160,11 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 	optionalSleep(t)
 
 	report4 := Synchronize(nil, dssl, "", dssr, "step2", SyncOptions{InDepth: true, Evaluate: true, NoACL: noAcl})
-	report4.TextOutput(io.Discard)
 	rs4 := report4.GetStats()
 	if rs4.ErrNum != 0 || rs4.CreNum != 1 || rs4.UpdNum != 4 || rs4.RmvNum != 3 || rs4.KeptNum != 0 || rs4.MUpNum != 2 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs4)
 	}
 	report5 := Synchronize(nil, dssl, "", dssr, "step2", SyncOptions{InDepth: true, NoACL: noAcl})
-	report5.TextOutput(io.Discard)
 	rs5 := report5.GetStats()
 	if rs5.ErrNum != 0 || rs5.CreNum != 1 || rs5.UpdNum != 4 || rs5.RmvNum != 3 || rs5.KeptNum != 0 || rs5.MUpNum != 2 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs5)
@@ -713,7 +712,7 @@ func runTestSynchroInconsistentChildren(t *testing.T) error {
 	}
 	rp1 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{})
 	if rp1.HasErrors() || len(rp1.Entries) != 3 {
-		rp1.TextOutput(os.Stdout)
+		rp1.TextOutput(io.Discard)
 		t.Fatalf("%d", len(rp1.Entries))
 	}
 	des, _ := os.ReadDir(tfsm.Path())
@@ -724,18 +723,18 @@ func runTestSynchroInconsistentChildren(t *testing.T) error {
 	}
 	rp2r := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true, Evaluate: true})
 	if rp2r.HasErrors() || len(rp2r.Entries) != 16 {
-		rp2r.TextOutput(os.Stdout)
+		rp2r.TextOutput(io.Discard)
 		return fmt.Errorf("evaluate %d", len(rp2r.Entries))
 	}
 	rp2 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true})
 	if rp2.HasErrors() || len(rp2.Entries) != 16 {
-		rp2.TextOutput(os.Stdout)
+		rp2.TextOutput(io.Discard)
 		return fmt.Errorf("synchronize %d", len(rp2.Entries))
 	}
 	rp3 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true, Evaluate: true})
 	s3 := rp3.GetStats()
 	if rp3.HasErrors() || len(rp3.Entries) != 16 || s3 != (SyncStats{}) {
-		rp3.TextOutput(os.Stdout)
+		rp3.TextOutput(io.Discard)
 		return fmt.Errorf("reevaluate %d %v", len(rp3.Entries), s3)
 	}
 	return nil
@@ -831,42 +830,595 @@ func TestMappedAcl(t *testing.T) {
 	lmacl3 := map[string][]cabridss.ACLEntry{
 		dsu: {cabridss.ACLEntry{User: "u1", Rights: wr}, cabridss.ACLEntry{User: "u2", Rights: wr}},
 	}
-	rmacl := map[string][]cabridss.ACLEntry{
-		"u1": {cabridss.ACLEntry{User: dsu, Rights: wr}},
-		"u2": {cabridss.ACLEntry{User: dsu, Rights: wr}},
-	}
-	report := Synchronize(nil, fsy, "d1", olf, "d1", SyncOptions{InDepth: true, LeftMapACL: lmacl1, RightMapACL: rmacl})
+	report := Synchronize(nil, fsy, "d1", olf, "d1", SyncOptions{InDepth: true, LeftMapACL: lmacl1})
 	report.TextOutput(io.Discard)
 	rs := report.GetStats()
 	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedAcl failed %+v", rs)
 	}
-	report = Synchronize(nil, fsy, "d1", olf, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl1, RightMapACL: rmacl})
+	report = Synchronize(nil, fsy, "d1", olf, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl1})
 	rs = report.GetStats()
 	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedAcl failed %+v", rs)
 	}
 
-	report = Synchronize(nil, fsy, "d2", olf, "d2", SyncOptions{InDepth: true, LeftMapACL: lmacl2, RightMapACL: rmacl})
+	report = Synchronize(nil, fsy, "d2", olf, "d2", SyncOptions{InDepth: true, LeftMapACL: lmacl2})
 	rs = report.GetStats()
 	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedAcl failed %+v", rs)
 	}
-	report = Synchronize(nil, fsy, "d2", olf, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl2, RightMapACL: rmacl})
+	report = Synchronize(nil, fsy, "d2", olf, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl2})
 	rs = report.GetStats()
 	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedAcl failed %+v", rs)
 	}
 
-	report = Synchronize(nil, fsy, "d3", olf, "d3", SyncOptions{InDepth: true, LeftMapACL: lmacl3, RightMapACL: rmacl})
+	report = Synchronize(nil, fsy, "d3", olf, "d3", SyncOptions{InDepth: true, LeftMapACL: lmacl3})
 	rs = report.GetStats()
 	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedAcl failed %+v", rs)
 	}
-	report = Synchronize(nil, fsy, "d3", olf, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl3, RightMapACL: rmacl})
+	report = Synchronize(nil, fsy, "d3", olf, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl3})
 	rs = report.GetStats()
 	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+
+	fsy1, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, ufpath.Join(tfs.Path(), "fsy/u1"))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	rmacl1 := map[string][]cabridss.ACLEntry{
+		"u1": {cabridss.ACLEntry{User: dsu, Rights: wr}},
+	}
+	report = Synchronize(nil, olf, "", fsy1, "", SyncOptions{InDepth: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 6 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d1", fsy1, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d2", fsy1, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d3", fsy1, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+
+	fsy2, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, ufpath.Join(tfs.Path(), "fsy/u2"))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	rmacl2 := map[string][]cabridss.ACLEntry{
+		"u2": {cabridss.ACLEntry{User: dsu, Rights: wr}},
+	}
+	report = Synchronize(nil, olf, "", fsy2, "", SyncOptions{InDepth: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 6 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d1", fsy2, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d2", fsy2, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d3", fsy2, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+
+	if err = tfs.RandTextFile("fsy/simple/d1/f1.txt", 44); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err = tfs.RandTextFile("fsy/simple/d1/f1b.txt", 45); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := tfs.RandTextFile("fsy/simple/d2/f2.txt", 46); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := tfs.RandTextFile("fsy/simple/d2/f2b.txt", 47); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := tfs.RandTextFile("fsy/simple/d3/f3.txt", 48); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := tfs.RandTextFile("fsy/simple/d3/f3b.txt", 49); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	report = Synchronize(nil, fsy, "d1", olf, "d1", SyncOptions{InDepth: true, LeftMapACL: lmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d1", olf, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+
+	report = Synchronize(nil, fsy, "d2", olf, "d2", SyncOptions{InDepth: true, LeftMapACL: lmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d2", olf, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+
+	report = Synchronize(nil, fsy, "d3", olf, "d3", SyncOptions{InDepth: true, LeftMapACL: lmacl3})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d3", olf, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl3})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v", rs)
+	}
+
+	report = Synchronize(nil, olf, "d1", fsy1, "d1", SyncOptions{InDepth: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	rmacl1r := map[string][]cabridss.ACLEntry{
+		"u1": {cabridss.ACLEntry{User: dsu, Rights: rr}},
+	}
+	report = Synchronize(nil, olf, "d2", fsy1, "d2", SyncOptions{InDepth: true, LeftMapACL: rmacl1r})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d3", fsy1, "d3", SyncOptions{InDepth: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d1", fsy1, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		report.TextOutput(os.Stdout)
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d2", fsy1, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1r})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d3", fsy1, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+
+	rmacl2r := map[string][]cabridss.ACLEntry{
+		"u2": {cabridss.ACLEntry{User: dsu, Rights: rr}},
+	}
+	report = Synchronize(nil, olf, "d1", fsy2, "d1", SyncOptions{InDepth: true, LeftMapACL: rmacl2r})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d2", fsy2, "d2", SyncOptions{InDepth: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d3", fsy2, "d3", SyncOptions{InDepth: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d1", fsy2, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2r})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		report.TextOutput(os.Stdout)
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d2", fsy2, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, olf, "d3", fsy2, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
+	}
+
+}
+
+func TestMappedEncryptedAcl(t *testing.T) {
+	optionalSkip(t)
+	idpk1 := ""
+	idpk2 := ""
+	olfp := ""
+	ucp1 := ""
+	ucp2 := ""
+	var uc1, uc2 cabridss.UserConfig
+	var xolf1, xolf2 cabridss.HDss
+
+	startup := func(tfs *testfs.Fs) error {
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/simple"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/u1"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/u2"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/simple/d1"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/simple/d2"), 0755); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "fsy/simple/d3"), 0755); err != nil {
+			return err
+		}
+
+		if err := tfs.RandTextFile("fsy/simple/d1/f1.txt", 41); err != nil {
+			return err
+		}
+		if err := tfs.RandTextFile("fsy/simple/d2/f2.txt", 42); err != nil {
+			return err
+		}
+		if err := tfs.RandTextFile("fsy/simple/d3/f3.txt", 43); err != nil {
+			return err
+		}
+
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "xolf"), 0755); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	getXolf := func(tfs *testfs.Fs, count int) error {
+		if xolf1 != nil {
+			if err := xolf1.Close(); err != nil {
+				xolf1 = nil
+				return err
+			}
+			xolf1 = nil
+		}
+		if xolf2 != nil {
+			if err := xolf2.Close(); err != nil {
+				xolf2 = nil
+				return err
+			}
+			xolf2 = nil
+		}
+		idpk := idpk1
+		ucp := ucp1
+		if count == 2 {
+			idpk = idpk2
+			ucp = ucp2
+		}
+		xolf, err := cabridss.NewEDss(
+			cabridss.EDssConfig{
+				WebDssConfig: cabridss.WebDssConfig{
+					DssBaseConfig: cabridss.DssBaseConfig{
+						LibApi:    true,
+						ConfigDir: ucp,
+					},
+					LibApiDssConfig: cabridss.LibApiDssConfig{
+						IsOlf: true,
+						OlfCfg: cabridss.OlfConfig{
+							DssBaseConfig: cabridss.DssBaseConfig{
+								LocalPath: olfp,
+								GetIndex: func(config cabridss.DssBaseConfig, _ string) (cabridss.Index, error) {
+									return cabridss.NewPIndex(ufpath.Join(olfp, "index.bdb"), false, false)
+								},
+							}, Root: olfp, Size: "s"},
+					},
+				},
+			},
+			0, []string{idpk})
+		if err != nil {
+			return err
+		}
+		if count == 1 {
+			xolf1 = xolf
+		}
+		if count == 2 {
+			xolf2 = xolf
+		}
+		return nil
+	}
+
+	tfs, err := testfs.CreateFs("TestMappedEncryptedAcl", startup)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfs.Delete()
+	olfp = ufpath.Join(tfs.Path(), "xolf")
+	_, err = cabridss.CreateOlfDss(cabridss.OlfConfig{
+		DssBaseConfig: cabridss.DssBaseConfig{LocalPath: olfp, Encrypted: true},
+		Root:          olfp, Size: "s"})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	ucp1, uc1, _ = newUcp(tfs)
+	ucp2, uc2, _ = newUcp(tfs)
+	var newIds []cabridss.IdentityConfig
+	for _, id := range uc1.Identities {
+		if id.Alias != "" {
+			newIds = append(newIds, id)
+			if id.Alias == "u1" {
+				idpk1 = id.PKey
+			}
+			if id.Alias == "u2" {
+				idpk2 = id.PKey
+			}
+		}
+	}
+	uc1.Identities = newIds
+	cabridss.SaveUserConfig(cabridss.DssBaseConfig{}, ucp1, uc1)
+	uc2.Identities = newIds
+	cabridss.SaveUserConfig(cabridss.DssBaseConfig{}, ucp2, uc2)
+	if err := getXolf(tfs, 1); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err = xolf1.Mkns("", time.Now().Unix(), []string{"d1/", "d2/", "d3/"},
+		[]cabridss.ACLEntry{
+			{User: idpk1, Rights: cabridss.Rights{Read: true, Write: true, Execute: true}},
+			{User: idpk2, Rights: cabridss.Rights{Read: true, Write: true, Execute: true}},
+		}); err != nil {
+		t.Fatal(err.Error())
+	}
+	fsy, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, ufpath.Join(tfs.Path(), "fsy/simple"))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	wr := cabridss.Rights{Read: true, Write: true, Execute: true}
+	rr := cabridss.Rights{Read: true, Write: false, Execute: true}
+	pu, _ := user.Current()
+	dsu := fmt.Sprintf("x-uid:%s", pu.Uid)
+	lmacl1 := map[string][]cabridss.ACLEntry{
+		dsu: {cabridss.ACLEntry{User: idpk1, Rights: wr}, cabridss.ACLEntry{User: idpk2, Rights: rr}},
+	}
+	lmacl2 := map[string][]cabridss.ACLEntry{
+		dsu: {cabridss.ACLEntry{User: idpk1, Rights: rr}, cabridss.ACLEntry{User: idpk2, Rights: wr}},
+	}
+	lmacl3 := map[string][]cabridss.ACLEntry{
+		dsu: {cabridss.ACLEntry{User: idpk1, Rights: wr}, cabridss.ACLEntry{User: idpk2, Rights: wr}},
+	}
+	report := Synchronize(nil, fsy, "d1", xolf1, "d1", SyncOptions{InDepth: true, LeftMapACL: lmacl1})
+	report.TextOutput(io.Discard)
+	rs := report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %v", rs, report.GErr)
+	}
+	report = Synchronize(nil, fsy, "d1", xolf1, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+
+	report = Synchronize(nil, fsy, "d2", xolf1, "d2", SyncOptions{InDepth: true, LeftMapACL: lmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d2", xolf1, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+
+	report = Synchronize(nil, fsy, "d3", xolf1, "d3", SyncOptions{InDepth: true, LeftMapACL: lmacl3})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d3", xolf1, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl3})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+
+	if err := getXolf(tfs, 1); err != nil { // reload local index
+		t.Fatal(err.Error())
+	}
+	fsy1, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, ufpath.Join(tfs.Path(), "fsy/u1"))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	rmacl1 := map[string][]cabridss.ACLEntry{
+		idpk1: {cabridss.ACLEntry{User: dsu, Rights: wr}},
+	}
+	report = Synchronize(nil, xolf1, "", fsy1, "", SyncOptions{InDepth: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 6 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf1, "d1", fsy1, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf1, "d2", fsy1, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf1, "d3", fsy1, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+
+	fsy2, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, ufpath.Join(tfs.Path(), "fsy/u2"))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	rmacl2 := map[string][]cabridss.ACLEntry{
+		idpk2: {cabridss.ACLEntry{User: dsu, Rights: wr}},
+	}
+	if err := getXolf(tfs, 2); err != nil {
+		t.Fatal(err.Error())
+	}
+	report = Synchronize(nil, xolf2, "", fsy2, "", SyncOptions{InDepth: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 6 || rs.UpdNum != 1 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf2, "d1", fsy2, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf2, "d2", fsy2, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf2, "d3", fsy2, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+
+	if err = tfs.RandTextFile("fsy/simple/d1/f1.txt", 44); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err = tfs.RandTextFile("fsy/simple/d1/f1b.txt", 45); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := tfs.RandTextFile("fsy/simple/d2/f2.txt", 46); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := tfs.RandTextFile("fsy/simple/d2/f2b.txt", 47); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := tfs.RandTextFile("fsy/simple/d3/f3.txt", 48); err != nil {
+		t.Fatal(err.Error())
+	}
+	if err := tfs.RandTextFile("fsy/simple/d3/f3b.txt", 49); err != nil {
+		t.Fatal(err.Error())
+	}
+
+	if err := getXolf(tfs, 1); err != nil {
+		t.Fatal(err.Error())
+	}
+	report = Synchronize(nil, fsy, "d1", xolf1, "d1", SyncOptions{InDepth: true, LeftMapACL: lmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d1", xolf1, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+
+	report = Synchronize(nil, fsy, "d2", xolf1, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+
+	report = Synchronize(nil, fsy, "d3", xolf1, "d3", SyncOptions{InDepth: true, LeftMapACL: lmacl3})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+	report = Synchronize(nil, fsy, "d3", xolf1, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: lmacl3})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v", rs)
+	}
+
+	if err := getXolf(tfs, 1); err != nil { // reload local index
+		t.Fatal(err.Error())
+	}
+	report = Synchronize(nil, xolf1, "d1", fsy1, "d1", SyncOptions{InDepth: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	rmacl1r := map[string][]cabridss.ACLEntry{
+		idpk1: {cabridss.ACLEntry{User: dsu, Rights: rr}},
+	}
+	report = Synchronize(nil, xolf1, "d2", fsy1, "d2", SyncOptions{InDepth: true, LeftMapACL: rmacl1r})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 2 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf1, "d3", fsy1, "d3", SyncOptions{InDepth: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf1, "d1", fsy1, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		report.TextOutput(os.Stdout)
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf1, "d2", fsy1, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1r})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 1 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf1, "d3", fsy1, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+
+	rmacl2r := map[string][]cabridss.ACLEntry{
+		idpk2: {cabridss.ACLEntry{User: dsu, Rights: rr}},
+	}
+	if err := getXolf(tfs, 2); err != nil {
+		t.Fatal(err.Error())
+	}
+	report = Synchronize(nil, xolf2, "d1", fsy2, "d1", SyncOptions{InDepth: true, LeftMapACL: rmacl2r})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf2, "d3", fsy2, "d3", SyncOptions{InDepth: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 2 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf2, "d1", fsy2, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2r})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		report.TextOutput(os.Stdout)
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf2, "d2", fsy2, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
+	}
+	report = Synchronize(nil, xolf2, "d3", fsy2, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
+	rs = report.GetStats()
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
+		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
 	}
 
 }

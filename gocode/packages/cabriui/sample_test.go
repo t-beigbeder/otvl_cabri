@@ -8,6 +8,7 @@ import (
 var sampleOptions SampleOptions
 
 func TestSampleStartup(t *testing.T) {
+	optionalSkip(t)
 	err := CLIRun[SampleOptions, SampleVars](
 		nil, os.Stdout, os.Stderr,
 		sampleOptions, nil,

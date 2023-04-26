@@ -44,7 +44,8 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestSynchronizeBasicFsyEDssApiObs" ||
 			t.Name() == "TestSynchroInconsistentChildren" ||
 			t.Name() == "TestLoopSynchroInconsistentChildren" ||
-			t.Name() == "TestMappedAcl1" ||
+			t.Name() == "TestMappedAcl" ||
+			t.Name() == "TestMappedEncryptedAcl1" ||
 			t.Name() == "TestSynchronizeArboTiny" ||
 			t.Name() == "TestSynchronizeArboSmfPix" ||
 			t.Name() == "TestSynchronizeArboObsPix" ||

@@ -296,6 +296,8 @@ func (dss *FsyDss) GetAfs() afero.Fs {
 
 func (fsy *FsyDss) Close() error { return nil }
 
+func (fsy *FsyDss) GetRoot() string { return fsy.root }
+
 func NewFsyDss(config FsyConfig, root string) (Dss, error) {
 	fi, err := os.Stat(root)
 	if err != nil {

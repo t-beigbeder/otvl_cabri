@@ -660,10 +660,15 @@ func (odbi *oDssBaseImpl) setMetaMockCbs(cbs *MetaMockCbs) { odbi.metamockcbs = 
 func (odbi *oDssBaseImpl) close() error {
 	err := odbi.me.spClose()
 	if err != nil {
-		odbi.index.Close()
+		if odbi.index != nil {
+			odbi.index.Close()
+		}
 		return err
 	}
-	return odbi.index.Close()
+	if odbi.index != nil {
+		return odbi.index.Close()
+	}
+	return nil
 }
 
 func (odbi *oDssBaseImpl) getIndex() Index { return odbi.index }

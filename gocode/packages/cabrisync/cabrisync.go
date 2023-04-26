@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrifsu"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 )
 
 type BeVerboseFunc func(level int, line string)
@@ -25,6 +27,17 @@ type SyncOptions struct {
 	RefDiag     *SyncRefDiag                   // a reference report for diagnosis
 }
 
+func makeDssWritable(dss cabridss.Dss, path string, options SyncOptions) error {
+	fsy, ok := dss.(*cabridss.FsyDss)
+	if !ok {
+		return nil
+	}
+	if options.Evaluate || !options.InDepth {
+		return nil
+	}
+	return cabrifsu.EnableWrite(fsy.GetAfs(), ufpath.Join(fsy.GetRoot(), path), true)
+}
+
 func doSynchronize(ctx context.Context, ldss cabridss.Dss, lpath string, rdss cabridss.Dss, rpath string, options SyncOptions) (report SyncReport) {
 	report = SyncReport{}
 	if _, err := ldss.GetMeta(cabridss.AppendSlashIf(lpath), false); err != nil {
@@ -35,7 +48,14 @@ func doSynchronize(ctx context.Context, ldss cabridss.Dss, lpath string, rdss ca
 		report.GErr = fmt.Errorf("right path \"%s\": no such entry (%v)", rpath, err)
 		return
 	}
-
+	if err := makeDssWritable(rdss, rpath, options); err != nil {
+		report.GErr = fmt.Errorf("makeDssWritable: %v", err)
+	}
+	if options.BiDir {
+		if err := makeDssWritable(ldss, lpath, options); err != nil {
+			report.GErr = fmt.Errorf("makeDssWritable: %v", err)
+		}
+	}
 	syc := syncCtx{
 		options: options,
 		left:    sideCtx{options: options, dss: ldss, root: lpath, isNs: true, exist: true},

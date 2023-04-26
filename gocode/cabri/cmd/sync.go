@@ -48,6 +48,8 @@ for instance
 		if _, err := cabriui.CheckUiACL(syncOptions.LeftACL); err != nil {
 			return err
 		}
+		baseOptions.LeftUsers = syncOptions.LeftUsers
+		baseOptions.LeftACL = syncOptions.LeftACL
 		syncOptions.BaseOptions = baseOptions
 		if _, err := cabriui.CheckTimeStamp(syncOptions.LeftTime); err != nil {
 			return err

@@ -43,6 +43,7 @@ true && \
   cover_package internal && \
   cover_package ufpath && \
   cover_package joule && \
+  cover_package cabrifsu && \
   cover_package cabritbx --tags=test_testfs,test_cabridss && \
   cover_package plumber && \
   cover_package testfs --tags=test_testfs && \

@@ -12,9 +12,9 @@ func optionalSkip(t *testing.T) {
 		if t.Name() == "theBeginning" ||
 			t.Name() == "TestDSSMkBase" ||
 			t.Name() == "TestDSSMknsRun" ||
-			t.Name() == "TestDSSUnlockRun1" ||
-			t.Name() == "TestLsnsArboBase" ||
+			t.Name() == "TestLsnsArboBase1" ||
 			t.Name() == "TestLsnsArboNoFear" ||
+			t.Name() == "TestSampleStartup" ||
 			t.Name() == "TestSynchronizeArboTiny" ||
 			t.Name() == "TestSynchronizeArboBase" ||
 			t.Name() == "TestSynchronizeArboNoFear" ||

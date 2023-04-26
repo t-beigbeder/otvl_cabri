@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
 	"io"
+	"strings"
 )
 
 func (sdc *sideCtx) lsnsMeta() (err error) {
@@ -46,7 +47,11 @@ func mapACE(oace cabridss.ACLEntry, tu string, rightsMask cabridss.Rights) cabri
 	}
 }
 
-func appendAceOnce(tacl []cabridss.ACLEntry, ace cabridss.ACLEntry) []cabridss.ACLEntry {
+func appendAceIf(tacl []cabridss.ACLEntry, ace cabridss.ACLEntry, hasMeta bool) []cabridss.ACLEntry {
+	if !hasMeta && ace.User != "" && !strings.HasPrefix(ace.User, "x-uid:") &&
+		!strings.HasPrefix(ace.User, "x-gid:") && ace.User != "x-other" {
+		return tacl
+	}
 	for _, tace := range tacl {
 		if tace.User == ace.User {
 			return tacl
@@ -62,9 +67,12 @@ func (syc *syncCtx) mapACL(oACL []cabridss.ACLEntry, isRight bool) []cabridss.AC
 	var tacl []cabridss.ACLEntry
 	for _, oace := range oACL {
 		macl := map[string][]cabridss.ACLEntry{}
+		var hasMeta bool
 		if !isRight {
+			_, hasMeta = syc.right.dss.(cabridss.HDss)
 			macl = syc.options.LeftMapACL
 		} else {
+			_, hasMeta = syc.left.dss.(cabridss.HDss)
 			macl = syc.options.RightMapACL
 		}
 		done := false
@@ -72,12 +80,12 @@ func (syc *syncCtx) mapACL(oACL []cabridss.ACLEntry, isRight bool) []cabridss.AC
 			if cou == oace.User {
 				done = true
 				for _, mace := range cmacl {
-					tacl = appendAceOnce(tacl, mapACE(oace, mace.User, mace.Rights))
+					tacl = appendAceIf(tacl, mapACE(oace, mace.User, mace.Rights), hasMeta)
 				}
 			}
 		}
 		if !done {
-			tacl = appendAceOnce(tacl, mapACE(oace, oace.User, cabridss.Rights{Execute: true, Read: true, Write: true}))
+			tacl = appendAceIf(tacl, mapACE(oace, oace.User, cabridss.Rights{Execute: true, Read: true, Write: true}), hasMeta)
 		}
 	}
 	return tacl
@@ -86,14 +94,17 @@ func (syc *syncCtx) mapACL(oACL []cabridss.ACLEntry, isRight bool) []cabridss.AC
 func (syc *syncCtx) evalMergeNsMeta(rent SyncReportEntry) (mtime int64, lAcl, rAcl []cabridss.ACLEntry) {
 	if (rent.isRTL && rent.Created) || syc.left.meta == nil {
 		if syc.right.meta == nil {
-			syc.err = fmt.Errorf("in evalMergeNsMeta: FIX")
+			panic(fmt.Sprintf("evalMergeNsMeta %+v", rent))
 		}
 		mtime = syc.right.meta.GetMtime()
 		lAcl = syc.mapACL(syc.right.meta.GetAcl(), true)
+		rAcl = syc.right.meta.GetAcl()
 	} else {
+		if syc.left.meta == nil {
+			panic(fmt.Sprintf("evalMergeNsMeta %+v", rent))
+		}
 		mtime = syc.left.meta.GetMtime()
-	}
-	if syc.left.meta != nil {
+		lAcl = syc.left.meta.GetAcl()
 		rAcl = syc.mapACL(syc.left.meta.GetAcl(), false)
 	}
 	return
