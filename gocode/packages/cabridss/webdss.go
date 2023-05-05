@@ -442,9 +442,11 @@ func NewWebDss(config WebDssConfig, lsttime int64, aclusers []string) (HDss, err
 	}
 	wdcc := webDssClientConfig{WebDssConfig: config, libDss: libDss}
 	if err := proxy.initialize(proxy, wdcc, lsttime, aclusers); err != nil {
+		proxy.close()
 		return nil, fmt.Errorf("in NewWebDss: %w", err)
 	}
 	if proxy.isRepoEncrypted() {
+		proxy.close()
 		return nil, fmt.Errorf("in NewWebDss: reposirory is encrypted")
 	}
 	return &ODss{proxy: proxy}, nil

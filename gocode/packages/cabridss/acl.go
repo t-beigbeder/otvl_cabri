@@ -44,7 +44,7 @@ func GetUserRights(aes []ACLEntry, user string, defaultRights Rights) Rights {
 func getSysAclNotUx(fi os.FileInfo) []ACLEntry {
 	perm := fi.Mode().Perm()
 	ael := []ACLEntry{
-		{User: "", Rights: Rights{Read: perm&(1<<8) != 0, Write: perm&(1<<7) != 0, Execute: perm&(1<<6) != 0}},
+		{User: fmt.Sprintf("x-uid:%d", os.Getuid()), Rights: Rights{Read: perm&(1<<8) != 0, Write: perm&(1<<7) != 0, Execute: perm&(1<<6) != 0}},
 	}
 	return ael
 }
@@ -55,7 +55,7 @@ func setSysAclNotUx(path string, acl []ACLEntry) error {
 	}
 	var mode os.FileMode
 	var err error
-	ur := GetUserRights(acl, "", Rights{})
+	ur := GetUserRights(acl, fmt.Sprintf("x-uid:%d", os.Getuid()), Rights{})
 	if ur.Read {
 		mode |= 1 << 8
 	}

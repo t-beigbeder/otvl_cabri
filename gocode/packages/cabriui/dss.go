@@ -64,6 +64,12 @@ func dssMkRun(ctx context.Context) error {
 			return lerr
 		}
 		oc.Encrypted = encrypted
+		if encrypted {
+			if oc.XImpl == "" {
+				oc.XImpl = "bdb"
+				oc.GetIndex = cabridss.GetPIndex
+			}
+		}
 		oc.Size = opts.Size
 		if dss, err = cabridss.CreateOlfDss(oc); err != nil {
 			return err
@@ -581,17 +587,21 @@ func dssConfigRun(ctx context.Context) error {
 	if mp, err = MasterPassword(dssConfigUow(ctx), opts, 0); err != nil {
 		return err
 	}
-	if dssType == "obs" {
+	dssSubType := dssType
+	if dssType[0] == 'x' {
+		dssSubType = dssType[1:]
+	}
+	if dssSubType == "obs" {
 		config, err = GetObsConfig(opts, 0, root, mp)
 		if err != nil {
 			return err
 		}
-	} else if dssType == "smf" {
+	} else if dssSubType == "smf" {
 		config, err = GetSmfConfig(opts, 0, root, mp)
 		if err != nil {
 			return err
 		}
-	} else if dssConfigOpts(ctx).Raw && dssType == "olf" {
+	} else if dssConfigOpts(ctx).Raw && dssSubType == "olf" {
 		olfConfig, err := GetOlfConfig(opts, 0, root, mp)
 		if err != nil {
 			return err

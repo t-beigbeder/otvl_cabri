@@ -322,7 +322,6 @@ func init() {
 	dssRmHistoCmd.Flags().StringVar(&dssRmHistoOptions.StartTime, "st", "", "inclusive index time above which entries must be removed, default to all past entries")
 	dssRmHistoCmd.Flags().StringVar(&dssRmHistoOptions.EndTime, "et", "", "the inclusive index time below which entries must be removed, default to all future entries")
 	dssCmd.AddCommand(dssRmHistoCmd)
-	dssCmd.AddCommand(dssConfigCmd)
 	dssCmd.AddCommand(dssCleanCmd)
 	dssConfigCmd.Flags().BoolVar(&dssConfigOptions.Raw, "raw", false, "displays the raw configuration")
 	dssCmd.AddCommand(dssConfigCmd)

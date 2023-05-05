@@ -62,13 +62,16 @@ func webApi(ctx context.Context, args []string) error {
 			return fmt.Errorf("mapping %s requires certificate and key files", args[i])
 		}
 		var params cabridss.CreateNewParams
-		if dssType == "obs" || dssType == "smf" {
-			params = cabridss.CreateNewParams{DssType: dssType, LocalPath: localPath}
-		} else if dssType == "olf" {
-			params = cabridss.CreateNewParams{DssType: "olf", Root: localPath}
-		} else {
-			panic("FIXME")
+		dssSubType := dssType
+		if dssType[0] == 'x' {
+			dssSubType = dssType[1:]
 		}
+		if dssSubType == "obs" || dssSubType == "smf" {
+			params = cabridss.CreateNewParams{DssType: dssType, LocalPath: localPath}
+		} else if dssSubType == "olf" {
+			params = cabridss.CreateNewParams{DssType: "olf", Root: localPath}
+		}
+		params.Encrypted = dssType[0] == 'x'
 		dss, err := cabridss.CreateOrNewDss(params)
 		if err != nil {
 			return err

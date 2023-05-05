@@ -63,3 +63,16 @@ To synchronize them back with both users in dedicated directories, simply use
     cabri cli sync xolf:/home/guest/cabri_xolf/xolfsimplesas@d1 fsy:/home/guest/cabri_samples/simplesync2@d1 --acl :rx --macl u2: --leftuser u2 -r
     cabri cli sync fsy:/home/guest/cabri_samples/simplesync2@d2 xolf:/home/guest/cabri_xolf/xolfsimplesas@d2 --acl u1:rx --acl u2: --macl :u1 --macl :u2 --bidir -u u2 -r
     cabri cli sync fsy:/home/guest/cabri_samples/simplesync2@d3 xolf:/home/guest/cabri_xolf/xolfsimplesas@d3 --acl u1: --acl u2: --macl :u1 --macl :u2 --bidir -u u2 -r
+
+## Accessing encrypted DSS with an HTTP server
+
+An HTTP server can be configured for serving access to an encrypted DSS as usual,
+for instance:
+
+    cabri cli dss make xolf:/home/guest/cabri_xolf/xolfsimpleacl -s s
+    cabri webapi xolf+http://localhost:3000/home/guest/cabri_xolf/xolfsimpleacl@demo &
+
+DSS commands must use a special `xwebapi+http` prefix instead of `webapi+http` for the DSS type,
+for instance:
+
+    cabri cli sync fsy:/home/guest/cabri_samples/simple@ xwebapi+http://localhost:3000/demo@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -r

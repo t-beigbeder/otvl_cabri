@@ -109,9 +109,30 @@ func CheckDssSpec(dssSpec string) (dssType, root string, err error) {
 	return
 }
 
-var dssTypes map[string]int = map[string]int{
-	"fsy": 1, "olf": 1, "xolf": 1, "obs": 1, "xobs": 1, "smf": 1, "xsmf": 1,
-	"webapi+http": 1, "webapi+https": 1,
+type dssTypeCap struct {
+	fsy       bool
+	client    bool
+	encrypted bool
+	webApi    bool
+	isTls     bool
+}
+
+func clientDssType() dssTypeCap    { return dssTypeCap{client: true} }
+func xClientDssType() dssTypeCap   { return dssTypeCap{client: true, encrypted: true} }
+func fsyClientDssType() dssTypeCap { return dssTypeCap{client: true, fsy: true} }
+
+var dssTypes = map[string]dssTypeCap{
+	"fsy":           fsyClientDssType(),
+	"olf":           clientDssType(),
+	"xolf":          xClientDssType(),
+	"obs":           clientDssType(),
+	"xobs":          xClientDssType(),
+	"smf":           clientDssType(),
+	"xsmf":          xClientDssType(),
+	"webapi+http":   {client: true, webApi: true},
+	"webapi+https":  {client: true, webApi: true, isTls: true},
+	"xwebapi+http":  {client: true, webApi: true, encrypted: true},
+	"xwebapi+https": {client: true, webApi: true, isTls: true, encrypted: true},
 }
 
 func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
@@ -123,12 +144,13 @@ func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
 	if len(frags) > 2 {
 		frags[1] = strings.Join(frags[1:], ":")
 	}
-	if tt, ok := dssTypes[frags[0]]; !ok || tt != 1 {
+	dtc, ok := dssTypes[frags[0]]
+	if !ok {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", frags[0])
 		return
 	}
 	dssType = frags[0]
-	if (dssType == "webapi+http" || dssType == "webapi+https") && (!strings.HasPrefix(frags[1], "//") || len(strings.Split(frags[1][2:], "/")) < 2) {
+	if (dtc.webApi) && (!strings.HasPrefix(frags[1], "//") || len(strings.Split(frags[1][2:], "/")) < 2) {
 		err = fmt.Errorf("DSS type %s requires //host[:port]/[path] url syntax (in %s)", frags[0], frags[1])
 		return
 	}
@@ -176,9 +198,9 @@ func CheckDssUrlMapping(dum string) (dssType, addr, localPath, root string, isTl
 		return
 	}
 	dssType = frags[0][:strings.Index(frags[0], "+http")]
-	if dssType != "fsy" && dssType != "olf" && dssType != "obs" && dssType != "smf" {
+	dtc, ok := dssTypes[dssType]
+	if !ok || !dtc.client {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", dssType)
-		return
 	}
 	rFrags := strings.Split(frags[1], "/")
 	if len(rFrags) < 2 {

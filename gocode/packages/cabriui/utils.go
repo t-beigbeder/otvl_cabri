@@ -233,16 +233,32 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 		if dss, err = NewXobsDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, true, aclUsers); err != nil {
 			return nil, err
 		}
-	} else if strings.HasPrefix(dssType, "webapi+http") {
+	} else if dssTypes[dssType].webApi && !dssTypes[dssType].encrypted {
 		frags := strings.Split(root[2:], "/")
-		wc, err := GetWebConfig(bo, nhArgs.ObsIx, dssType == "webapi+https", frags[0], frags[1], ure)
+		wc, err := GetWebConfig(bo, nhArgs.ObsIx, dssTypes[dssType].isTls, frags[0], frags[1], ure)
 		if err != nil {
 			return nil, err
 		}
+		wc.Encrypted = dssTypes[dssType].encrypted
 		if setCfgFunc != nil {
 			setCfgFunc(&wc.DssBaseConfig)
 		}
 		if dss, err = cabridss.NewWebDss(wc, nhArgs.Lasttime, aclUsers); err != nil {
+			return nil, err
+		}
+	} else if dssTypes[dssType].webApi && dssTypes[dssType].encrypted {
+		frags := strings.Split(root[2:], "/")
+		wc, err := GetWebConfig(bo, nhArgs.ObsIx, dssTypes[dssType].isTls, frags[0], frags[1], ure)
+		if err != nil {
+			return nil, err
+		}
+		wc.Encrypted = dssTypes[dssType].encrypted
+		if setCfgFunc != nil {
+			setCfgFunc(&wc.DssBaseConfig)
+		}
+		if dss, err = cabridss.NewEDss(
+			cabridss.EDssConfig{WebDssConfig: wc},
+			nhArgs.Lasttime, aclUsers); err != nil {
 			return nil, err
 		}
 	} else {
