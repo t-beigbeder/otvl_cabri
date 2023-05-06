@@ -610,6 +610,7 @@ func (odbi *oDssBaseImpl) doRemoveHistory(ipath string, isDir bool, recursive bo
 	for path, hes := range iRes {
 		oRes[path] = []historyEntry{}
 		for _, he := range hes {
+			ipath = RemoveSlashIfNsIf(path, he.meta.IsNs)
 			if he.start > end || he.start < start || he.end < start || he.end > end {
 				continue
 			}

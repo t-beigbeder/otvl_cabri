@@ -3,12 +3,21 @@
 Cabri is an hybrid (local and cloud) Data Storage System,
 also providing a fast and secure synchronization service.
 
-Cabri is currently in beta release, maintenance features are not yet fully available through CLI.
-Documentation is a work in progress.
+Cabri is currently in beta release.
 
-Instructions for getting started with the CLI are provided [here](doc/gscli.md).
+Getting started:
 
-Instructions for building the application for various platforms are provided [here](doc/build.md).
+- [Getting started with the CLI](doc/gscli.md)
+- [Building the application for various platforms](doc/build.md).
+
+Other documentation is referenced in the pages above, including:
+
+- [Simple HTTPS implementation](doc/https.md)
+- [ACL (Access Control List)](doc/acl.md)
+- [Data encyption](doc/encrypt.md)
+- [DSS management](doc/mng.md)
+- [Reference documentation for the CLI](doc/cliref.md)
+- [Client configuration](doc/cliconf.md)
 
 ## General presentation
 

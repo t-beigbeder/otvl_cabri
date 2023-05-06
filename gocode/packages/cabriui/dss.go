@@ -269,10 +269,11 @@ func dssAuditRun(ctx context.Context) error {
 		return err
 	}
 	defer dss.Close()
-	_, perr := dss.AuditIndex()
+	mai, perr := dss.AuditIndex()
 	if perr != nil {
 		return perr
 	}
+	dssAuditOut(ctx, internal.MapSliceStringer[cabridss.AuditIndexInfo]{Map: mai}.String()+"\n")
 	return nil
 
 }

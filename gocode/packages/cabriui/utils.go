@@ -200,7 +200,7 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 			return nil, err
 		}
 	} else if dssType == "xolf" {
-		if dss, err = NewXolfDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, aclUsers); err != nil {
+		if dss, err = NewXolfDss(bo, setCfgFunc, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, aclUsers); err != nil {
 			return nil, err
 		}
 	} else if dssType == "obs" {
@@ -215,7 +215,7 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 			return nil, err
 		}
 	} else if dssType == "xobs" {
-		if dss, err = NewXobsDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, false, aclUsers); err != nil {
+		if dss, err = NewXobsDss(bo, setCfgFunc, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, false, aclUsers); err != nil {
 			return nil, err
 		}
 	} else if dssType == "smf" {
@@ -230,7 +230,7 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 			return nil, err
 		}
 	} else if dssType == "xsmf" {
-		if dss, err = NewXobsDss(bo, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, true, aclUsers); err != nil {
+		if dss, err = NewXobsDss(bo, setCfgFunc, nhArgs.ObsIx, nhArgs.Lasttime, root, ure.MasterPassword, true, aclUsers); err != nil {
 			return nil, err
 		}
 	} else if dssTypes[dssType].webApi && !dssTypes[dssType].encrypted {
@@ -267,7 +267,7 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 	return dss, nil
 }
 
-func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string, aclusers []string) (cabridss.HDss, error) {
+func NewXolfDss(opts BaseOptions, setCfgFunc func(bc *cabridss.DssBaseConfig), index int, lasttime int64, root, mp string, aclusers []string) (cabridss.HDss, error) {
 	oc, err := GetOlfConfig(opts, index, root, mp)
 	if err != nil {
 		return nil, err
@@ -276,6 +276,10 @@ func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string, ac
 	if err != nil {
 		return nil, err
 	}
+	if setCfgFunc != nil {
+		setCfgFunc(&bc)
+	}
+	oc.Unlock = bc.Unlock
 	if bc.GetIndex == nil {
 		oc.GetIndex = cabridss.GetPIndex
 	}
@@ -297,7 +301,7 @@ func NewXolfDss(opts BaseOptions, index int, lasttime int64, root, mp string, ac
 	return dss, err
 }
 
-func NewXobsDss(opts BaseOptions, index int, lasttime int64, root, mp string, isSmf bool, aclusers []string) (cabridss.HDss, error) {
+func NewXobsDss(opts BaseOptions, setCfgFunc func(bc *cabridss.DssBaseConfig), index int, lasttime int64, root, mp string, isSmf bool, aclusers []string) (cabridss.HDss, error) {
 	var (
 		oc  cabridss.ObsConfig
 		err error
@@ -313,6 +317,9 @@ func NewXobsDss(opts BaseOptions, index int, lasttime int64, root, mp string, is
 	bc, err := GetBaseConfig(opts, index, root, root, mp)
 	if err != nil {
 		return nil, err
+	}
+	if setCfgFunc != nil {
+		setCfgFunc(&bc)
 	}
 	if bc.GetIndex == nil {
 		oc.GetIndex = cabridss.GetPIndex
