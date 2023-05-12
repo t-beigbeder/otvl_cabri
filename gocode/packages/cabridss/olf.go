@@ -136,7 +136,7 @@ func (odoi *oDssOlfImpl) xRemoveMeta(npath string, time int64) error {
 	return odoi.index.removeMeta(npath, time)
 }
 
-func (odoi *oDssOlfImpl) pushContent(size int64, ch string, mbs []byte, cf afero.File) error {
+func (odoi *oDssOlfImpl) pushContent(size int64, ch string, mbs []byte, emid string, cf afero.File) error {
 	cpath := ufpath.Join(odoi.root, "content", internal.Str32ToPath(ch, odoi.size))
 	fi, err := odoi.getAfs().Stat(cpath)
 	if fi != nil && fi.IsDir() {
@@ -158,11 +158,11 @@ func (odoi *oDssOlfImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEnt
 		if err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
 		}
-		mbs, err := cwcbs.getMetaBytes(err, size, ch)
+		mbs, emid, err := cwcbs.getMetaBytes(err, size, ch)
 		if err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
 		}
-		if err = odoi.pushContent(size, ch, mbs, wcwc.Underlying.(afero.File)); err != nil {
+		if err = odoi.pushContent(size, ch, mbs, emid, wcwc.Underlying.(afero.File)); err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
 		}
 		var (
@@ -177,7 +177,7 @@ func (odoi *oDssOlfImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEnt
 			itime = meta.Itime
 			npath = RemoveSlashIfNsIf(meta.Path, meta.IsNs)
 		} else {
-			npath = uuid.New().String()
+			npath = emid
 		}
 		if err = odoi.me.storeAndIndexMeta(npath, itime, mbs); err != nil {
 			return fmt.Errorf("in spGetContentWriter %w", err)
@@ -311,7 +311,8 @@ func newOlfProxy() oDssProxy {
 // aclusers if not nil is a List of ACL users for access check
 // returns a pointer to the ready to use DSS or an error if any occur
 // If lsttime is not zero, access will be read-only
-func NewOlfDss(config OlfConfig, lsttime int64, aclusers []string) (HDss, error) {
+func NewOlfDss(config OlfConfig, slsttime int64, aclusers []string) (HDss, error) {
+	lsttime := slsttime * 1e9
 	err := checkDir(config.Root)
 	if err != nil {
 		return nil, fmt.Errorf("in NewOlfDss: %w", err)

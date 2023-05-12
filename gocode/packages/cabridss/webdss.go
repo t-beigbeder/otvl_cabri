@@ -187,8 +187,8 @@ func (wdi *webDssImpl) xRemoveMeta(npath string, time int64) error {
 	return wdi.index.removeMeta(npath, time)
 }
 
-func (wdi *webDssImpl) webPushContent(size int64, ch string, mbs []byte, cf afero.File) error {
-	jsonArgs, err := json.Marshal(mPushContentIn{Size: size, Ch: ch, Mbs: mbs})
+func (wdi *webDssImpl) webPushContent(size int64, ch string, mbs []byte, emid string, cf afero.File) error {
+	jsonArgs, err := json.Marshal(mPushContentIn{Size: size, Ch: ch, Mbs: mbs, Emid: emid})
 	if err != nil {
 		return fmt.Errorf("in webPushContent: %w", err)
 	}
@@ -218,7 +218,7 @@ func (wdi *webDssImpl) webPushContent(size int64, ch string, mbs []byte, cf afer
 	return nil
 }
 
-func (wdi *webDssImpl) libPushContent(size int64, ch string, mbs []byte, cf afero.File) error {
+func (wdi *webDssImpl) libPushContent(size int64, ch string, mbs []byte, emid string, cf afero.File) error {
 	wdc := wdi.apc.GetConfig().(webDssClientConfig)
 	ccf, err := os.Open(cf.Name())
 	if err != nil {
@@ -227,8 +227,8 @@ func (wdi *webDssImpl) libPushContent(size int64, ch string, mbs []byte, cf afer
 	defer ccf.Close()
 	proxy := wdc.libDss.(*ODss).proxy
 	wter, err := proxy.spGetContentWriter(contentWriterCbs{
-		getMetaBytes: func(iErr error, size int64, ch string) ([]byte, error) {
-			return mbs, nil
+		getMetaBytes: func(iErr error, size int64, ch string) ([]byte, string, error) {
+			return mbs, emid, nil
 		},
 	}, nil)
 	n, err := io.Copy(wter, ccf)
@@ -241,12 +241,12 @@ func (wdi *webDssImpl) libPushContent(size int64, ch string, mbs []byte, cf afer
 	return nil
 }
 
-func (wdi *webDssImpl) pushContent(size int64, ch string, mbs []byte, cf afero.File) error {
+func (wdi *webDssImpl) pushContent(size int64, ch string, mbs []byte, emid string, cf afero.File) error {
 	var err error
 	if wdi.libApi {
-		err = wdi.libPushContent(size, ch, mbs, cf)
+		err = wdi.libPushContent(size, ch, mbs, emid, cf)
 	} else {
-		err = wdi.webPushContent(size, ch, mbs, cf)
+		err = wdi.webPushContent(size, ch, mbs, emid, cf)
 	}
 	if err != nil {
 		return err
@@ -266,7 +266,7 @@ func (wdi *webDssImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry
 			outError = fmt.Errorf("in spGetContentWriter: %w", err)
 			return outError
 		}
-		mbs, err := cwcbs.getMetaBytes(err, size, ch)
+		mbs, emid, err := cwcbs.getMetaBytes(err, size, ch)
 		if err != nil {
 			outError = fmt.Errorf("in spGetContentWriter: %w", err)
 			return outError
@@ -278,7 +278,7 @@ func (wdi *webDssImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry
 		}
 		cf := wcwc.Underlying.(afero.File)
 		// FIXME: check if upload is required
-		if err := wdi.pushContent(size, ch, mbs, cf); err != nil {
+		if err := wdi.pushContent(size, ch, mbs, emid, cf); err != nil {
 			outError = fmt.Errorf("in spGetContentWriter: %w", err)
 			return outError
 		}
@@ -397,6 +397,7 @@ func (wdi *webDssImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector
 }
 
 func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isClientEdss bool) (oDssProxy, HDss, error) {
+	slsttime, _ := internal.Nano2SecNano(lsttime)
 	impl := webDssImpl{isClientEdss: isClientEdss}
 	var (
 		dss HDss
@@ -406,12 +407,12 @@ func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isCli
 		impl.libApi = true
 		if config.IsOlf {
 			config.OlfCfg.DssBaseConfig.Encrypted = config.DssBaseConfig.Encrypted
-			if dss, err = NewOlfDss(config.OlfCfg, lsttime, aclusers); err != nil {
+			if dss, err = NewOlfDss(config.OlfCfg, slsttime, aclusers); err != nil {
 				return nil, nil, err
 			}
 		} else if config.IsObs {
 			config.ObsCfg.DssBaseConfig.Encrypted = config.DssBaseConfig.Encrypted
-			if dss, err = NewObsDss(config.ObsCfg, lsttime, aclusers); err != nil {
+			if dss, err = NewObsDss(config.ObsCfg, slsttime, aclusers); err != nil {
 				return nil, nil, err
 			}
 		} else if config.IsSmf {
@@ -419,7 +420,7 @@ func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isCli
 			config.ObsCfg.GetS3Session = func() IS3Session {
 				return NewS3sMockFs(config.ObsCfg.LocalPath, nil)
 			}
-			if dss, err = NewObsDss(config.ObsCfg, lsttime, aclusers); err != nil {
+			if dss, err = NewObsDss(config.ObsCfg, slsttime, aclusers); err != nil {
 				return nil, nil, err
 			}
 		} else {
@@ -435,7 +436,8 @@ func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isCli
 // aclusers if not nil is a List of ACL users for access check
 // returns a pointer to the ready to use DSS or an error if any occur
 // If lsttime is not zero, access will be read-only
-func NewWebDss(config WebDssConfig, lsttime int64, aclusers []string) (HDss, error) {
+func NewWebDss(config WebDssConfig, slsttime int64, aclusers []string) (HDss, error) {
+	lsttime := slsttime * 1e9
 	proxy, libDss, err := newWebDssProxy(config, lsttime, aclusers, false)
 	if err != nil {
 		return nil, fmt.Errorf("in NewWebDss: %w", err)

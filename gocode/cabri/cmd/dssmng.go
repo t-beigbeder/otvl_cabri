@@ -202,6 +202,9 @@ var dssLsHistoCmd = &coral.Command{
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
 		dssLsHistoOptions.BaseOptions = baseOptions
+		if err := cabriui.CheckResol(dssLsHistoOptions.Resolution); err != nil {
+			return err
+		}
 		return cabriui.CLIRun[cabriui.DSSLsHistoOptions, *cabriui.DSSLsHistoVars](
 			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
 			dssLsHistoOptions, args,
@@ -316,6 +319,7 @@ func init() {
 	dssCmd.AddCommand(dssReindexCmd)
 	dssLsHistoCmd.Flags().BoolVarP(&dssLsHistoOptions.Recursive, "recursive", "r", false, "recursively list subnamespaces information")
 	dssLsHistoCmd.Flags().BoolVarP(&dssLsHistoOptions.Sorted, "sorted", "s", false, "sort entries by name")
+	dssLsHistoCmd.Flags().StringVar(&dssLsHistoOptions.Resolution, "resol", "s", "resolution s, m, h, d from seconds to days to display the result")
 	dssCmd.AddCommand(dssLsHistoCmd)
 	dssRmHistoCmd.Flags().BoolVarP(&dssRmHistoOptions.Recursive, "recursive", "r", false, "recursively remove the history of all namespace children")
 	dssRmHistoCmd.Flags().BoolVarP(&dssRmHistoOptions.DryRun, "dryrun", "d", false, "don't remove the history, just report work to be done")

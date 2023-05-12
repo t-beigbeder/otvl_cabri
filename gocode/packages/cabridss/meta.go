@@ -10,6 +10,7 @@ type Meta struct {
 	ACL      []ACLEntry `json:"acl"`      // access control List, sorted by user
 	Itime    int64      `json:"itime"`    // index time
 	ECh      string     `json:"ech"`      // truncated SHA256 checksum of the encrypted content if encrypted else empty
+	EMId     string     `json:"emid"`     // encrypted meta-data unique identifier if encrypted else empty
 }
 
 type IMeta interface {

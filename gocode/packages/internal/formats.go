@@ -73,7 +73,7 @@ func Int64ToStr16(i int64) string {
 }
 
 func TimeToStr16(t time.Time) string {
-	return Int64ToStr16(t.Unix())
+	return Int64ToStr16(t.UnixNano())
 }
 
 func Str16ToInt64(s string) (int64, error) {
@@ -89,4 +89,12 @@ func Str16ToInt64(s string) (int64, error) {
 		return 0, fmt.Errorf("invalid hexa code %s %x %s", s, ui, Int64ToStr16(i))
 	}
 	return i, nil
+}
+
+func Sec2Nano(sec int64) int64 {
+	return sec * 1e9
+}
+
+func Nano2SecNano(secnano int64) (int64, int64) {
+	return secnano / 1e9, secnano % 1e9
 }

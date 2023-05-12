@@ -3,6 +3,7 @@ package cabridss
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
@@ -21,7 +22,7 @@ type oDssBaseProxy interface {
 	getContentReader(npath string) (io.ReadCloser, error)
 	remove(npath string) error
 	getMeta(npath string, getCh bool) (IMeta, error)
-	getHistory(npath string, recursive bool) (map[string][]HistoryInfo, error)
+	getHistory(npath string, recursive bool, resolution string) (map[string][]HistoryInfo, error)
 	removeHistory(npath string, recursive, evaluate bool, start, end int64) (map[string][]HistoryInfo, error)
 	setCurrentTime(time int64)
 	setMetaMockCbs(cbs *MetaMockCbs)
@@ -47,7 +48,7 @@ type oDssBaseProxy interface {
 
 type contentWriterCbs struct {
 	closeCb      WriteCloserCb
-	getMetaBytes func(iErr error, size int64, ch string) (mbs []byte, oErr error)
+	getMetaBytes func(iErr error, size int64, ch string) (mbs []byte, emid string, oErr error)
 }
 
 type oDssSpecificProxy interface {
@@ -57,7 +58,7 @@ type oDssSpecificProxy interface {
 	storeMeta(npath string, time int64, bs []byte) error
 	removeMeta(npath string, time int64) error
 	xRemoveMeta(npath string, time int64) error
-	pushContent(size int64, ch string, mbs []byte, cf afero.File) error
+	pushContent(size int64, ch string, mbs []byte, emid string, cf afero.File) error
 	spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) (io.WriteCloser, error)
 	spGetContentReader(ch string) (io.ReadCloser, error)
 	doGetContentReader(npath string, meta Meta) (io.ReadCloser, error)
@@ -111,16 +112,16 @@ func (ods ODss) GetMeta(npath string, getCh bool) (IMeta, error) {
 	return ods.proxy.getMeta(npath, getCh)
 }
 
-func (ods ODss) GetHistory(npath string, recursive bool) (map[string][]HistoryInfo, error) {
-	return ods.proxy.getHistory(npath, recursive)
+func (ods ODss) GetHistory(npath string, recursive bool, resolution string) (map[string][]HistoryInfo, error) {
+	return ods.proxy.getHistory(npath, recursive, resolution)
 }
 
 func (ods ODss) RemoveHistory(npath string, recursive, evaluate bool, start, end int64) (map[string][]HistoryInfo, error) {
-	return ods.proxy.removeHistory(npath, recursive, evaluate, start, end)
+	return ods.proxy.removeHistory(npath, recursive, evaluate, start*1e9, end*1e9)
 }
 
 func (ods ODss) SetCurrentTime(time int64) {
-	ods.proxy.setCurrentTime(time)
+	ods.proxy.setCurrentTime(time * 1e9)
 }
 
 func (ods ODss) SetMetaMockCbs(cbs *MetaMockCbs) {
@@ -357,16 +358,20 @@ func (odbi *oDssBaseImpl) getContentWriter(npath string, mtime int64, acl []ACLE
 	}
 	return odbi.me.spGetContentWriter(contentWriterCbs{
 		closeCb: closeCb,
-		getMetaBytes: func(iErr error, size int64, ch string) (mbs []byte, oErr error) {
+		getMetaBytes: func(iErr error, size int64, ch string) (mbs []byte, emid string, oErr error) {
 			if iErr == nil {
-				meta := Meta{Path: npath, Mtime: mtime, Size: size, Ch: ch, ACL: acl}
+				emid := ""
+				if odbi.isRepoEncrypted() {
+					emid = uuid.New().String()
+				}
+				meta := Meta{Path: npath, Mtime: mtime, Size: size, Ch: ch, ACL: acl, EMId: emid}
 				mbs, _, err := odbi.getMetaBytes(meta)
 				if err != nil {
-					return nil, fmt.Errorf("in getMetaBytes: %w", err)
+					return nil, "", fmt.Errorf("in getMetaBytes: %w", err)
 				}
-				return mbs, nil
+				return mbs, emid, nil
 			}
-			return nil, fmt.Errorf("in getMetaBytes: %w", iErr)
+			return nil, "", fmt.Errorf("in getMetaBytes: %w", iErr)
 		},
 	}, acl)
 }
@@ -462,26 +467,30 @@ type historyEntry struct {
 	meta  Meta
 }
 
-func (odbi *oDssBaseImpl) doGetRawHistory(npath string) ([]historyEntry, error) {
+func (odbi *oDssBaseImpl) doGetRawHistory(npath string, resolution string) ([]historyEntry, error) {
 	mts, err := odbi.metaTimesFor(npath, true)
 	if err != nil {
 		return nil, fmt.Errorf("in doGetRawHistory: %v", err)
 	}
 	hes := make([]historyEntry, len(mts))
-	for i, mt := range mts {
+	for i, rmt := range mts {
+		mt := rmt
+		if resolution != "" {
+			mt = TimeResolution(resolution).Align(rmt)
+		}
 		hes[i] = historyEntry{start: mt, end: MAX_TIME}
 		if i > 0 {
 			hes[i-1].end = mt - 1
 		}
-		if hes[i].meta, err = odbi.me.doGetMetaAt(npath, mt); err != nil {
+		if hes[i].meta, err = odbi.me.doGetMetaAt(npath, rmt); err != nil {
 			return nil, fmt.Errorf("in doGetRawHistory: %v", err)
 		}
 	}
 	return hes, nil
 }
 
-func (odbi *oDssBaseImpl) doGetRootHistory(recursive bool, res map[string][]historyEntry) error {
-	hes, err := odbi.doGetRawHistory("")
+func (odbi *oDssBaseImpl) doGetRootHistory(recursive bool, resolution string, res map[string][]historyEntry) error {
+	hes, err := odbi.doGetRawHistory("", resolution)
 	if err != nil {
 		return fmt.Errorf("in doGetRootHistory: %v", err)
 	}
@@ -499,18 +508,18 @@ func (odbi *oDssBaseImpl) doGetRootHistory(recursive bool, res map[string][]hist
 	})
 	for child, _ := range children {
 		cIsNs, cIPath, _ := checkNCpath(child)
-		if err := odbi.doGetHistory(cIPath, cIsNs, true, res); err != nil {
+		if err := odbi.doGetHistory(cIPath, cIsNs, true, resolution, res); err != nil {
 			return fmt.Errorf("in doGetRootHistory: %v", err)
 		}
 	}
 	return nil
 }
 
-func (odbi *oDssBaseImpl) doGetHistory(npath string, isDir, recursive bool, res map[string][]historyEntry) error {
+func (odbi *oDssBaseImpl) doGetHistory(npath string, isDir, recursive bool, resolution string, res map[string][]historyEntry) error {
 	if npath == "" {
-		return odbi.doGetRootHistory(recursive, res)
+		return odbi.doGetRootHistory(recursive, resolution, res)
 	}
-	hes, err := odbi.doGetRawHistory(npath)
+	hes, err := odbi.doGetRawHistory(npath, resolution)
 	if err != nil {
 		return fmt.Errorf("in doGetHistory: %v", err)
 	}
@@ -519,7 +528,7 @@ func (odbi *oDssBaseImpl) doGetHistory(npath string, isDir, recursive bool, res 
 		parent = ""
 	}
 	pRes := map[string][]historyEntry{}
-	if err := odbi.doGetHistory(parent, true, false, pRes); err != nil {
+	if err := odbi.doGetHistory(parent, true, false, resolution, pRes); err != nil {
 		return fmt.Errorf("in doGetHistory: %v", err)
 	}
 	fhesM := map[string]historyEntry{}
@@ -569,20 +578,20 @@ func (odbi *oDssBaseImpl) doGetHistory(npath string, isDir, recursive bool, res 
 	res[me] = fhes
 	for child, _ := range children {
 		cIsNs, cIPath, _ := checkNCpath(ufpath.Join(npath, child))
-		if err := odbi.doGetHistory(cIPath, cIsNs, true, res); err != nil {
+		if err := odbi.doGetHistory(cIPath, cIsNs, true, resolution, res); err != nil {
 			return fmt.Errorf("in doGetHistory: %v", err)
 		}
 	}
 	return nil
 }
 
-func (odbi *oDssBaseImpl) getHistory(npath string, recursive bool) (map[string][]HistoryInfo, error) {
+func (odbi *oDssBaseImpl) getHistory(npath string, recursive bool, resolution string) (map[string][]HistoryInfo, error) {
 	isDir, ipath, err := checkNCpath(npath)
 	if err != nil {
 		return nil, err
 	}
 	iRes := map[string][]historyEntry{}
-	if err := odbi.doGetHistory(ipath, isDir, recursive, iRes); err != nil {
+	if err := odbi.doGetHistory(ipath, isDir, recursive, resolution, iRes); err != nil {
 		return nil, fmt.Errorf("in GetHistory: %v", err)
 	}
 	eRes := map[string][]HistoryInfo{}
@@ -598,7 +607,7 @@ func (odbi *oDssBaseImpl) getHistory(npath string, recursive bool) (map[string][
 
 func (odbi *oDssBaseImpl) doRemoveHistory(ipath string, isDir bool, recursive bool, evaluate bool, start int64, end int64, oRes map[string][]historyEntry) error {
 	iRes := map[string][]historyEntry{}
-	if err := odbi.doGetHistory(ipath, isDir, recursive, iRes); err != nil {
+	if err := odbi.doGetHistory(ipath, isDir, recursive, "s", iRes); err != nil {
 		return fmt.Errorf("in RemoveHistory: %v", err)
 	}
 	if start == 0 {
@@ -606,6 +615,8 @@ func (odbi *oDssBaseImpl) doRemoveHistory(ipath string, isDir bool, recursive bo
 	}
 	if end == 0 {
 		end = MAX_TIME
+	} else {
+		end = end + internal.Sec2Nano(1)
 	}
 	for path, hes := range iRes {
 		oRes[path] = []historyEntry{}
@@ -990,7 +1001,7 @@ func (odbi *oDssBaseImpl) getMetaBytes(meta Meta) ([]byte, int64, error) {
 	sort.Slice(meta.ACL, func(i, j int) bool {
 		return meta.ACL[i].User < meta.ACL[j].User
 	})
-	time := time.Now().Unix()
+	time := time.Now().UnixNano()
 	if odbi.mockct != 0 {
 		time = odbi.mockct
 		odbi.mockct += 1

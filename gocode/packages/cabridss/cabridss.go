@@ -109,11 +109,48 @@ type Dss interface {
 type UnixUTC int64
 
 func (t UnixUTC) String() string {
-	if int64(t) != MIN_TIME && int64(t) != MAX_TIME && int64(t) != 0 {
-		return time.Unix(int64(t), 0).UTC().Format("2006-01-02T15:04:05")
+	if int64(t) != MIN_TIME && int64(t) != MAX_TIME {
+		sec, nano := internal.Nano2SecNano(int64(t))
+		return time.Unix(sec, nano).UTC().Format("2006-01-02T15:04:05")
 	} else {
 		return "....-..-..T..:..:.."
 	}
+}
+
+type UnixNanoUTC int64
+
+func (t UnixNanoUTC) String() string {
+	if int64(t) != MIN_TIME && int64(t) != MAX_TIME {
+		sec, nano := internal.Nano2SecNano(int64(t))
+		return time.Unix(sec, nano).UTC().Format("2006-01-02T15:04:05.99999999")
+	} else {
+		return "....-..-..T..:..:.."
+	}
+}
+
+// TimeResolution values are "s" seconds, "m" minutes, "h" hours, "d" days
+type TimeResolution string
+
+func (tr TimeResolution) NanoSeconds() int64 {
+	if tr == "s" {
+		return 1e9
+	} else if tr == "m" {
+		return 60 * 1e9
+	} else if tr == "h" {
+		return 3600 * 1e9
+	} else if tr == "d" {
+		return 24 * 3600 * 1e9
+	}
+	panic(fmt.Sprintf("TimeResolution %s is inconsistent", tr))
+}
+
+func (tr TimeResolution) Align(ns int64) int64 {
+	d := tr.NanoSeconds()
+	r := (ns / d) * d
+	if ns < 0 {
+		r -= d
+	}
+	return r
 }
 
 type HistoryInfo struct {
@@ -153,11 +190,12 @@ type HDss interface {
 	//
 	// npath is the full namespace + name without leading slash, trailing slash indicates it is a namespace
 	// recursive requests the service to recursively get the history of all namespace children
+	// resolution "s" for seconds, "m" for minutes, "h" for hours, "d" for days summarizes the history with given resolution
 	//
 	// returns:
 	// - the history (inclusive times when the entry is visible) for all entries
 	// - err error if any happens
-	GetHistory(npath string, recursive bool) (map[string][]HistoryInfo, error)
+	GetHistory(npath string, recursive bool, resolution string) (map[string][]HistoryInfo, error)
 
 	// RemoveHistory removes history entries for a given time period
 	//

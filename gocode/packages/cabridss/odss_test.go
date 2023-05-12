@@ -333,17 +333,17 @@ func prepareTestHistory(t *testing.T, tfsPath string, dss HDss) error {
 	if err := dss.Updatens("", 0, []string{"d2/", "f", "d1/"}, nil); err != nil {
 		return err
 	}
-	mHes, err := dss.GetHistory("", false)
+	mHes, err := dss.GetHistory("", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes[""]})
-	mHes, err = dss.GetHistory("d1/", false)
+	mHes, err = dss.GetHistory("d1/", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes["d1/"]})
-	mHes, err = dss.GetHistory("d2/", false)
+	mHes, err = dss.GetHistory("d2/", false, "s")
 	if err != nil {
 		return err
 	}
@@ -398,41 +398,41 @@ func runTestHistory(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb f
 		dumpIx(six, cix)
 	}
 
-	mHes, err := dss.GetHistory("", false)
+	mHes, err := dss.GetHistory("", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes[""]})
-	mHes, err = dss.GetHistory("d1/", false)
+	mHes, err = dss.GetHistory("d1/", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes["d1/"]})
-	mHes, err = dss.GetHistory("d2/", false)
+	mHes, err = dss.GetHistory("d2/", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes["d2/"]})
 
-	mHes, err = dss.GetHistory("d2/d2a/", false)
+	mHes, err = dss.GetHistory("d2/d2a/", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes["d2/d2a/"]})
 
-	mHes, err = dss.GetHistory("d2/d2a/f22a", false)
+	mHes, err = dss.GetHistory("d2/d2a/f22a", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes["d2/d2a/f22a"]})
 
-	mHes, err = dss.GetHistory("d2/", true)
+	mHes, err = dss.GetHistory("d2/", true, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("\nGH d2/\n%s\n", internal.MapSliceStringer[HistoryInfo]{mHes})
 
-	mHes, err = dss.GetHistory("", true)
+	mHes, err = dss.GetHistory("", true, "s")
 	if err != nil {
 		return err
 	}
@@ -450,7 +450,7 @@ func runTestHistory(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb f
 		if err != nil {
 			return err
 		}
-		fmt.Printf("\nRH \"%s\" %s-%s\n%s\n", npath, UnixUTC(start), UnixUTC(end), internal.MapSliceStringer[HistoryInfo]{mHes})
+		fmt.Printf("\nRH \"%s\" %s-%s\n%s\n", npath, UnixUTC(start/1e9), UnixUTC(end/1e9), internal.MapSliceStringer[HistoryInfo]{mHes})
 		return nil
 	}
 
@@ -541,41 +541,41 @@ func runTestMultiHistory(t *testing.T, createDssCb func(*testfs.Fs) error, newDs
 		return err
 	}
 
-	mHes, err := dss.GetHistory("", false)
+	mHes, err := dss.GetHistory("", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes[""]})
-	mHes, err = dss.GetHistory("d1/", false)
+	mHes, err = dss.GetHistory("d1/", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes["d1/"]})
-	mHes, err = dss.GetHistory("d2/", false)
+	mHes, err = dss.GetHistory("d2/", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes["d2/"]})
 
-	mHes, err = dss.GetHistory("d2/d2a/", false)
+	mHes, err = dss.GetHistory("d2/d2a/", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes["d2/d2a/"]})
 
-	mHes, err = dss.GetHistory("d2/d2a/f22a", false)
+	mHes, err = dss.GetHistory("d2/d2a/f22a", false, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s\n", internal.SliceStringer[HistoryInfo]{mHes["d2/d2a/f22a"]})
 
-	mHes, err = dss.GetHistory("d2/", true)
+	mHes, err = dss.GetHistory("d2/", true, "s")
 	if err != nil {
 		return err
 	}
 	fmt.Printf("\nGH d2/\n%s\n", internal.MapSliceStringer[HistoryInfo]{mHes})
 
-	mHes, err = dss.GetHistory("", true)
+	mHes, err = dss.GetHistory("", true, "s")
 	if err != nil {
 		return err
 	}

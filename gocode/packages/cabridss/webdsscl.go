@@ -45,6 +45,7 @@ type mPushContentIn struct {
 	Size int64  `json:"size"`
 	Ch   string `json:"ch"`
 	Mbs  []byte `json:"bs,string"`
+	Emid string `json:"emid"`
 }
 
 type mLoadMetaIn struct {

@@ -4,7 +4,9 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
+	"io"
 	"math/rand"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -103,18 +105,35 @@ func TestStr32ToSha256Trunc(t *testing.T) {
 }
 
 func TestStr16ToInt64(t *testing.T) {
+	decodeInt := func(i int64) time.Time {
+		return time.Unix(i/1e9, i%1e9)
+	}
+	display := func(i int64) {
+		sec, nano := internal.Nano2SecNano(i)
+		tm := time.Unix(sec, nano)
+		unano := tm.UnixNano()
+		s16 := internal.TimeToStr16(tm)
+		i64, _ := internal.Str16ToInt64(s16)
+		dsp := fmt.Sprintf("i %d %x sec %d %x nano %d %x tm %v unano %d %x s16 %s i64 %d %x\n", i, i, sec, sec, nano, nano, tm, unano, unano, s16, i64, i64)
+		fmt.Fprint(io.Discard, dsp)
+		fmt.Fprint(os.Stdout, dsp)
+	}
+	display(0)
+	display(-1)
+	display(1)
+	display(time.Now().UnixNano())
 	rand.Seed(42)
 	rs := make(map[int64]string)
 	now := time.Now()
-	rs[now.Unix()] = internal.TimeToStr16(now)
+	rs[now.UnixNano()] = internal.TimeToStr16(now)
 	fbd := time.Date(1918, time.April, 24, 23, 0, 0, 0, time.UTC)
-	rs[fbd.Unix()] = internal.TimeToStr16(fbd)
-	rs[-1] = internal.TimeToStr16(time.Unix(-1, 0))
+	rs[fbd.UnixNano()] = internal.TimeToStr16(fbd)
+	rs[-1] = internal.TimeToStr16(time.Unix(0, -1))
 	dbd := time.Date(2125, time.May, 20, 23, 59, 0, 0, time.UTC)
-	rs[dbd.Unix()] = internal.TimeToStr16(dbd)
+	rs[dbd.UnixNano()] = internal.TimeToStr16(dbd)
 	for v := 0; v < 16384; v++ {
 		i := rand.Int63()
-		rs[i] = internal.TimeToStr16(time.Unix(i, 0))
+		rs[i] = internal.TimeToStr16(time.Unix(i/1e9, i%1e9))
 		if len(rs[i]) != 16 {
 			t.Fatalf("TimeToStr16 res is %s", rs[i])
 		}
@@ -122,7 +141,9 @@ func TestStr16ToInt64(t *testing.T) {
 	for i1 := range rs {
 		i2, err := internal.Str16ToInt64(rs[i1])
 		if err != nil || i2 != i1 {
-			t.Fatalf("TestStr16ToInt64 failed err %v i2 %d i1 %d rs %s", err, i2, i1, rs[i1])
+			t1 := decodeInt(i1)
+			t2 := decodeInt(i2)
+			t.Fatalf("TestStr16ToInt64 failed err %v i2 %d i1 %d rs %s t1 %v t2 %v", err, i2, i1, rs[i1], t1, t2)
 		}
 	}
 	_, err := internal.Str16ToInt64("ffff")

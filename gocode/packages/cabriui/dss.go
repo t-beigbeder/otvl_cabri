@@ -375,8 +375,9 @@ func dssReindexRun(ctx context.Context) error {
 
 type DSSLsHistoOptions struct {
 	BaseOptions
-	Recursive bool
-	Sorted    bool
+	Recursive  bool
+	Sorted     bool
+	Resolution string
 }
 
 type DSSLsHistoVars struct {
@@ -417,7 +418,7 @@ func dssLsHistoRun(ctx context.Context) error {
 	args := dssLsHistoCtx(ctx).args
 	_, _, npath, _ := CheckDssPath(args[0])
 
-	mHes, err := dss.GetHistory(npath, dssLsHistoOpts(ctx).Recursive)
+	mHes, err := dss.GetHistory(npath, dssLsHistoOpts(ctx).Recursive, dssLsHistoOpts(ctx).Resolution)
 	if err != nil {
 		return err
 	}
@@ -653,4 +654,14 @@ func dssConfigRun(ctx context.Context) error {
 		dssConfigOut(ctx, fmt.Sprintf("%+v\n", pc))
 	}
 	return nil
+}
+
+func CheckResol(resol string) error {
+	trs := []string{"s", "m", "h", "d"}
+	for _, tr := range trs {
+		if tr == resol {
+			return nil
+		}
+	}
+	return fmt.Errorf("resolution %s is invalid (must be s for seconds, m for minutes, h for hours or d for days)", resol)
 }

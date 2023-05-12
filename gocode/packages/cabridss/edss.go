@@ -101,6 +101,7 @@ func (edi *eDssImpl) doUpdatens(npath string, mtime int64, children []string, ac
 		Children: children,
 		ACL:      acl,
 	}
+	meta.EMId = uuid.New().String()
 	mbs, itime, err := edi.getMetaBytes(meta)
 	if err != nil {
 		return fmt.Errorf("in doUpdatens: %w", err)
@@ -109,7 +110,7 @@ func (edi *eDssImpl) doUpdatens(npath string, mtime int64, children []string, ac
 	if err != nil {
 		return fmt.Errorf("in doUpdatens: %w", err)
 	}
-	if err := edi.storeMeta(uuid.New().String(), itime, embs); err != nil {
+	if err := edi.storeMeta(meta.EMId, MIN_TIME, embs); err != nil {
 		return fmt.Errorf("in doUpdatens: %w", err)
 	}
 	if err := edi.index.storeMeta(RemoveSlashIf(meta.Path), itime, mbs); err != nil {
@@ -158,7 +159,7 @@ func (edi *eDssImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) 
 			outError = fmt.Errorf("in spGetContentWriter %w", err)
 			return outError
 		}
-		mbs, err := cwcbs.getMetaBytes(err, size, ch)
+		mbs, emid, err := cwcbs.getMetaBytes(err, size, ch)
 		if err != nil {
 			outError = fmt.Errorf("in spGetContentWriter %w", err)
 			return outError
@@ -182,7 +183,7 @@ func (edi *eDssImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) 
 			return outError
 		}
 		cf := eWcwc.Underlying.(afero.File)
-		if err := edi.pushContent(size, ch, embs, cf); err != nil {
+		if err := edi.pushContent(size, ch, embs, emid, cf); err != nil {
 			outError = fmt.Errorf("in spGetContentWriter: %w", err)
 			return outError
 		}
@@ -325,7 +326,8 @@ func newEDssProxy(config EDssConfig, lsttime int64, aclusers []string) (oDssProx
 // aclusers if not nil is a List of ACL users for access check and for decryption
 // returns a pointer to the ready to use DSS or an error if any occur
 // If lsttime is not zero, access will be read-only
-func NewEDss(config EDssConfig, lsttime int64, aclusers []string) (HDss, error) {
+func NewEDss(config EDssConfig, slsttime int64, aclusers []string) (HDss, error) {
+	lsttime := slsttime * 1e9
 	config.Encrypted = true
 	proxy, libDss, err := newEDssProxy(config, lsttime, aclusers)
 	if err != nil {

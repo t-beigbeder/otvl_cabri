@@ -259,7 +259,7 @@ func (fsy *FsyDss) GetMeta(npath string, getCh bool) (IMeta, error) {
 			Path: npath, Mtime: fi.ModTime().Unix(), Size: int64(len(nsc)), Ch: ch,
 			IsNs: true, Children: children,
 			ACL:   getSysAcl(fi),
-			Itime: fi.ModTime().Unix(),
+			Itime: fi.ModTime().UnixNano(),
 		}, nil
 	} else {
 		ch := ""
@@ -280,7 +280,7 @@ func (fsy *FsyDss) GetMeta(npath string, getCh bool) (IMeta, error) {
 			Path: npath, Mtime: fi.ModTime().Unix(), Size: fi.Size(), Ch: ch,
 			IsNs:  false,
 			ACL:   getSysAcl(fi),
-			Itime: fi.ModTime().Unix(),
+			Itime: fi.ModTime().UnixNano(),
 		}, nil
 	}
 }
