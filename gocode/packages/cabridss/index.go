@@ -312,7 +312,7 @@ func (pix *pIndex) doRemoveMeta(tx *buntdb.Tx, nph string, time int64) error {
 		}
 	}
 	if !found {
-		return fmt.Errorf("in doRemoveMeta: %s %d not found", nph, time)
+		return fmt.Errorf("in doRemoveMeta: %s %d %s not found", nph, time, st)
 	}
 	mkey := fmt.Sprintf("m/%s.%s", nph, internal.Int64ToStr16(time))
 	if _, err := tx.Get(mkey); err != nil {
@@ -333,7 +333,7 @@ func (pix *pIndex) removeMeta(npath string, time int64) error {
 		return pix.doRemoveMeta(tx, nph, time)
 	})
 	if err != nil {
-		err = fmt.Errorf("in removeMeta: %v", err)
+		err = fmt.Errorf("in removeMeta: %s %v", npath, err)
 	}
 	return err
 }

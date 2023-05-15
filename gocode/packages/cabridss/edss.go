@@ -235,6 +235,14 @@ func (edi *eDssImpl) doGetContentReader(npath string, meta Meta) (io.ReadCloser,
 	})
 }
 
+func (edi *eDssImpl) xRemoveMeta(meta Meta) error {
+	if err := cXRemoveMeta(edi.apc, meta.EMId, MIN_TIME); err != nil {
+		return fmt.Errorf("in xRemoveMeta: %v", err)
+	}
+	ipath := RemoveSlashIfNsIf(meta.Path, meta.IsNs)
+	return edi.index.removeMeta(ipath, meta.Itime)
+}
+
 func (edi *eDssImpl) spUpdateClient(cix Index, eud UpdatedData, isFull bool) error {
 	udd := UpdatedData{Changed: map[string][]TimedMeta{}, Deleted: map[string]bool{}}
 	for _, etms := range eud.Changed {
@@ -247,7 +255,7 @@ func (edi *eDssImpl) spUpdateClient(cix Index, eud UpdatedData, isFull bool) err
 			if err != nil {
 				return fmt.Errorf("in spUpdateClient: %w", err)
 			}
-			mbs, _, err := edi.getMetaBytes(meta)
+			mbs, err := json.Marshal(meta)
 			if err != nil {
 				return fmt.Errorf("in spUpdateClient: %w", err)
 			}
@@ -302,6 +310,44 @@ func (edi *eDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, err
 	copyMap(sti.Path2Error, sts.Sti.Path2Error)
 	errs = &sts.Errs
 	edi.decryptScannedStorage(sts, sti, errs)
+}
+
+func (edi *eDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error) {
+	appMai := func(k string, aii AuditIndexInfo) {
+		if _, ok := mai[k]; !ok {
+			mai[k] = []AuditIndexInfo{aii}
+		}
+		mai[k] = append(mai[k], aii)
+	}
+	cmetas := map[string]map[int64][]byte{}
+	remx, err := cLoadIndex(edi.apc)
+	if err != nil {
+		return cmetas, err
+	}
+
+	for k, emm := range remx.Metas {
+		for t, em := range emm {
+			sm, err := DecryptMsg(em, edi.secrets(edi.aclusers)...)
+			if err != nil {
+				appMai(k, AuditIndexInfo{"RemoteDecodeError", err, t, em})
+				continue
+			}
+			m := []byte(sm)
+			var meta Meta
+			if err = json.Unmarshal(m, &meta); err != nil {
+				appMai(k, AuditIndexInfo{"RemoteInconsistent", err, t, m})
+				continue
+			}
+			npath := RemoveSlashIfNsIf(meta.Path, meta.IsNs)
+			h := internal.NameToHashStr32(npath)
+			_, ok := cmetas[h]
+			if !ok {
+				cmetas[h] = map[int64][]byte{}
+			}
+			cmetas[h][meta.Itime] = m
+		}
+	}
+	return cmetas, nil
 }
 
 func (edi *eDssImpl) openSession(aclusers []string) error {

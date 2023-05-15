@@ -180,11 +180,12 @@ func (wdi *webDssImpl) removeMeta(npath string, time int64) error {
 	return nil
 }
 
-func (wdi *webDssImpl) xRemoveMeta(npath string, time int64) error {
-	if err := cXRemoveMeta(wdi.apc, npath, time); err != nil {
+func (wdi *webDssImpl) xRemoveMeta(meta Meta) error {
+	ipath := RemoveSlashIfNsIf(meta.Path, meta.IsNs)
+	if err := cXRemoveMeta(wdi.apc, ipath, meta.Itime); err != nil {
 		return fmt.Errorf("in xRemoveMeta: %v", err)
 	}
-	return wdi.index.removeMeta(npath, time)
+	return wdi.index.removeMeta(ipath, meta.Itime)
 }
 
 func (wdi *webDssImpl) webPushContent(size int64, ch string, mbs []byte, emid string, cf afero.File) error {
@@ -386,6 +387,56 @@ func (wdi *webDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, e
 	errs = &sts.Errs
 }
 
+func (wdi *webDssImpl) spAuditIndexFromRemote(sti StorageInfo, mai map[string][]AuditIndexInfo) error {
+	appMai := func(k string, aii AuditIndexInfo) {
+		if _, ok := mai[k]; !ok {
+			mai[k] = []AuditIndexInfo{aii}
+		}
+		mai[k] = append(mai[k], aii)
+	}
+
+	rmetas, err := wdi.me.spLoadRemoteIndex(mai)
+	if err != nil {
+		return err
+	}
+	for k, mm := range rmetas {
+		for t, m := range mm {
+			var meta Meta
+			if err = json.Unmarshal(m, &meta); err != nil {
+				appMai(k, AuditIndexInfo{"RemoteInconsistent", err, t, m})
+				continue
+			}
+			path := RemoveSlashIfNsIf(meta.Path, meta.IsNs)
+			_, err, ok := wdi.index.loadMeta(path, t)
+			if err != nil {
+				appMai(k, AuditIndexInfo{"LocalError", err, t, m})
+			}
+			if !ok {
+				appMai(k, AuditIndexInfo{"LocalMissing", nil, t, m})
+			}
+		}
+	}
+	_, lmetas, _, err := wdi.index.(*pIndex).loadInMemory()
+	for k, mm := range lmetas {
+		rmm, ok := rmetas[k]
+		if !ok {
+			appMai(k, AuditIndexInfo{"RemoteHashMissing", nil, 0, nil})
+		}
+		for t, m := range mm {
+			var meta Meta
+			if err = json.Unmarshal(m, &meta); err != nil {
+				appMai(k, AuditIndexInfo{"LocalInconsistent", err, t, m})
+				continue
+			}
+			_, ok := rmm[t]
+			if !ok {
+				appMai(k, AuditIndexInfo{"RemoteTimeMissing", nil, t, m})
+			}
+		}
+	}
+	return nil
+}
+
 func (wdi *webDssImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector) {
 	sts, err := cScanPhysicalStorage(wdi.apc)
 	if err != nil {
@@ -394,6 +445,14 @@ func (wdi *webDssImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector
 	}
 	// opportunity to decrypt if applicable
 	wdi.me.spScanPhysicalStorageClient(sts, sti, errs)
+}
+
+func (wdi *webDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error) {
+	remx, err := cLoadIndex(wdi.apc)
+	if err != nil {
+		return map[string]map[int64][]byte{}, err
+	}
+	return remx.Metas, nil
 }
 
 func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isClientEdss bool) (oDssProxy, HDss, error) {

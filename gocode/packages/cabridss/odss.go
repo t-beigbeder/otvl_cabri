@@ -44,6 +44,8 @@ type oDssBaseProxy interface {
 	storeAndIndexMeta(npath string, time int64, bs []byte) error
 	spUpdateClient(cix Index, data UpdatedData, isFull bool) error
 	spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector)
+	spAuditIndexFromRemote(sti StorageInfo, mai map[string][]AuditIndexInfo) error
+	spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error)
 }
 
 type contentWriterCbs struct {
@@ -57,7 +59,7 @@ type oDssSpecificProxy interface {
 	queryMetaTimes(npath string) (times []int64, err error)
 	storeMeta(npath string, time int64, bs []byte) error
 	removeMeta(npath string, time int64) error
-	xRemoveMeta(npath string, time int64) error
+	xRemoveMeta(meta Meta) error
 	pushContent(size int64, ch string, mbs []byte, emid string, cf afero.File) error
 	spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEntry) (io.WriteCloser, error)
 	spGetContentReader(ch string) (io.ReadCloser, error)
@@ -627,13 +629,15 @@ func (odbi *oDssBaseImpl) doRemoveHistory(ipath string, isDir bool, recursive bo
 			}
 			oRes[path] = append(oRes[path], he)
 			if !evaluate {
-				if err := odbi.me.xRemoveMeta(ipath, he.meta.Itime); err != nil {
+				if err := odbi.me.xRemoveMeta(he.meta); err != nil {
 					return fmt.Errorf("in doRemoveHistory: %v", err)
 				}
-				if odbi.me.isEncrypted() {
-					return fmt.Errorf("in doRemoveHistory: not yet implemented") // FIXME
+				itime := he.meta.Itime
+				if odbi.isRepoEncrypted() {
+					ipath = he.meta.EMId
+					itime = MIN_TIME
 				}
-				if err := odbi.me.removeMeta(ipath, he.meta.Itime); err != nil {
+				if err := odbi.me.removeMeta(ipath, itime); err != nil {
 					return fmt.Errorf("in doRemoveHistory: %v", err)
 				}
 			}
@@ -794,6 +798,10 @@ func (odbi *oDssBaseImpl) doAuditIndexFromIndex(sti StorageInfo, mai map[string]
 				appMai(k, AuditIndexInfo{"Inconsistent", err, t, m})
 				continue
 			}
+			if meta.Itime != t {
+				appMai(k, AuditIndexInfo{"Inconsistent", fmt.Errorf("%s (meta %s) ITime %d stored %d d %f", k, RemoveSlashIfNsIf(meta.Path, meta.IsNs), meta.Itime, t, float32(meta.Itime-t)/1e9), t, m})
+				continue
+			}
 			if _, ok := smetas[k]; !ok {
 				appMai(k, AuditIndexInfo{"", err, t, m})
 				continue
@@ -842,6 +850,11 @@ func (odbi *oDssBaseImpl) auditIndex() (map[string][]AuditIndexInfo, error) {
 			return nil, fmt.Errorf("in AuditIndex: %v", err)
 		}
 	}
+	if err = odbi.me.spAuditIndexFromRemote(sti, res); err != nil {
+		if err != nil {
+			return nil, fmt.Errorf("in AuditIndex: %v", err)
+		}
+	}
 	return res, nil
 }
 
@@ -851,6 +864,8 @@ func (odbi *oDssBaseImpl) scanStorage() (StorageInfo, *ErrorCollector) {
 		Path2Content: map[string]string{},
 		ExistingCs:   map[string]bool{},
 		Path2Error:   map[string]error{},
+		XLMetas:      map[string]map[int64][]byte{},
+		XRMetas:      map[string]map[int64][]byte{},
 	}
 	errs := &ErrorCollector{}
 	odbi.me.scanPhysicalStorage(sti, errs)
@@ -913,6 +928,17 @@ func (odbi *oDssBaseImpl) scanStorage() (StorageInfo, *ErrorCollector) {
 	if len(*errs) > 0 {
 		return StorageInfo{}, errs
 	}
+	_, lmetas, _, err := odbi.index.(*pIndex).loadInMemory()
+	if err != nil {
+		errs.Collect(err)
+	}
+	sti.XLMetas = lmetas
+	mai := map[string][]AuditIndexInfo{}
+	rmetas, err := odbi.me.spLoadRemoteIndex(mai)
+	if err != nil {
+		errs.Collect(err)
+	}
+	sti.XRMetas = rmetas
 	return sti, nil
 }
 
@@ -1036,4 +1062,12 @@ func (odbi *oDssBaseImpl) spUpdateClient(cix Index, data UpdatedData, isFull boo
 
 func (odbi *oDssBaseImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	panic("inconsistent")
+}
+
+func (odbi *oDssBaseImpl) spAuditIndexFromRemote(sti StorageInfo, mai map[string][]AuditIndexInfo) error {
+	return nil
+}
+
+func (odbi *oDssBaseImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error) {
+	return map[string]map[int64][]byte{}, nil
 }

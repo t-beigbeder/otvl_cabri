@@ -200,6 +200,15 @@ func sScanPhysicalStorage(c echo.Context) error {
 	return c.JSON(http.StatusOK, &mSPS{Sti: sti, Errs: *errs})
 }
 
+func sLoadIndex(c echo.Context) error {
+	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
+	_, metas, _, err := dss.GetIndex().(*pIndex).loadInMemory()
+	if err != nil {
+		return NewServerErr("sLoadIndex", err)
+	}
+	return c.JSON(http.StatusOK, &mLoadedIndex{Metas: metas})
+}
+
 func WebDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {
 	dss := configs[root].(WebDssServerConfig).Dss
 	_ = dss
@@ -216,6 +225,7 @@ func WebDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	e.GET(root+"queryContent/:ch", sQueryContent)
 	e.GET(root+"dumpIndex", sDumpIndex)
 	e.GET(root+"scanPhysicalStorage", sScanPhysicalStorage)
+	e.GET(root+"loadIndex", sLoadIndex)
 	return nil
 }
 

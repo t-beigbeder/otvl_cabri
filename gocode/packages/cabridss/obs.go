@@ -95,8 +95,9 @@ func (odoi *oDssObjImpl) removeMeta(npath string, time int64) error {
 	return odoi.is3.Delete(fmt.Sprintf("meta-%s.%s", internal.NameToHashStr32(npath), internal.Int64ToStr16(time)))
 }
 
-func (odoi *oDssObjImpl) xRemoveMeta(npath string, time int64) error {
-	return odoi.index.removeMeta(npath, time)
+func (odoi *oDssObjImpl) xRemoveMeta(meta Meta) error {
+	ipath := RemoveSlashIfNsIf(meta.Path, meta.IsNs)
+	return odoi.index.removeMeta(ipath, meta.Itime)
 }
 
 func (odoi *oDssObjImpl) pushContent(size int64, ch string, mbs []byte, emid string, cf afero.File) error {

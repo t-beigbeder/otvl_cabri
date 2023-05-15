@@ -176,10 +176,12 @@ func (aii AuditIndexInfo) String() string {
 }
 
 type StorageInfo struct {
-	Path2Meta    map[string][]byte `json:"path2Meta"`
-	ExistingCs   map[string]bool   `json:"existingCs"`
-	Path2Content map[string]string `json:"path2Content"`
-	Path2Error   map[string]error  `json:"path2Error"`
+	Path2Meta    map[string][]byte           `json:"path2Meta"`
+	ExistingCs   map[string]bool             `json:"existingCs"`
+	Path2Content map[string]string           `json:"path2Content"`
+	Path2Error   map[string]error            `json:"path2Error"`
+	XLMetas      map[string]map[int64][]byte `json:"xlmetas"`
+	XRMetas      map[string]map[int64][]byte `json:"xrmetas"`
 }
 
 // HDss is the Data Storage System interface for DSS with history support.

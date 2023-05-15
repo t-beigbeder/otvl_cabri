@@ -78,6 +78,11 @@ type mSPS struct {
 	Errs ErrorCollector `json:"errs"`
 }
 
+type mLoadedIndex struct {
+	mError
+	Metas map[string]map[int64][]byte `json:"metas"`
+}
+
 func aInitialize(clId string, dss HDss) *mInitialized {
 	cik, err := dss.GetIndex().isClientKnown(clId)
 	if err != nil {
@@ -329,6 +334,27 @@ func cScanPhysicalStorage(apc WebApiClient) (*mSPS, error) {
 	}
 	if out.Error != "" {
 		return nil, fmt.Errorf("in cScanPhysicalStorage: %s", out.Error)
+	}
+	return &out, nil
+}
+
+func cLoadIndex(apc WebApiClient) (*mLoadedIndex, error) {
+	wdc := apc.GetConfig().(webDssClientConfig)
+	var out mLoadedIndex
+	if wdc.LibApi {
+		_, metas, _, err := wdc.libDss.GetIndex().(*pIndex).loadInMemory()
+		if err != nil {
+			out.Error = err.Error()
+		}
+		out.Metas = metas
+	} else {
+		_, err := apc.SimpleDoAsJson(http.MethodGet, apc.Url()+"loadIndex", nil, &out)
+		if err != nil {
+			return nil, fmt.Errorf("in cLoadIndex: %v", err)
+		}
+	}
+	if out.Error != "" {
+		return nil, fmt.Errorf("in cLoadIndex: %s", out.Error)
 	}
 	return &out, nil
 }

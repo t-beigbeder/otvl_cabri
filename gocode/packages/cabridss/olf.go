@@ -132,8 +132,9 @@ func (odoi *oDssOlfImpl) removeMeta(npath string, time int64) error {
 	return nil
 }
 
-func (odoi *oDssOlfImpl) xRemoveMeta(npath string, time int64) error {
-	return odoi.index.removeMeta(npath, time)
+func (odoi *oDssOlfImpl) xRemoveMeta(meta Meta) error {
+	ipath := RemoveSlashIfNsIf(meta.Path, meta.IsNs)
+	return odoi.index.removeMeta(ipath, meta.Itime)
 }
 
 func (odoi *oDssOlfImpl) pushContent(size int64, ch string, mbs []byte, emid string, cf afero.File) error {
@@ -177,6 +178,7 @@ func (odoi *oDssOlfImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEnt
 			itime = meta.Itime
 			npath = RemoveSlashIfNsIf(meta.Path, meta.IsNs)
 		} else {
+			itime = MIN_TIME
 			npath = emid
 		}
 		if err = odoi.me.storeAndIndexMeta(npath, itime, mbs); err != nil {
