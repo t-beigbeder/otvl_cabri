@@ -320,6 +320,7 @@ func checkMkcontentArgs(npath string, acl []ACLEntry) error {
 }
 
 type CreateNewParams struct {
+	ConfigDir string                                                      // if not "" path to the user's configuration directory
 	Create    bool                                                        // perform CreateXxx or NewXxx?
 	DssType   string                                                      // fsy, olf, obs, smf
 	Root      string                                                      // fsy, olf, smf
@@ -343,7 +344,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 			localPath = params.Root
 		}
 		config := OlfConfig{
-			DssBaseConfig: DssBaseConfig{LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
+			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
 			Root:          params.Root, Size: params.Size,
 		}
 		if params.Create {
@@ -355,7 +356,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 	}
 	if params.DssType == "obs" {
 		config := ObsConfig{
-			DssBaseConfig: DssBaseConfig{LocalPath: params.LocalPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
+			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, LocalPath: params.LocalPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
 			Endpoint:      params.Endpoint,
 			Region:        params.Region,
 			AccessKey:     params.AccessKey,
@@ -375,7 +376,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 			localPath = params.Root
 		}
 		config := ObsConfig{
-			DssBaseConfig: DssBaseConfig{LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
+			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
 			Endpoint:      params.Endpoint,
 			Region:        params.Region,
 			AccessKey:     params.AccessKey,

@@ -12,6 +12,7 @@ Getting started:
 
 Other documentation is referenced in the pages above, including:
 
+- [Tuning synchronization parameters](doc/synctune.md)
 - [Simple HTTPS implementation](doc/https.md)
 - [ACL (Access Control List)](doc/acl.md)
 - [Data encyption](doc/encrypt.md)
@@ -25,7 +26,8 @@ Other documentation is referenced in the pages above, including:
 
 Cabri is provided as
 [FOSS](https://en.wikipedia.org/wiki/Free_and_open-source_software)
-under the [BSD 3-Clause License](LICENSE)
+under the [BSD 3-Clause License](LICENSE).
+Following [Code of conduct](doc/coc.md) applies.
 
 ### Data Storage System
 

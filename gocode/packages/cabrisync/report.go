@@ -74,6 +74,7 @@ func (sr SyncReport) GetStats() SyncStats {
 	return syst
 }
 
+// SortByPath builds a report sorted by entry names from existing report
 func (sr SyncReport) SortByPath() (ssr SyncReport) {
 	ssr.GErr = sr.GErr
 	for _, entry := range sr.Entries {
@@ -85,7 +86,7 @@ func (sr SyncReport) SortByPath() (ssr SyncReport) {
 	return
 }
 
-func (sr SyncReport) TextOutput(out io.Writer) {
+func (sr SyncReport) doTextOutput(out io.Writer, summary bool) {
 	for _, entry := range sr.Entries {
 		arrow := '>'
 		if entry.isRTL {
@@ -104,13 +105,23 @@ func (sr SyncReport) TextOutput(out io.Writer) {
 		case entry.Kept:
 			c = '~'
 		}
-		if entry.Err == nil {
+		if entry.Err == nil && (!summary || c != '.') {
 			out.Write([]byte(fmt.Sprintf("%c%c %s %s\n", arrow, c, entry.LPath, entry.RPath)))
-		} else {
+		} else if entry.Err != nil {
 			c = '?'
 			out.Write([]byte(fmt.Sprintf("%c%c %s %s %v\n", arrow, c, entry.LPath, entry.RPath, entry.Err)))
 		}
 	}
+}
+
+// TextOutput displays human readable report on given output
+func (sr SyncReport) TextOutput(out io.Writer) {
+	sr.doTextOutput(out, false)
+}
+
+// SummaryOutput displays human readable summary report on given output: only differences are displayed
+func (sr SyncReport) SummaryOutput(out io.Writer) {
+	sr.doTextOutput(out, true)
 }
 
 // SyncRefDiag provides a reference report indexed by left and right paths for diagnosis purpose

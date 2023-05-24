@@ -41,7 +41,10 @@ func TestOlfACLBase(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 	defer tfs.Delete()
-	dss, err := CreateOlfDss(OlfConfig{DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path()}, Root: tfs.Path(), Size: "s"})
+	dss, err := CreateOlfDss(OlfConfig{
+		DssBaseConfig: DssBaseConfig{
+			ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+			LocalPath: tfs.Path()}, Root: tfs.Path(), Size: "s"})
 	if err != nil {
 		t.Fatal(err.Error())
 	}
@@ -56,7 +59,10 @@ func TestOlfACLBase(t *testing.T) {
 		{User: "uc", Rights: Rights{Read: true, Write: true}},
 	}
 	dss.Mkns("", time.Now().Unix(), nil, aes13)
-	if dss, err = NewOlfDss(OlfConfig{DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path()}, Root: tfs.Path()}, 0, []string{"ua", "ub"}); err != nil {
+	if dss, err = NewOlfDss(OlfConfig{
+		DssBaseConfig: DssBaseConfig{
+			ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+			LocalPath: tfs.Path()}, Root: tfs.Path()}, 0, []string{"ua", "ub"}); err != nil {
 		t.Fatal(err)
 	}
 	cbs := mockfs.MockCbs{}
@@ -116,7 +122,10 @@ func TestOlfACLBase(t *testing.T) {
 		t.Fatalf("GetContentReader should fail with permission denied error")
 	}
 
-	if dss, err = NewOlfDss(OlfConfig{DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path()}, Root: tfs.Path()}, 0, []string{"uc"}); err != nil {
+	if dss, err = NewOlfDss(OlfConfig{
+		DssBaseConfig: DssBaseConfig{
+			ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+			LocalPath: tfs.Path()}, Root: tfs.Path()}, 0, []string{"uc"}); err != nil {
 		t.Fatal(err)
 	}
 	dss.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))

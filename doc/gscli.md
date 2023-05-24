@@ -54,6 +54,8 @@ You will then find all files from the `fsy` DSS synchronized in the `olf` DSS:
 
     $ cabri cli lsns -rs olf:/media/guest/usbkey/simple_backup@
 
+See also [Tuning synchronization parameters](synctune.md).
+
 ## Handling secrets securely
 
 Storing content in the cloud requires access to object storage secret keys.

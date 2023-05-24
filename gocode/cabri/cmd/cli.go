@@ -35,4 +35,5 @@ func init() {
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsSecretKeys, "obssk", nil, "list of object storage secret keys")
 	cliCmd.PersistentFlags().StringVar(&baseOptions.TlsCert, "tlscrt", "", "certificate file on https server or untrusted CA on https client")
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.TlsNoCheck, "tlsnc", false, "no check of certificate by https client")
+	cliCmd.PersistentFlags().IntVar(&baseOptions.MaxThread, "maxt", 0, "sets the maximum OS thread number, defaults to 10000")
 }

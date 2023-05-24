@@ -140,6 +140,7 @@ func (odoi *oDssObjImpl) spGetContentWriter(cwcbs contentWriterCbs, acl []ACLEnt
 			itime = meta.Itime
 			npath = RemoveSlashIfNsIf(meta.Path, meta.IsNs)
 		} else {
+			itime = MIN_TIME
 			npath = emid
 		}
 		if err = odoi.me.storeAndIndexMeta(npath, itime, mbs); err != nil {

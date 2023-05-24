@@ -526,7 +526,7 @@ func dssCleanRun(ctx context.Context) error {
 	if mp, err = MasterPassword(dssCleanUow(ctx), opts, 0); err != nil {
 		return err
 	}
-	if dssType == "obs" {
+	if dssType == "obs" || dssType == "xobs" {
 		config, err = GetObsConfig(opts, 0, root, mp)
 		if err != nil {
 			return err

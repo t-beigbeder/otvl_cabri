@@ -28,6 +28,7 @@ type BaseOptions struct {
 	ObsSecretKeys []string
 	TlsCert       string // certificate file on https server or untrusted CA on https client
 	TlsNoCheck    bool   // no check of certifcate by https client
+	MaxThread     int    // set the maximum OS thread number
 	// Left entities located here in case of sync CLI for convenience
 	LeftUsers []string
 	LeftACL   []string

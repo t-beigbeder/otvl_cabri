@@ -19,6 +19,7 @@ import (
 
 type IS3Session interface {
 	Initialize() error
+	Check() error
 	List(prefix string) ([]string, error)
 	Put(key string, content []byte) error
 	Get(key string) ([]byte, error)
@@ -48,6 +49,11 @@ func (s3s *s3Session) Initialize() error {
 	s3s.session = session.Must(session.NewSession(&config))
 	s3s.s3Svc = s3.New(s3s.session)
 	return nil
+}
+
+func (s3s *s3Session) Check() error {
+	_, err := s3s.s3Svc.HeadBucket(&s3.HeadBucketInput{Bucket: aws.String(s3s.config.Container)})
+	return err
 }
 
 func (s3s *s3Session) List(prefix string) ([]string, error) {
@@ -406,6 +412,8 @@ type s3sMockFs struct {
 	lock    sync.Mutex
 }
 
+func (s3m *s3sMockFs) Check() error { return nil }
+
 func NewS3sMockFs(root string, getMock func(IS3Session) IS3Session) IS3Session {
 	return &s3sMockFs{root: root, getMock: getMock, cache: map[string]bool{}}
 }
@@ -472,6 +480,8 @@ type s3sMockTests struct {
 	parent  IS3Session
 	testsCb func(args ...any) interface{}
 }
+
+func (s3t s3sMockTests) Check() error { return nil }
 
 func NewS3sMockTests(parent IS3Session, testsCb func(args ...any) interface{}) IS3Session {
 	return &s3sMockTests{testsCb: testsCb, parent: parent}

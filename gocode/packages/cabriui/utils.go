@@ -72,6 +72,8 @@ func (ure UiRunEnv) ACLOrDefault() ([]cabridss.ACLEntry, error) {
 	return nil, fmt.Errorf("in UiRunEnv.ACLOrDefault: no default public key")
 }
 
+var masterPassword string
+
 func MasterPassword(uow joule.UnitOfWork, opts BaseOptions, askNumber int) (string, error) {
 	if opts.PassFile != "" {
 		bs, err := os.ReadFile(opts.PassFile)
@@ -84,6 +86,9 @@ func MasterPassword(uow joule.UnitOfWork, opts BaseOptions, askNumber int) (stri
 		return string(bs), nil
 	}
 	if askNumber > 0 || opts.Password {
+		if masterPassword != "" {
+			return masterPassword, nil
+		}
 		passwd1 := uow.UiSecret("please enter the master password: ")
 		if askNumber > 1 {
 			passwd2 := uow.UiSecret("please enter the master password again: ")
@@ -91,6 +96,7 @@ func MasterPassword(uow joule.UnitOfWork, opts BaseOptions, askNumber int) (stri
 				return "", fmt.Errorf("passwords differ or are empty")
 			}
 		}
+		masterPassword = passwd1
 		return passwd1, nil
 	}
 	return "", nil

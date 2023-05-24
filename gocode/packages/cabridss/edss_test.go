@@ -22,7 +22,7 @@ func TestEDssClientOlfBase(t *testing.T) {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex, Encrypted: true},
 			)
 			return err
@@ -59,7 +59,7 @@ func runTestEDssClientObsBase(t *testing.T) error {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{
 					Create: true, DssType: "obs", LocalPath: tfs.Path(), GetIndex: getPIndex, Encrypted: true,
 					Container: os.Getenv("OVHCT"), Endpoint: os.Getenv("OVHEP"), Region: os.Getenv("OVHRG"), AccessKey: os.Getenv("OVHAK"), SecretKey: os.Getenv("OVHSK"),
@@ -103,7 +103,7 @@ func TestEDssClientSmfBase(t *testing.T) {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{
 					Create: true, DssType: "smf", LocalPath: tfs.Path(), GetIndex: getPIndex, Encrypted: true,
 				},
@@ -262,7 +262,7 @@ func TestEDssClientOlfHistory(t *testing.T) {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex, Encrypted: true},
 			)
 			return err
@@ -334,7 +334,7 @@ func TestEDssClientOlfMultiHistory(t *testing.T) {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex, Encrypted: true},
 			)
 			return err

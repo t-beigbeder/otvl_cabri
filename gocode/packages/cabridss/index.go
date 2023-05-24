@@ -721,6 +721,18 @@ func (pix *pIndex) Repair(readOnly bool) ([]string, error) {
 	return ds, err
 }
 
+func bdbReconfigure(db *buntdb.DB) error {
+	var config buntdb.Config
+	if err := db.ReadConfig(&config); err != nil {
+		return err
+	}
+	config.SyncPolicy = buntdb.Never
+	if err := db.SetConfig(config); err != nil {
+		return err
+	}
+	return nil
+}
+
 func NewPIndex(path string, unlock, autoRepair bool) (Index, error) {
 	db, err := buntdb.Open(path)
 	var (
@@ -728,6 +740,10 @@ func NewPIndex(path string, unlock, autoRepair bool) (Index, error) {
 		unlocked bool
 	)
 	if err != nil {
+		return nil, fmt.Errorf("in NewPIndex: %v", err)
+	}
+	if err = bdbReconfigure(db); err != nil {
+		db.Close()
 		return nil, fmt.Errorf("in NewPIndex: %v", err)
 	}
 	err = db.Update(func(tx *buntdb.Tx) error {
@@ -794,6 +810,10 @@ func reindexPIndex(path string, metaTimes map[string]map[int64]bool, metas map[s
 	db, err = buntdb.Open(path)
 	if err != nil {
 		return fmt.Errorf("in reindexPIndex: %w", err)
+	}
+	if err = bdbReconfigure(db); err != nil {
+		db.Close()
+		return fmt.Errorf("in reindexPIndex: %v", err)
 	}
 	defer db.Close()
 	err = db.Update(func(tx *buntdb.Tx) error {

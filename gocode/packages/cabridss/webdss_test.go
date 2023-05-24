@@ -11,7 +11,10 @@ import (
 	"testing"
 )
 
-func createWebDssServer(addr, root string, params CreateNewParams) (WebServer, error) {
+func createWebDssServer(tfs *testfs.Fs, addr, root string, params CreateNewParams) (WebServer, error) {
+	if params.ConfigDir == "" {
+		params.ConfigDir = ufpath.Join(tfs.Path(), ".cabri")
+	}
 	dss, err := CreateOrNewDss(params)
 	_ = dss
 	if err != nil {
@@ -40,7 +43,7 @@ func TestNewWebDssServer(t *testing.T) {
 		return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 	}
 
-	sv, err := createWebDssServer(":3000", "",
+	sv, err := createWebDssServer(tfs, ":3000", "",
 		CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 	)
 	if err != nil {
@@ -48,14 +51,14 @@ func TestNewWebDssServer(t *testing.T) {
 	}
 	sv.Shutdown()
 	// check unlocked
-	sv, err = createWebDssServer(":3000", "",
+	sv, err = createWebDssServer(tfs, ":3000", "",
 		CreateNewParams{Create: false, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer sv.Shutdown()
-	sv, err = createWebDssServer(":3000", "",
+	sv, err = createWebDssServer(tfs, ":3000", "",
 		CreateNewParams{Create: false, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 	)
 	if err == nil {
@@ -78,7 +81,7 @@ func TestNewWebDssTlsServer(t *testing.T) {
 		return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 	}
 
-	sv, err := createWebDssServer("localhost:3443", "",
+	sv, err := createWebDssServer(tfs, "localhost:3443", "",
 		CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 	)
 	if err != nil {
@@ -86,14 +89,14 @@ func TestNewWebDssTlsServer(t *testing.T) {
 	}
 	sv.Shutdown()
 	// check unlocked
-	sv, err = createWebDssServer("localhost:3443", "",
+	sv, err = createWebDssServer(tfs, "localhost:3443", "",
 		CreateNewParams{Create: false, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer sv.Shutdown()
-	sv, err = createWebDssServer("localhost:3443", "",
+	sv, err = createWebDssServer(tfs, "localhost:3443", "",
 		CreateNewParams{Create: false, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 	)
 	if err == nil {
@@ -133,7 +136,7 @@ func TestNewWebDssClientOlf(t *testing.T) {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 			)
 			return err
@@ -170,7 +173,7 @@ func TestNewWebDssTlsClientOlf(t *testing.T) {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer("localhost:3443", "",
+			sv, err = createWebDssServer(tfs, "localhost:3443", "",
 				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 			)
 			return err
@@ -211,7 +214,7 @@ func runTestNewWebDssClientObs(t *testing.T) error {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{
 					Create: true, DssType: "obs", LocalPath: tfs.Path(), GetIndex: getPIndex,
 					Container: os.Getenv("OVHCT"), Endpoint: os.Getenv("OVHEP"), Region: os.Getenv("OVHRG"), AccessKey: os.Getenv("OVHAK"), SecretKey: os.Getenv("OVHSK"),
@@ -253,7 +256,7 @@ func TestNewWebDssClientSmf(t *testing.T) {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{
 					Create: true, DssType: "smf", LocalPath: tfs.Path(), GetIndex: getPIndex,
 				},
@@ -398,7 +401,7 @@ func TestWebClientOlfHistory(t *testing.T) {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 			)
 			return err
@@ -433,7 +436,7 @@ func runTestWebClientObsHistory(t *testing.T) error {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{
 					Create: true, DssType: "obs", LocalPath: tfs.Path(), GetIndex: getPIndex,
 					Container: os.Getenv("OVHCT"), Endpoint: os.Getenv("OVHEP"), Region: os.Getenv("OVHRG"), AccessKey: os.Getenv("OVHAK"), SecretKey: os.Getenv("OVHSK"),
@@ -547,7 +550,7 @@ func TestWebClientOlfMultiHistory(t *testing.T) {
 			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
 				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 			}
-			sv, err = createWebDssServer(":3000", "",
+			sv, err = createWebDssServer(tfs, ":3000", "",
 				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
 			)
 			return err

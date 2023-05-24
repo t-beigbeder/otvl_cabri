@@ -8,6 +8,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"os"
+	"runtime/debug"
 	"strings"
 )
 
@@ -20,6 +21,7 @@ type SyncOptions struct {
 	NoCh         bool
 	NoACL        bool
 	MapACL       []string
+	Summary      bool
 	Verbose      bool
 	VerboseLevel int
 	LeftTime     string
@@ -196,6 +198,9 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 		RightMapACL: rmacl,
 		BeVerbose:   beVerbose,
 	}
+	if opts.MaxThread != 0 {
+		debug.SetMaxThreads(opts.MaxThread)
+	}
 	iOutputs := plumber.LaunchAndWait(ctx,
 		[]string{"Synchronized"},
 		[]plumber.Launchable{cabrisync.PlizedSynchronize},
@@ -220,7 +225,13 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 	}
 	stats := sr.GetStats()
 	if opts.DryRun || opts.Verbose {
-		sr.SortByPath().TextOutput(syncUow(ctx).UiErrWriter())
+		ssr := sr.SortByPath()
+		wrt := syncUow(ctx).UiErrWriter()
+		if opts.Summary {
+			ssr.SummaryOutput(wrt)
+		} else {
+			ssr.TextOutput(wrt)
+		}
 		syncErr(ctx, fmt.Sprintf(
 			"created: %d, updated %d, removed %d, kept %d, touched %d, error(s) %d\n",
 			stats.CreNum, stats.UpdNum, stats.RmvNum, stats.KeptNum, stats.MUpNum, stats.ErrNum))

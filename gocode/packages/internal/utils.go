@@ -20,6 +20,18 @@ func (ss SliceStringer[T]) String() (res string) {
 	return
 }
 
+type StringSlice []string
+
+func (ss StringSlice) String() (res string) {
+	for _, s := range ss {
+		if res != "" {
+			res += "\n"
+		}
+		res += s
+	}
+	return
+}
+
 type MapSliceStringer[T fmt.Stringer] struct{ Map map[string][]T }
 
 func (ms MapSliceStringer[T]) String() (res string) {
