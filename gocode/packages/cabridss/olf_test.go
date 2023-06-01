@@ -42,17 +42,20 @@ func TestCreateOlfDssErr(t *testing.T) {
 	}
 }
 
-func runTestNewOlfVarSizesDssOk(t *testing.T, size string) error {
+func runTestNewOlfVarSizesDssOk(t *testing.T, size string, redLimit int) error {
 	if err := runTestBasic(t,
 		func(tfs *testfs.Fs) error {
-			_, err := CreateOlfDss(OlfConfig{DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path()}, Root: tfs.Path(), Size: size})
+			_, err := CreateOlfDss(OlfConfig{
+				DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path(), ReducerLimit: redLimit},
+				Root:          tfs.Path(), Size: size})
 			return err
 		},
 		func(tfs *testfs.Fs) (HDss, error) {
 			dss, err := NewOlfDss(OlfConfig{
 				Root: tfs.Path(),
 				DssBaseConfig: DssBaseConfig{
-					LocalPath: tfs.Path(),
+					LocalPath:    tfs.Path(),
+					ReducerLimit: redLimit,
 					GetIndex: func(config DssBaseConfig, _ string) (Index, error) {
 						return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 					}}}, 0, nil)
@@ -64,19 +67,25 @@ func runTestNewOlfVarSizesDssOk(t *testing.T, size string) error {
 }
 
 func TestNewOlfSmallDssOk(t *testing.T) {
-	if err := runTestNewOlfVarSizesDssOk(t, "s"); err != nil {
+	if err := runTestNewOlfVarSizesDssOk(t, "s", 0); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNewOlfSmallDssRedOk(t *testing.T) {
+	if err := runTestNewOlfVarSizesDssOk(t, "s", 2); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestNewOlfMediumDssOk(t *testing.T) {
-	if err := runTestNewOlfVarSizesDssOk(t, "m"); err != nil {
+	if err := runTestNewOlfVarSizesDssOk(t, "m", 0); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestNewOlfLargeDssOk(t *testing.T) {
-	if err := runTestNewOlfVarSizesDssOk(t, "l"); err != nil {
+	if err := runTestNewOlfVarSizesDssOk(t, "l", 0); err != nil {
 		t.Fatal(err)
 	}
 }

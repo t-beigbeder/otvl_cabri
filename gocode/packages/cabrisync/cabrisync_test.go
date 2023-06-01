@@ -293,6 +293,34 @@ func TestSynchronizeBasicACL(t *testing.T) {
 	runTestSynchronizeBasic(t, tfsl, dssl, dssr, false, false)
 }
 
+func TestSynchronizeBasicRed(t *testing.T) {
+	optionalSkip(t)
+	tfsl, err := testfs.CreateFs("TestSynchronizeBasicLeft", basicTfsStartup)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfsl.Delete()
+	dssl, err := cabridss.NewFsyDss(cabridss.FsyConfig{cabridss.DssBaseConfig{ReducerLimit: 10}}, tfsl.Path())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	cbs := mockfs.MockCbs{}
+	dssl.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
+
+	tfsr, err := testfs.CreateFs("TestSynchronizeBasicRight", nil)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfsr.Delete()
+	dssr, err := cabridss.NewFsyDss(cabridss.FsyConfig{cabridss.DssBaseConfig{ReducerLimit: 10}}, tfsr.Path())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	dssr.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
+
+	runTestSynchronizeBasic(t, tfsl, dssl, dssr, true, true)
+}
+
 func TestSynchronizeBasicFsyOlf(t *testing.T) {
 	optionalSkip(t)
 	tfsl, err := testfs.CreateFs("TestSyncBasicFsyOlfLeft", basicTfsStartup)
@@ -347,6 +375,34 @@ func TestSynchronizeBasicFsyOlfACL(t *testing.T) {
 	dssr.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
 
 	runTestSynchronizeBasic(t, tfsl, dssl, dssr, false, false)
+}
+
+func TestSynchronizeBasicFsyOlfRed(t *testing.T) {
+	optionalSkip(t)
+	tfsl, err := testfs.CreateFs("TestSyncBasicFsyOlfLeft", basicTfsStartup)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfsl.Delete()
+	dssl, err := cabridss.NewFsyDss(cabridss.FsyConfig{cabridss.DssBaseConfig{ReducerLimit: 10}}, tfsl.Path())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	cbs := mockfs.MockCbs{}
+	dssl.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
+
+	tfsr, err := testfs.CreateFs("TestSyncBasicFsyOlfRight", nil)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfsr.Delete()
+	dssr, err := cabridss.CreateOlfDss(cabridss.OlfConfig{DssBaseConfig: cabridss.DssBaseConfig{LocalPath: tfsr.Path(), ReducerLimit: 10}, Root: tfsr.Path(), Size: "s"})
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	dssr.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
+
+	runTestSynchronizeBasic(t, tfsl, dssl, dssr, true, false)
 }
 
 func TestSynchronizeBasicFsyObs(t *testing.T) {
@@ -533,13 +589,12 @@ func TestSynchronizeBasicFsyEDssApiOlf(t *testing.T) {
 			return err
 		},
 		func(tfs *testfs.Fs) (cabridss.HDss, error) {
-			ucp, uc, _ := newUcp(tfs)
 			dss, err := cabridss.NewEDss(
 				cabridss.EDssConfig{
 					WebDssConfig: cabridss.WebDssConfig{
 						DssBaseConfig: cabridss.DssBaseConfig{
 							LibApi:    true,
-							ConfigDir: ucp,
+							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 						},
 						LibApiDssConfig: cabridss.LibApiDssConfig{
 							IsOlf: true,
@@ -553,7 +608,7 @@ func TestSynchronizeBasicFsyEDssApiOlf(t *testing.T) {
 						},
 					},
 				},
-				0, cabridss.IdPkeys(uc))
+				0, nil)
 			return dss, err
 
 		}); err != nil {

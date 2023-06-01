@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"io"
 	"os"
@@ -250,7 +251,11 @@ func NewObsDss(config ObsConfig, slsttime int64, aclusers []string) (HDss, error
 			return nil, fmt.Errorf("in NewObsDss: repository is not encrypted")
 		}
 	}
-	return &ODss{proxy: proxy}, nil
+	var red plumber.Reducer = nil
+	if config.ReducerLimit != 0 {
+		red = plumber.NewReducer(config.ReducerLimit, 0)
+	}
+	return &ODss{proxy: proxy, reducer: red}, nil
 }
 
 // CreateObsDss creates an "object-storage" DSS (data storage system)

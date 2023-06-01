@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 )
 
-func (dss *FsyDss) SetAfs(afs afero.Fs) {
-	dss.afs = afs
+func (fsy *FsyDss) SetAfs(afs afero.Fs) {
+	fsy.afs = afs
 }
 
-func (dss *FsyDss) SetMetaMockCbs(cbs *MetaMockCbs) {
+func (fsy *FsyDss) SetMetaMockCbs(cbs *MetaMockCbs) {
 	panic("FsyDss.SetMetaMockCbs is not implemented")
 }
 

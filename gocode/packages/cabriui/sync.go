@@ -90,7 +90,11 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (cab
 		lasttime, _ = CheckTimeStamp(slt)
 	}
 	if dssType == "fsy" {
-		if dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, root); err != nil {
+		if dss, err = cabridss.NewFsyDss(
+			cabridss.FsyConfig{
+				DssBaseConfig: cabridss.DssBaseConfig{ReducerLimit: syncOpts(ctx).RedLimit},
+			},
+			root); err != nil {
 			return nil, "", ure, err
 		}
 		ure.DefaultSyncUser = fmt.Sprintf("x-uid:%d", os.Getuid())

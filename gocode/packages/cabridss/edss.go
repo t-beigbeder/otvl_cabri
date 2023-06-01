@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
 	"sort"
 )
@@ -389,5 +390,9 @@ func NewEDss(config EDssConfig, slsttime int64, aclusers []string) (HDss, error)
 		proxy.close()
 		return nil, fmt.Errorf("in NewWebDss: %w", err)
 	}
-	return &ODss{proxy: proxy}, nil
+	var red plumber.Reducer = nil
+	if config.ReducerLimit != 0 {
+		red = plumber.NewReducer(config.ReducerLimit, 0)
+	}
+	return &ODss{proxy: proxy, reducer: red}, nil
 }

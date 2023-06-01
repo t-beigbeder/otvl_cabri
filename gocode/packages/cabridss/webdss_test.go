@@ -198,6 +198,41 @@ func TestNewWebDssTlsClientOlf(t *testing.T) {
 	}
 }
 
+func TestNewWebDssClientOlfRed(t *testing.T) {
+	ucpCount := 0
+	var sv WebServer
+	var err error
+	defer func() {
+		if sv != nil {
+			sv.Shutdown()
+		}
+	}()
+	if err := runTestBasic(t,
+		func(tfs *testfs.Fs) error {
+			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
+				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+			}
+			sv, err = createWebDssServer(tfs, ":3000", "",
+				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex},
+			)
+			return err
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			ucpCount += 1
+			dss, err := NewWebDss(
+				WebDssConfig{
+					DssBaseConfig: DssBaseConfig{
+						ConfigDir:    ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
+						WebPort:      "3000",
+						ReducerLimit: 2,
+					}, NoClientLimit: true},
+				0, nil)
+			return dss, err
+		}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func runTestNewWebDssClientObs(t *testing.T) error {
 	var sv WebServer
 	var err error
@@ -278,24 +313,60 @@ func TestNewWebDssClientSmf(t *testing.T) {
 }
 
 func TestNewWebDssApiClientOlf(t *testing.T) {
-	ucpCount := 0
+	ucpCount = 0
 	if err := runTestBasic(t,
 		func(tfs *testfs.Fs) error {
-			_, err := CreateOlfDss(OlfConfig{DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path()}, Root: tfs.Path(), Size: "s"})
+			ucp, _, _ := newUcp(tfs)
+			_, err := CreateOlfDss(OlfConfig{
+				DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path(), ConfigDir: ucp},
+				Root:          tfs.Path(), Size: "s"})
 			return err
 		},
 		func(tfs *testfs.Fs) (HDss, error) {
-			ucpCount += 1
+			ucp, _, _ := currentUcp(tfs)
 			dss, err := NewWebDss(
 				WebDssConfig{
-					DssBaseConfig: DssBaseConfig{
-						LibApi:    true,
-						ConfigDir: ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
-					},
+					DssBaseConfig: DssBaseConfig{LibApi: true, ConfigDir: ucp},
 					LibApiDssConfig: LibApiDssConfig{
 						IsOlf: true,
 						OlfCfg: OlfConfig{
 							DssBaseConfig: DssBaseConfig{
+								ConfigDir: ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
+								LocalPath: tfs.Path(),
+								GetIndex: func(config DssBaseConfig, _ string) (Index, error) {
+									return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+								},
+							}, Root: tfs.Path(), Size: "s"},
+					},
+				},
+				0, nil)
+			return dss, err
+
+		}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestNewWebDssApiClientOlfRed(t *testing.T) {
+	ucpCount = 0
+	if err := runTestBasic(t,
+		func(tfs *testfs.Fs) error {
+			ucp, _, _ := newUcp(tfs)
+			_, err := CreateOlfDss(OlfConfig{
+				DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path(), ConfigDir: ucp},
+				Root:          tfs.Path(), Size: "s"})
+			return err
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			ucp, _, _ := currentUcp(tfs)
+			dss, err := NewWebDss(
+				WebDssConfig{
+					DssBaseConfig: DssBaseConfig{LibApi: true, ConfigDir: ucp, ReducerLimit: 2},
+					LibApiDssConfig: LibApiDssConfig{
+						IsOlf: true,
+						OlfCfg: OlfConfig{
+							DssBaseConfig: DssBaseConfig{
+								ConfigDir: ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
 								LocalPath: tfs.Path(),
 								GetIndex: func(config DssBaseConfig, _ string) (Index, error) {
 									return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
@@ -312,14 +383,17 @@ func TestNewWebDssApiClientOlf(t *testing.T) {
 }
 
 func runTestNewWebDssApiClientObs(t *testing.T) error {
+	ucpCount = 0
 	return runTestBasic(t,
 		func(tfs *testfs.Fs) error {
 			if err := CleanObsDss(getOC()); err != nil {
 				return err
 			}
+			ucp, _, _ := newUcp(tfs)
 			config := getOC()
 			config.LocalPath = tfs.Path()
 			config.DssBaseConfig.GetIndex = GetPIndex
+			config.ConfigDir = ucp
 			dss, err := CreateObsDss(config)
 			if err != nil {
 				return err
@@ -328,9 +402,11 @@ func runTestNewWebDssApiClientObs(t *testing.T) error {
 			return nil
 		},
 		func(tfs *testfs.Fs) (HDss, error) {
+			ucp, _, _ := currentUcp(tfs)
 			dbc := getOC()
 			dbc.LocalPath = tfs.Path()
 			dbc.DssBaseConfig.GetIndex = GetPIndex
+			dbc.ConfigDir = ucp
 			dss, err := NewWebDss(
 				WebDssConfig{
 					DssBaseConfig: DssBaseConfig{
@@ -354,11 +430,14 @@ func TestNewWebDssApiClientObs(t *testing.T) {
 }
 
 func TestNewWebDssApiClientSmf(t *testing.T) {
+	ucpCount = 0
 	if err := runTestBasic(t,
 		func(tfs *testfs.Fs) error {
+			ucp, _, _ := newUcp(tfs)
 			config := getOC()
 			config.LocalPath = tfs.Path()
 			config.DssBaseConfig.GetIndex = GetPIndex
+			config.ConfigDir = ucp
 			dss, err := CreateObsDss(config)
 			if err != nil {
 				return err
@@ -367,9 +446,11 @@ func TestNewWebDssApiClientSmf(t *testing.T) {
 			return nil
 		},
 		func(tfs *testfs.Fs) (HDss, error) {
+			ucp, _, _ := currentUcp(tfs)
 			dbc := getOC()
 			dbc.LocalPath = tfs.Path()
 			dbc.DssBaseConfig.GetIndex = GetPIndex
+			dbc.ConfigDir = ucp
 			dss, err := NewWebDss(
 				WebDssConfig{
 					DssBaseConfig: DssBaseConfig{
@@ -466,12 +547,15 @@ func TestWebClientObsHistory(t *testing.T) {
 }
 
 func TestWebDssApiClientOlfHistory(t *testing.T) {
+	ucpCount = 0
 	if err := runTestHistory(t,
 		func(tfs *testfs.Fs) error {
-			_, err := CreateOlfDss(OlfConfig{DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path()}, Root: tfs.Path(), Size: "s"})
+			ucp, _, _ := newUcp(tfs)
+			_, err := CreateOlfDss(OlfConfig{DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path(), ConfigDir: ucp}, Root: tfs.Path(), Size: "s"})
 			return err
 		},
 		func(tfs *testfs.Fs) (HDss, error) {
+			ucp, _, _ := currentUcp(tfs)
 			dss, err := NewWebDss(
 				WebDssConfig{
 					DssBaseConfig: DssBaseConfig{
@@ -484,6 +568,7 @@ func TestWebDssApiClientOlfHistory(t *testing.T) {
 							DssBaseConfig: DssBaseConfig{
 								LocalPath: tfs.Path(),
 								GetIndex:  GetPIndex,
+								ConfigDir: ucp,
 							}, Root: tfs.Path(), Size: "s"},
 					},
 				},
@@ -496,14 +581,17 @@ func TestWebDssApiClientOlfHistory(t *testing.T) {
 }
 
 func runTestWebDssApiClientObsHistory(t *testing.T) error {
+	ucpCount = 0
 	return runTestHistory(t,
 		func(tfs *testfs.Fs) error {
 			if err := CleanObsDss(getOC()); err != nil {
 				return err
 			}
+			ucp, _, _ := newUcp(tfs)
 			config := getOC()
 			config.LocalPath = tfs.Path()
 			config.DssBaseConfig.GetIndex = GetPIndex
+			config.ConfigDir = ucp
 			dss, err := CreateObsDss(config)
 			if err != nil {
 				return err
@@ -512,9 +600,11 @@ func runTestWebDssApiClientObsHistory(t *testing.T) error {
 			return nil
 		},
 		func(tfs *testfs.Fs) (HDss, error) {
+			ucp, _, _ := currentUcp(tfs)
 			dbc := getOC()
 			dbc.LocalPath = tfs.Path()
 			dbc.DssBaseConfig.GetIndex = GetPIndex
+			dbc.DssBaseConfig.ConfigDir = ucp
 			dss, err := NewWebDss(
 				WebDssConfig{
 					DssBaseConfig: DssBaseConfig{

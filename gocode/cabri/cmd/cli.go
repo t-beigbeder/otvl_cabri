@@ -27,6 +27,8 @@ func init() {
 	cliCmd.PersistentFlags().StringVar(&baseOptions.PassFile, "pfile", "", "file containing the master password")
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.Password, "password", false, "force master password prompt")
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.Serial, "serial", false, "run all tasks in sequence")
+	cliCmd.PersistentFlags().IntVar(&baseOptions.MaxThread, "maxt", 0, "sets the maximum OS thread number, defaults to 10000")
+	cliCmd.PersistentFlags().IntVar(&baseOptions.RedLimit, "reducer", 20, "sets the maximum parallel I/O, zero means no limit")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.IndexImplems, "ximpl", nil, "list of non-default object storage index implementations")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsRegions, "obsrg", nil, "list of object storage regions")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsEndpoints, "obsep", nil, "list of object storage endpoints")
@@ -35,5 +37,4 @@ func init() {
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsSecretKeys, "obssk", nil, "list of object storage secret keys")
 	cliCmd.PersistentFlags().StringVar(&baseOptions.TlsCert, "tlscrt", "", "certificate file on https server or untrusted CA on https client")
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.TlsNoCheck, "tlsnc", false, "no check of certificate by https client")
-	cliCmd.PersistentFlags().IntVar(&baseOptions.MaxThread, "maxt", 0, "sets the maximum OS thread number, defaults to 10000")
 }

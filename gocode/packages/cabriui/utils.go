@@ -296,6 +296,7 @@ func NewXolfDss(opts BaseOptions, setCfgFunc func(bc *cabridss.DssBaseConfig), i
 					LibApi:         true,
 					ConfigDir:      oc.ConfigDir,
 					ConfigPassword: mp,
+					ReducerLimit:   oc.ReducerLimit,
 				},
 				LibApiDssConfig: cabridss.LibApiDssConfig{
 					IsOlf:  true,
@@ -337,6 +338,7 @@ func NewXobsDss(opts BaseOptions, setCfgFunc func(bc *cabridss.DssBaseConfig), i
 					LibApi:         true,
 					ConfigDir:      oc.ConfigDir,
 					ConfigPassword: mp,
+					ReducerLimit:   oc.ReducerLimit,
 				},
 				LibApiDssConfig: cabridss.LibApiDssConfig{
 					IsObs:  !isSmf,

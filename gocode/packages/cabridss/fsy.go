@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"hash"
 	"io"
@@ -45,11 +46,12 @@ type FsyConfig struct {
 }
 
 type FsyDss struct {
-	root string
-	afs  afero.Fs
+	root    string
+	afs     afero.Fs
+	reducer plumber.Reducer
 }
 
-func (fsy FsyDss) mkUpdateNs(npath string, mtime int64, children []string, existing []string, acl []ACLEntry) error {
+func (fsy *FsyDss) doMkUpdateNs(npath string, mtime int64, children []string, existing []string, acl []ACLEntry) error {
 	err := checkMknsArgs(npath, children, acl)
 	if err != nil {
 		return err
@@ -120,7 +122,18 @@ func (fsy FsyDss) mkUpdateNs(npath string, mtime int64, children []string, exist
 	return nil
 }
 
-func (fsy FsyDss) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
+func (fsy *FsyDss) mkUpdateNs(npath string, mtime int64, children []string, existing []string, acl []ACLEntry) (err error) {
+	if fsy.reducer == nil {
+		return fsy.doMkUpdateNs(npath, mtime, children, existing, acl)
+	}
+	return fsy.reducer.Launch(
+		fmt.Sprintf("mkUpdateNs %s", npath),
+		func() error {
+			return fsy.doMkUpdateNs(npath, mtime, children, existing, acl)
+		})
+}
+
+func (fsy *FsyDss) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
 	existing, err := fsy.Lsns(npath)
 	if err != nil {
 		return fmt.Errorf("in Mkns: %w", err)
@@ -131,7 +144,7 @@ func (fsy FsyDss) Mkns(npath string, mtime int64, children []string, acl []ACLEn
 	return fsy.mkUpdateNs(npath, mtime, children, nil, acl)
 }
 
-func (fsy FsyDss) Updatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
+func (fsy *FsyDss) Updatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
 	existing, err := fsy.Lsns(npath)
 	if err != nil {
 		return fmt.Errorf("in Updatens: %w", err)
@@ -139,7 +152,7 @@ func (fsy FsyDss) Updatens(npath string, mtime int64, children []string, acl []A
 	return fsy.mkUpdateNs(npath, mtime, children, existing, acl)
 }
 
-func (fsy FsyDss) Lsns(npath string) ([]string, error) {
+func (fsy *FsyDss) doLsns(npath string) ([]string, error) {
 	if err := checkNpath(npath); err != nil {
 		return nil, err
 	}
@@ -164,7 +177,26 @@ func (fsy FsyDss) Lsns(npath string) ([]string, error) {
 	return children, nil
 }
 
-func (fsy FsyDss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
+func (fsy *FsyDss) Lsns(npath string) (children []string, err error) {
+	if fsy.reducer == nil {
+		children, err = fsy.doLsns(npath)
+		return
+	}
+	if err = fsy.reducer.Launch(
+		fmt.Sprintf("Lsns %s", npath),
+		func() error {
+			var iErr error
+			if children, iErr = fsy.doLsns(npath); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
+}
+
+func (fsy *FsyDss) doGetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
 	lcb := func(err error, size int64, ch string) {
 		if err == nil {
 			cpath := ufpath.Join(fsy.root, npath)
@@ -191,11 +223,30 @@ func (fsy FsyDss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb
 	return &ContentHandle{cb: lcb, cf: cf, h: sha256.New()}, nil
 }
 
-func (fsy FsyDss) IsDuplicate(ch string) (bool, error) {
+func (fsy *FsyDss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (wc io.WriteCloser, err error) {
+	if fsy.reducer == nil {
+		wc, err = fsy.doGetContentWriter(npath, mtime, acl, cb)
+		return
+	}
+	if err = fsy.reducer.Launch(
+		fmt.Sprintf("GetContentWriter %s", npath),
+		func() error {
+			var iErr error
+			if wc, iErr = fsy.doGetContentWriter(npath, mtime, acl, cb); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
+}
+
+func (fsy *FsyDss) IsDuplicate(ch string) (bool, error) {
 	return false, nil
 }
 
-func (fsy FsyDss) GetContentReader(npath string) (io.ReadCloser, error) {
+func (fsy *FsyDss) doGetContentReader(npath string) (io.ReadCloser, error) {
 	cpath := ufpath.Join(fsy.root, npath)
 	f, err := fsy.GetAfs().Open(cpath)
 	if err != nil {
@@ -204,7 +255,26 @@ func (fsy FsyDss) GetContentReader(npath string) (io.ReadCloser, error) {
 	return f, nil
 }
 
-func (fsy FsyDss) ctlStat(fp string, isNS bool) (os.FileInfo, error) {
+func (fsy *FsyDss) GetContentReader(npath string) (rc io.ReadCloser, err error) {
+	if fsy.reducer == nil {
+		rc, err = fsy.doGetContentReader(npath)
+		return
+	}
+	if err = fsy.reducer.Launch(
+		fmt.Sprintf("GetContentReader %s", npath),
+		func() error {
+			var iErr error
+			if rc, iErr = fsy.doGetContentReader(npath); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
+}
+
+func (fsy *FsyDss) ctlStat(fp string, isNS bool) (os.FileInfo, error) {
 	fi, err := fsy.GetAfs().Stat(fp)
 	if err != nil {
 		return nil, fmt.Errorf("in ctlStat: %w", err)
@@ -218,7 +288,7 @@ func (fsy FsyDss) ctlStat(fp string, isNS bool) (os.FileInfo, error) {
 	return fi, nil
 }
 
-func (fsy FsyDss) Remove(npath string) error {
+func (fsy *FsyDss) doRemove(npath string) error {
 	isNS, npath, err := checkNCpath(npath)
 	if err != nil {
 		return err
@@ -238,7 +308,18 @@ func (fsy FsyDss) Remove(npath string) error {
 	}
 }
 
-func (fsy *FsyDss) GetMeta(npath string, getCh bool) (IMeta, error) {
+func (fsy *FsyDss) Remove(npath string) (err error) {
+	if fsy.reducer == nil {
+		return fsy.doRemove(npath)
+	}
+	return fsy.reducer.Launch(
+		fmt.Sprintf("Remove %s", npath),
+		func() error {
+			return fsy.doRemove(npath)
+		})
+}
+
+func (fsy *FsyDss) doGetMeta(npath string, getCh bool) (IMeta, error) {
 	isNS, ipath, err := checkNCpath(npath)
 	if err != nil {
 		return nil, err
@@ -249,7 +330,7 @@ func (fsy *FsyDss) GetMeta(npath string, getCh bool) (IMeta, error) {
 		return nil, fmt.Errorf("in GetMeta: %w", err)
 	}
 	if isNS {
-		children, err := fsy.Lsns(ipath)
+		children, err := fsy.doLsns(ipath)
 		sort.Strings(children)
 		if err != nil {
 			return nil, fmt.Errorf("in GetMeta: %w", err)
@@ -285,16 +366,40 @@ func (fsy *FsyDss) GetMeta(npath string, getCh bool) (IMeta, error) {
 	}
 }
 
-func (fsy FsyDss) SetCurrentTime(time int64) {}
+func (fsy *FsyDss) GetMeta(npath string, getCh bool) (meta IMeta, err error) {
+	if fsy.reducer == nil {
+		meta, err = fsy.doGetMeta(npath, getCh)
+		return
+	}
+	if err = fsy.reducer.Launch(
+		fmt.Sprintf("GetMeta %s", npath),
+		func() error {
+			var iErr error
+			if meta, iErr = fsy.doGetMeta(npath, getCh); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
+}
 
-func (dss *FsyDss) GetAfs() afero.Fs {
-	if dss.afs != nil {
-		return dss.afs
+func (fsy *FsyDss) SetCurrentTime(time int64) {}
+
+func (fsy *FsyDss) GetAfs() afero.Fs {
+	if fsy.afs != nil {
+		return fsy.afs
 	}
 	return appFs
 }
 
-func (fsy *FsyDss) Close() error { return nil }
+func (fsy *FsyDss) Close() error {
+	if fsy.reducer != nil {
+		return fsy.reducer.Close()
+	}
+	return nil
+}
 
 func (fsy *FsyDss) GetRoot() string { return fsy.root }
 
@@ -306,5 +411,9 @@ func NewFsyDss(config FsyConfig, root string) (Dss, error) {
 	if !fi.IsDir() {
 		return nil, fmt.Errorf("in NewFsyDss: not a directory: %s", root)
 	}
-	return &FsyDss{root: root}, nil
+	var red plumber.Reducer = nil
+	if config.ReducerLimit != 0 {
+		red = plumber.NewReducer(config.ReducerLimit, 0)
+	}
+	return &FsyDss{root: root, reducer: red}, nil
 }

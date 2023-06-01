@@ -28,6 +28,7 @@ type DssBaseConfig struct {
 	BasicAuthPassword string                                                      `json:"-"`          // basic authentication pasword
 	WebRoot           string                                                      `json:"-"`          // web API server root
 	Encrypted         bool                                                        `json:"encrypted"`  // repository is encrypted
+	ReducerLimit      int                                                         `json:"-"`          // if not 0 max number of parallel I/O
 }
 
 func writeDssConfig(bc DssBaseConfig, dssConfig interface{}) error {

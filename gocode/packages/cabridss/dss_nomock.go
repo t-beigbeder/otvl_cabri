@@ -7,11 +7,11 @@ import (
 	"os"
 )
 
-func (dss *FsyDss) SetAfs(afs afero.Fs) {
+func (fsy *FsyDss) SetAfs(afs afero.Fs) {
 	panic("FsyDss.SetAfs is forbidden")
 }
 
-func (dss *FsyDss) SetMetaMockCbs(cbs *MetaMockCbs) {
+func (fsy *FsyDss) SetMetaMockCbs(cbs *MetaMockCbs) {
 	panic("FsyDss.SetMetaMockCbs is forbidden")
 }
 

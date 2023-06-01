@@ -13,10 +13,11 @@ type BeVerboseFunc func(level int, line string)
 
 // SyncOptions indicate how the Synchronize function should behave
 type SyncOptions struct {
-	Serial   bool // synchronization tasks will be serialized
-	InDepth  bool // synchronize sub-namespaces content recursively
-	Evaluate bool // don't synchronize, just report work to be done
-	BiDir    bool // bidirectional synchronization, the latest modified content wins,
+	Serial       bool // synchronization tasks will be serialized
+	ReducerLimit int  // number of parallel I/O per DSS or zero if unlimited
+	InDepth      bool // synchronize sub-namespaces content recursively
+	Evaluate     bool // don't synchronize, just report work to be done
+	BiDir        bool // bidirectional synchronization, the latest modified content wins,
 	// if false synchronization is done from left to right
 	KeepContent bool                           // don't remove content deleted from one side in other side
 	NoCh        bool                           // don't evaluate checksum when not available, compare content's size and modification time
@@ -91,7 +92,7 @@ func Synchronize(ctx context.Context, ldss cabridss.Dss, lpath string, rdss cabr
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ctx = plumber.ContextWithConfig(ctx, cabridss.CabriPlumberDefaultConfig(options.Serial))
+	ctx = plumber.ContextWithConfig(ctx, cabridss.CabriPlumberDefaultConfig(options.Serial, options.ReducerLimit))
 	iOutputs := plumber.LaunchAndWait(ctx,
 		[]string{"Synchronized"},
 		[]plumber.Launchable{PlizedSynchronize},

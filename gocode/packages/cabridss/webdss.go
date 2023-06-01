@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
 	"net/http"
 	"os"
@@ -510,5 +511,9 @@ func NewWebDss(config WebDssConfig, slsttime int64, aclusers []string) (HDss, er
 		proxy.close()
 		return nil, fmt.Errorf("in NewWebDss: reposirory is encrypted")
 	}
-	return &ODss{proxy: proxy}, nil
+	var red plumber.Reducer = nil
+	if config.ReducerLimit != 0 {
+		red = plumber.NewReducer(config.ReducerLimit, 0)
+	}
+	return &ODss{proxy: proxy, reducer: red}, nil
 }

@@ -946,7 +946,7 @@ func TestFsyStat(t *testing.T) {
 	}
 }
 
-func Test_setSysAcl(t *testing.T) {
+func TestSetSysAcl(t *testing.T) {
 	tfs, err := testfs.CreateFs("Test_setSysAcl", tfsStartup)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -960,4 +960,88 @@ func Test_setSysAcl(t *testing.T) {
 	if err = setSysAcl(ufpath.Join(tfs.Path(), "d/b.txt"), acl); err != nil {
 		t.Error(err)
 	}
+}
+
+func TestFsyDssRed(t *testing.T) {
+	startup := func(tfs *testfs.Fs) error {
+		if err := tfs.RandTextFile("a.txt", 41); err != nil {
+			return err
+		}
+		if err := os.Mkdir(ufpath.Join(tfs.Path(), "d"), 0755); err != nil {
+			return err
+		}
+		if err := tfs.RandTextFile("d/b.txt", 20); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	tfs, err := testfs.CreateFs("TestFsyDssRed", startup)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfs.Delete()
+	dss, err := NewFsyDss(FsyConfig{DssBaseConfig{ReducerLimit: 2}}, tfs.Path())
+	if err != nil {
+		t.Fatalf("TestFsyDssRed failed with error %v", err)
+	}
+	cbs := mockfs.MockCbs{}
+	dss.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
+	err = dss.Updatens("", time.Now().Unix(), []string{"d2/", "d/", "a.txt"}, nil)
+	if err != nil {
+		t.Fatalf("TestFsyDssRed failed with error %v", err)
+	}
+	err = dss.Mkns("d2", time.Now().Unix(), []string{"d3/", "f4"}, nil)
+	if err != nil {
+		t.Fatalf("TestFsyDssRed failed with error %v", err)
+	}
+	err = dss.Mkns("d2/d3", time.Now().Unix(), []string{"d4a/", "f5", "d4b"}, nil)
+	if err != nil {
+		t.Fatalf("TestFsyDssRed failed with error %v", err)
+	}
+	children0, err := dss.Lsns("")
+	if err != nil || len(children0) != 3 {
+		t.Fatalf("TestFsyDssRed failed with error %v or children %v", err, children0)
+	}
+	children2, err := dss.Lsns("d2")
+	if err != nil || len(children2) != 2 {
+		t.Fatalf("TestFsyDssRed failed with error %v or children %v", err, children2)
+	}
+	children3, err := dss.Lsns("d2/d3")
+	if err != nil || len(children3) != 3 {
+		t.Fatalf("TestFsyDssRed failed with error %v or children %v", err, children3)
+	}
+	m, err := dss.GetMeta("d2/", false)
+	if err != nil || m.GetSize() != 7 {
+		t.Fatal(err)
+	}
+	if err = dss.Remove("d2/"); err != nil {
+		t.Fatal(err)
+	}
+	fi, err := os.Open(ufpath.Join(tfs.Path(), "a.txt"))
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer fi.Close()
+	fo, err := dss.GetContentWriter("a-copy.txt", time.Now().Unix(), nil, nil)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer fo.Close()
+	io.Copy(fo, fi)
+	fi2, err := dss.GetContentReader("a-copy.txt")
+	defer fi2.Close()
+	fo2, err := dss.GetContentWriter("a-copy-copy.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		if size != 241 {
+			t.Fatalf("TestFsyDssGetContentReaderBase size %d != 241", size)
+		}
+		if ch != "484f617a695613aac4b346237aa01548" {
+			t.Fatalf("TestFsyDssGetContentReaderBase hash %s != %s", ch, "484f617a695613aac4b346237aa01548")
+		}
+	})
+	io.Copy(fo2, fi2)
+	fo2.Close()
 }

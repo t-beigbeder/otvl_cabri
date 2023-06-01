@@ -73,7 +73,11 @@ func lsns(ctx context.Context, dssPath string) error {
 		return err
 	}
 	if vars.dssType == "fsy" {
-		if vars.dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, vars.root); err != nil {
+		if vars.dss, err = cabridss.NewFsyDss(
+			cabridss.FsyConfig{
+				DssBaseConfig: cabridss.DssBaseConfig{ReducerLimit: lsnsOpts(ctx).RedLimit},
+			},
+			vars.root); err != nil {
 			return err
 		}
 	} else if vars.dss, err = NewHDss[LsnsOptions, *LsnsVars](ctx, nil,

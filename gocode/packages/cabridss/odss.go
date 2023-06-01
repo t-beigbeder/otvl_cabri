@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"io"
 	"sort"
@@ -79,82 +80,178 @@ type oDssProxy interface {
 }
 
 type ODss struct {
-	proxy oDssProxy
+	proxy   oDssProxy
+	reducer plumber.Reducer
+	closed  bool
 }
 
-func (ods ODss) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	return ods.proxy.mkns(npath, mtime, children, ods.proxy.defaultAcl(acl))
+func (ods *ODss) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
+	if ods.reducer == nil {
+		return ods.proxy.mkns(npath, mtime, children, acl)
+	}
+	return ods.reducer.Launch(
+		fmt.Sprintf("Mkns %s", npath),
+		func() error {
+			return ods.proxy.mkns(npath, mtime, children, acl)
+		})
 }
 
-func (ods ODss) Updatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	return ods.proxy.updatens(npath, mtime, children, ods.proxy.defaultAcl(acl))
+func (ods *ODss) Updatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
+	if ods.reducer == nil {
+		return ods.proxy.updatens(npath, mtime, children, acl)
+	}
+	return ods.reducer.Launch(
+		fmt.Sprintf("Updatens %s", npath),
+		func() error {
+			return ods.proxy.updatens(npath, mtime, children, acl)
+		})
 }
 
-func (ods ODss) Lsns(npath string) (children []string, err error) {
-	return ods.proxy.lsns(npath)
+func (ods *ODss) Lsns(npath string) (children []string, err error) {
+	if ods.reducer == nil {
+		children, err = ods.proxy.lsns(npath)
+		return
+	}
+	if err = ods.reducer.Launch(
+		fmt.Sprintf("Lsns %s", npath),
+		func() error {
+			var iErr error
+			if children, iErr = ods.proxy.lsns(npath); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
 }
 
-func (ods ODss) IsDuplicate(ch string) (bool, error) {
+func (ods *ODss) IsDuplicate(ch string) (bool, error) {
 	return ods.proxy.isDuplicate(ch)
 }
 
-func (ods ODss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
-	return ods.proxy.getContentWriter(npath, mtime, ods.proxy.defaultAcl(acl), cb)
+func (ods *ODss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (wc io.WriteCloser, err error) {
+	if ods.reducer == nil {
+		wc, err = ods.proxy.getContentWriter(npath, mtime, acl, cb)
+		return
+	}
+	if err = ods.reducer.Launch(
+		fmt.Sprintf("GetContentWriter %s", npath),
+		func() error {
+			var iErr error
+			if wc, iErr = ods.proxy.getContentWriter(npath, mtime, acl, cb); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
+
 }
 
-func (ods ODss) GetContentReader(npath string) (io.ReadCloser, error) {
-	return ods.proxy.getContentReader(npath)
+func (ods *ODss) GetContentReader(npath string) (rc io.ReadCloser, err error) {
+	if ods.reducer == nil {
+		rc, err = ods.proxy.getContentReader(npath)
+		return
+	}
+	if err = ods.reducer.Launch(
+		fmt.Sprintf("GetContentReader %s", npath),
+		func() error {
+			var iErr error
+			if rc, iErr = ods.proxy.getContentReader(npath); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
 }
 
-func (ods ODss) Remove(npath string) error {
-	return ods.proxy.remove(npath)
+func (ods *ODss) Remove(npath string) (err error) {
+	if ods.reducer == nil {
+		return ods.proxy.remove(npath)
+	}
+	return ods.reducer.Launch(
+		fmt.Sprintf("Remove %s", npath),
+		func() error {
+			return ods.proxy.remove(npath)
+		})
 }
 
-func (ods ODss) GetMeta(npath string, getCh bool) (IMeta, error) {
-	return ods.proxy.getMeta(npath, getCh)
+func (ods *ODss) GetMeta(npath string, getCh bool) (meta IMeta, err error) {
+	if ods.reducer == nil {
+		meta, err = ods.proxy.getMeta(npath, getCh)
+		return
+	}
+	if err = ods.reducer.Launch(
+		fmt.Sprintf("GetMeta %s", npath),
+		func() error {
+			var iErr error
+			if meta, iErr = ods.proxy.getMeta(npath, getCh); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
 }
 
-func (ods ODss) GetHistory(npath string, recursive bool, resolution string) (map[string][]HistoryInfo, error) {
+func (ods *ODss) GetHistory(npath string, recursive bool, resolution string) (map[string][]HistoryInfo, error) {
 	return ods.proxy.getHistory(npath, recursive, resolution)
 }
 
-func (ods ODss) RemoveHistory(npath string, recursive, evaluate bool, start, end int64) (map[string][]HistoryInfo, error) {
+func (ods *ODss) RemoveHistory(npath string, recursive, evaluate bool, start, end int64) (map[string][]HistoryInfo, error) {
 	return ods.proxy.removeHistory(npath, recursive, evaluate, start*1e9, end*1e9)
 }
 
-func (ods ODss) SetCurrentTime(time int64) {
+func (ods *ODss) SetCurrentTime(time int64) {
 	ods.proxy.setCurrentTime(time * 1e9)
 }
 
-func (ods ODss) SetMetaMockCbs(cbs *MetaMockCbs) {
+func (ods *ODss) SetMetaMockCbs(cbs *MetaMockCbs) {
 	ods.proxy.setMetaMockCbs(cbs)
 }
 
-func (ods ODss) SetAfs(tfs afero.Fs) {
+func (ods *ODss) SetAfs(tfs afero.Fs) {
 	ods.proxy.setAfs(tfs)
 }
 
-func (ods ODss) GetAfs() afero.Fs {
+func (ods *ODss) GetAfs() afero.Fs {
 	return ods.proxy.getAfs()
 }
 
-func (ods ODss) Close() error { return ods.proxy.close() }
+func (ods *ODss) Close() error {
+	if ods.closed {
+		return nil
+	}
+	ods.closed = true
+	if ods.reducer != nil {
+		if err := ods.reducer.Close(); err != nil {
+			ods.proxy.close()
+			return err
+		}
+	}
+	return ods.proxy.close()
+}
 
-func (ods ODss) GetIndex() Index { return ods.proxy.getIndex() }
+func (ods *ODss) GetIndex() Index { return ods.proxy.getIndex() }
 
-func (ods ODss) DumpIndex() string { return ods.proxy.dumpIndex() }
+func (ods *ODss) DumpIndex() string { return ods.proxy.dumpIndex() }
 
-func (ods ODss) GetRepoId() string { return ods.proxy.getRepoId() }
+func (ods *ODss) GetRepoId() string { return ods.proxy.getRepoId() }
 
-func (ods ODss) IsEncrypted() bool { return ods.proxy.isEncrypted() }
+func (ods *ODss) IsEncrypted() bool { return ods.proxy.isEncrypted() }
 
-func (ods ODss) IsRepoEncrypted() bool { return ods.proxy.isRepoEncrypted() }
+func (ods *ODss) IsRepoEncrypted() bool { return ods.proxy.isRepoEncrypted() }
 
-func (ods ODss) AuditIndex() (map[string][]AuditIndexInfo, error) { return ods.proxy.auditIndex() }
+func (ods *ODss) AuditIndex() (map[string][]AuditIndexInfo, error) { return ods.proxy.auditIndex() }
 
-func (ods ODss) ScanStorage() (StorageInfo, *ErrorCollector) { return ods.proxy.scanStorage() }
+func (ods *ODss) ScanStorage() (StorageInfo, *ErrorCollector) { return ods.proxy.scanStorage() }
 
-func (ods ODss) Reindex() (StorageInfo, *ErrorCollector) { return ods.proxy.reindex() }
+func (ods *ODss) Reindex() (StorageInfo, *ErrorCollector) { return ods.proxy.reindex() }
 
 type oDssBaseImpl struct {
 	me            oDssProxy

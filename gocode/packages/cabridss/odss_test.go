@@ -35,6 +35,24 @@ var mtCount = time.Date(2018, time.April, 24, 23, 0, 0, 0, time.UTC).Unix() - 1
 
 func mtimeCount() int64 { mtCount += 1; return mtCount }
 
+func currentUcp(tfs *testfs.Fs) (ucp string, uc UserConfig, err error) {
+	ucp = ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount))
+	if ucpCount == 1 {
+		uc1, err1 := GetUserConfig(DssBaseConfig{}, ucp)
+		if err1 != nil {
+			return
+		}
+		ids = uc1.Identities
+	}
+	id, err := GenIdentity(fmt.Sprintf("id-%d", ucpCount))
+	ids = append(ids, id)
+	for _, id = range ids {
+		UserConfigPutIdentity(DssBaseConfig{}, ucp, id)
+	}
+	uc, _ = GetUserConfig(DssBaseConfig{}, ucp)
+	return
+}
+
 func newUcp(tfs *testfs.Fs) (ucp string, uc UserConfig, err error) {
 	ucpCount += 1
 	ucp = ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount))

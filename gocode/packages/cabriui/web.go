@@ -67,9 +67,9 @@ func webApi(ctx context.Context, args []string) error {
 			dssSubType = dssType[1:]
 		}
 		if dssSubType == "obs" || dssSubType == "smf" {
-			params = cabridss.CreateNewParams{DssType: dssType, LocalPath: localPath}
+			params = cabridss.CreateNewParams{DssType: dssType, LocalPath: localPath, ConfigPassword: ure.MasterPassword}
 		} else if dssSubType == "olf" {
-			params = cabridss.CreateNewParams{DssType: "olf", Root: localPath}
+			params = cabridss.CreateNewParams{DssType: "olf", Root: localPath, ConfigPassword: ure.MasterPassword}
 		}
 		params.Encrypted = dssType[0] == 'x'
 		dss, err := cabridss.CreateOrNewDss(params)

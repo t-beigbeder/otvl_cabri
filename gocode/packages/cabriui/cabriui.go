@@ -20,6 +20,8 @@ type BaseOptions struct {
 	Password      bool
 	PassFile      string
 	Serial        bool
+	MaxThread     int // set the maximum OS thread number
+	RedLimit      int // set the reducer I/O limit defaults to 10
 	IndexImplems  []string
 	ObsRegions    []string
 	ObsEndpoints  []string
@@ -28,7 +30,6 @@ type BaseOptions struct {
 	ObsSecretKeys []string
 	TlsCert       string // certificate file on https server or untrusted CA on https client
 	TlsNoCheck    bool   // no check of certifcate by https client
-	MaxThread     int    // set the maximum OS thread number
 	// Left entities located here in case of sync CLI for convenience
 	LeftUsers []string
 	LeftACL   []string
@@ -72,7 +73,7 @@ func CLIRun[OT BaseOptionsEr, VT baseVarsEr](
 ) error {
 
 	cliStartup := func(cr *joule.CLIRunner[OT]) error {
-		pCtx := plumber.ContextWithConfig(*cr.Ctx, cabridss.CabriPlumberDefaultConfig(opts.getBaseOptions().Serial))
+		pCtx := plumber.ContextWithConfig(*cr.Ctx, cabridss.CabriPlumberDefaultConfig(opts.getBaseOptions().Serial, opts.getBaseOptions().RedLimit))
 		ctx := context.WithValue(pCtx, uiCtxKey, &uiContext[OT, VT]{opts: opts, args: args})
 		cr.Ctx = &ctx
 		return startup(cr)
@@ -245,6 +246,7 @@ func GetBaseConfig(opts BaseOptions, index int, root, localPath, mp string) (cab
 		ConfigDir:      cd,
 		ConfigPassword: mp,
 		LocalPath:      localPath,
+		ReducerLimit:   opts.RedLimit,
 	}
 
 	if len(opts.IndexImplems) > index {

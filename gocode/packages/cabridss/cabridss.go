@@ -320,21 +320,22 @@ func checkMkcontentArgs(npath string, acl []ACLEntry) error {
 }
 
 type CreateNewParams struct {
-	ConfigDir string                                                      // if not "" path to the user's configuration directory
-	Create    bool                                                        // perform CreateXxx or NewXxx?
-	DssType   string                                                      // fsy, olf, obs, smf
-	Root      string                                                      // fsy, olf, smf
-	Size      string                                                      // if olf: s,m,l
-	LocalPath string                                                      // fsy, obs, smf (Root assumed if olf or smf)
-	Encrypted bool                                                        // all but fsy: enable repository encryption
-	GetIndex  func(config DssBaseConfig, localPath string) (Index, error) // see DssBaseConfig
-	Lsttime   int64                                                       // all but fsy: if not zero is the upper time of entries retrieved in it
-	Aclusers  []string                                                    // all but fsy: if not nil is a List of ACL users for access check
-	Endpoint  string                                                      // obs: AWS S3 or Openstack Swift endpoint, eg "https://s3.gra.cloud.ovh.net"
-	Region    string                                                      // obs: AWS S3  or Openstack Swift region, eg "GRA"
-	AccessKey string                                                      // obs: AWS S3 access key (Openstack Swift must generate it)
-	SecretKey string                                                      // obs: AWS S3 secret key (Openstack Swift must generate it)
-	Container string                                                      // obs: AWS S3 bucket or Openstack Swift container
+	ConfigPassword string                                                      // if not "" master password used to encrypt client configuration
+	ConfigDir      string                                                      // if not "" path to the user's configuration directory
+	Create         bool                                                        // perform CreateXxx or NewXxx?
+	DssType        string                                                      // fsy, olf, obs, smf
+	Root           string                                                      // fsy, olf, smf
+	Size           string                                                      // if olf: s,m,l
+	LocalPath      string                                                      // fsy, obs, smf (Root assumed if olf or smf)
+	Encrypted      bool                                                        // all but fsy: enable repository encryption
+	GetIndex       func(config DssBaseConfig, localPath string) (Index, error) // see DssBaseConfig
+	Lsttime        int64                                                       // all but fsy: if not zero is the upper time of entries retrieved in it
+	Aclusers       []string                                                    // all but fsy: if not nil is a List of ACL users for access check
+	Endpoint       string                                                      // obs: AWS S3 or Openstack Swift endpoint, eg "https://s3.gra.cloud.ovh.net"
+	Region         string                                                      // obs: AWS S3  or Openstack Swift region, eg "GRA"
+	AccessKey      string                                                      // obs: AWS S3 access key (Openstack Swift must generate it)
+	SecretKey      string                                                      // obs: AWS S3 secret key (Openstack Swift must generate it)
+	Container      string                                                      // obs: AWS S3 bucket or Openstack Swift container
 }
 
 func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
@@ -344,7 +345,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 			localPath = params.Root
 		}
 		config := OlfConfig{
-			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
+			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, ConfigPassword: params.ConfigPassword, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
 			Root:          params.Root, Size: params.Size,
 		}
 		if params.Create {
@@ -356,7 +357,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 	}
 	if params.DssType == "obs" {
 		config := ObsConfig{
-			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, LocalPath: params.LocalPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
+			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, ConfigPassword: params.ConfigPassword, LocalPath: params.LocalPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
 			Endpoint:      params.Endpoint,
 			Region:        params.Region,
 			AccessKey:     params.AccessKey,
@@ -376,7 +377,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 			localPath = params.Root
 		}
 		config := ObsConfig{
-			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
+			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, ConfigPassword: params.ConfigPassword, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
 			Endpoint:      params.Endpoint,
 			Region:        params.Region,
 			AccessKey:     params.AccessKey,
