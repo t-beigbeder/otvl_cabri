@@ -292,6 +292,7 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 			continue
 		}
 		sti.ExistingCs[meta.Ch] = true
+		sti.ExistingEcs[meta.ECh] = true
 		cr, err := edi.me.doGetContentReader(meta.Path, meta)
 		if err != nil {
 			pathErr(epath, err)
@@ -299,7 +300,7 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 		}
 		ch := internal.ShaFrom(cr)
 		cr.Close()
-		sti.Path2Content[epath] = ch
+		sti.Path2CContent[epath] = ch
 		if ch != meta.Ch {
 			pathErr(epath, fmt.Errorf("%s (meta %s) cs %s loaded %s", epath, meta.Path, meta.Ch, ch))
 			continue
@@ -309,6 +310,7 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 
 func (edi *eDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	copyMap(sti.Path2Error, sts.Sti.Path2Error)
+	copyMap(sti.Path2Content, sts.Sti.Path2Content)
 	errs = &sts.Errs
 	edi.decryptScannedStorage(sts, sti, errs)
 }

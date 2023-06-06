@@ -18,6 +18,23 @@ import (
 	"time"
 )
 
+type WebServerConfig struct {
+	Addr              string // host[:port]
+	HasLog            bool
+	IsTls             bool   // https
+	TlsCert           string // certificate file on https server or untrusted CA on https client
+	TlsKey            string // certificate key file on https server
+	TlsNoCheck        bool   // no check of certificate by https client
+	BasicAuthUser     string
+	BasicAuthPassword string
+}
+
+type WebDssServerConfig struct {
+	WebServerConfig
+	UserConfig
+	Dss HDss
+}
+
 type WebServer interface {
 	Serve() error
 	Shutdown() error
@@ -54,6 +71,16 @@ func getTlsClientConfig(tlsConfig *TlsConfig) (*tls.Config, error) {
 	caCertPool, _ := x509.SystemCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 	return &tls.Config{RootCAs: caCertPool}, nil
+}
+
+func getTlsServerConfig(wsConfig WebServerConfig) *TlsConfig {
+	return &TlsConfig{
+		cert:              wsConfig.TlsCert,
+		key:               wsConfig.TlsKey,
+		noClientCheck:     wsConfig.TlsNoCheck,
+		basicAuthUser:     wsConfig.BasicAuthUser,
+		basicAuthPassword: wsConfig.BasicAuthPassword,
+	}
 }
 
 type eServer struct {
@@ -298,6 +325,7 @@ type WebApiClient interface {
 	SimpleDoAsJson(method, url string, inBody any, outBody any) (*http.Response, error)
 	GetConfig() interface{}
 	SetNoLimit()
+	SetCabriHeader(h string)
 }
 
 type Client struct {
@@ -308,6 +336,7 @@ type Client struct {
 	noLimit           bool
 	basicAuthUser     string
 	basicAuthPassword string
+	cabriHeader       string
 }
 
 func (c *Client) limitActive() int {
@@ -335,6 +364,9 @@ func (c *Client) unlimitActive(id int) {
 }
 
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
+	if c.cabriHeader != "" {
+		req.Header.Set("Cabri", c.cabriHeader)
+	}
 	if !c.noLimit {
 		defer c.unlimitActive(c.limitActive())
 	}
@@ -435,6 +467,8 @@ func (apc *apiClient) SimpleDoAsJson(method, url string, inBody any, outBody any
 func (apc *apiClient) GetConfig() interface{} { return apc.config }
 
 func (apc *apiClient) SetNoLimit() { apc.client.noLimit = true }
+
+func (apc *apiClient) SetCabriHeader(h string) { apc.client.cabriHeader = h }
 
 func NewWebApiClient(protocol string, host string, port string, tlsConfig *TlsConfig, root string, config interface{}) (WebApiClient, error) {
 	timeout := 300000 * time.Millisecond

@@ -238,7 +238,8 @@ This rule remains true even if you make use of the previously described HTTP ser
 which is valuable because a [MITM attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
 still wouldn't expose anything.
 
-To create an encrypted DSS, you make use CLI commands as usual but prefix the DSS type with an 'x",
+To create an encrypted DSS, you make use of CLI commands as usual,
+but prefix the DSS type with an 'x",
 for instance, a local encrypted DSS using `xolf`:
 
     $ mkdir /media/guest/usbkey/encrypted_backup

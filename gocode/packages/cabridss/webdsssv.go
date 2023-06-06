@@ -10,21 +10,6 @@ import (
 	"strings"
 )
 
-type WebDssHttpConfig struct {
-	Addr              string // host[:port]
-	IsTls             bool   // https
-	TlsCert           string // certificate file on https server or untrusted CA on https client
-	TlsKey            string // certificate key file on https server
-	TlsNoCheck        bool   // no check of certifcate by https client
-	BasicAuthUser     string
-	BasicAuthPassword string
-}
-
-type WebDssServerConfig struct {
-	Dss    HDss
-	HasLog bool
-}
-
 func sInitialize(c echo.Context) error {
 	clId := ""
 	if err := echo.PathParamsBinder(c).String("clId", &clId).BindError(); err != nil {
@@ -186,6 +171,19 @@ func sQueryContent(c echo.Context) error {
 	return c.JSON(http.StatusOK, aQueryContent(ch, dss))
 }
 
+func sRemoveContent(c echo.Context) error {
+	ch := ""
+	if err := echo.PathParamsBinder(c).String("ch", &ch).BindError(); err != nil {
+		return NewServerErr("sRemoveContent", err)
+	}
+	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
+	err := aRemoveContent(ch, dss)
+	if err != nil {
+		return NewServerErr("sRemoveContent", err)
+	}
+	return c.JSON(http.StatusOK, nil)
+}
+
 func sDumpIndex(c echo.Context) error {
 	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
 	return c.JSON(http.StatusOK, &mDump{Dump: dss.DumpIndex()})
@@ -193,7 +191,7 @@ func sDumpIndex(c echo.Context) error {
 
 func sScanPhysicalStorage(c echo.Context) error {
 	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
-	sti, errs := dss.ScanStorage()
+	sti, errs := dss.ScanStorage(false, false)
 	if errs == nil {
 		errs = &ErrorCollector{}
 	}
@@ -223,28 +221,19 @@ func WebDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	e.POST(root+"loadMeta", sLoadMeta)
 	e.POST(root+"spGetContentReader", sSpGetContentReader)
 	e.GET(root+"queryContent/:ch", sQueryContent)
+	e.DELETE(root+"removeContent/:ch", sRemoveContent)
 	e.GET(root+"dumpIndex", sDumpIndex)
 	e.GET(root+"scanPhysicalStorage", sScanPhysicalStorage)
 	e.GET(root+"loadIndex", sLoadIndex)
 	return nil
 }
 
-func NewWebDssServer(httpConfig WebDssHttpConfig, root string, config WebDssServerConfig) (WebServer, error) {
+func NewWebDssServer(root string, config WebDssServerConfig) (WebServer, error) {
 	var tlsConfig *TlsConfig
-	if httpConfig.IsTls {
-		var err error
-		tlsConfig = &TlsConfig{
-			cert:              httpConfig.TlsCert,
-			key:               httpConfig.TlsKey,
-			noClientCheck:     httpConfig.TlsNoCheck,
-			basicAuthUser:     httpConfig.BasicAuthUser,
-			basicAuthPassword: httpConfig.BasicAuthPassword,
-		}
-		if err != nil {
-			return nil, fmt.Errorf("in NewWebDssServer: %v", err)
-		}
+	if config.IsTls {
+		tlsConfig = getTlsServerConfig(config.WebServerConfig)
 	}
-	s := NewEServer(httpConfig.Addr, config.HasLog, tlsConfig)
+	s := NewEServer(config.Addr, config.HasLog, tlsConfig)
 	s.ConfigureApi(root, config, func(root string, customConfigs map[string]interface{}) error {
 		return customConfigs[root].(WebDssServerConfig).Dss.Close()
 	},

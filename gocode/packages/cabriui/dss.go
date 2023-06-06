@@ -157,6 +157,7 @@ func dssMknsRun(ctx context.Context) error {
 		return err
 	}
 	if err = dss.Mkns(npath, time.Now().Unix(), opts.Children, acl); err != nil {
+		dss.Close()
 		return err
 	}
 	if err = dss.Close(); err != nil {
@@ -280,6 +281,11 @@ func dssAuditRun(ctx context.Context) error {
 
 type DSSScanOptions struct {
 	BaseOptions
+	Purge       bool
+	PurgeHidden bool
+	Summary     bool
+	Full        bool
+	Resolution  string
 }
 
 type DSSScanVars struct {
@@ -311,19 +317,42 @@ func dssScanUow(ctx context.Context) joule.UnitOfWork {
 
 func dssScanOut(ctx context.Context, s string) { dssScanUow(ctx).UiStrOut(s) }
 
+type periodCount struct {
+	start, end int64
+	count      int
+}
+
+func (p periodCount) String() string {
+	return fmt.Sprintf("%s/%s", cabridss.UnixUTC(p.start), cabridss.UnixUTC(p.end))
+}
+
 func dssScanRun(ctx context.Context) error {
 	dss, err := NewHDss[DSSScanOptions, *DSSScanVars](ctx, nil, NewHDssArgs{})
 	if err != nil {
 		return err
 	}
 	defer dss.Close()
-	sti, perr := dss.ScanStorage()
-	if perr != nil {
-		return perr
+	opts := dssScanOpts(ctx)
+	var sti cabridss.StorageInfo
+	if !opts.Summary || opts.Full || opts.Purge {
+		var perr *cabridss.ErrorCollector
+		sti, perr = dss.ScanStorage(opts.Purge, opts.PurgeHidden)
+		if perr != nil {
+			return perr
+		}
 	}
-	_ = sti
+	if opts.Summary {
+		hcs, err := dss.GetHistoryChunks(opts.Resolution)
+		if err != nil {
+			return err
+		}
+		for _, hc := range hcs {
+			dssScanOut(ctx, fmt.Sprintf("%s\n", hc))
+		}
+	} else {
+		_ = sti
+	}
 	return nil
-
 }
 
 type DSSReindexOptions struct {

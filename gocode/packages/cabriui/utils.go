@@ -166,9 +166,10 @@ func GetUiRunEnv[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context, encrypted
 }
 
 type NewHDssArgs struct {
-	Lasttime int64
-	DssIx    int
-	ObsIx    int
+	Lasttime  int64
+	DssIx     int
+	ObsIx     int
+	IsMapping bool
 }
 
 func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
@@ -181,12 +182,20 @@ func NewHDss[OT BaseOptionsEr, VT baseVarsEr](
 		dssType, root string
 		aclUsers      []string
 		err           error
+		isLeft        bool
 	)
-	dssType, root, _, err = CheckDssPath(ucArgs[nhArgs.DssIx])
-	if err != nil {
-		dssType, root, err = CheckDssSpec(ucArgs[nhArgs.DssIx])
+	isLeft = !nhArgs.IsMapping && nhArgs.DssIx < len(ucArgs)-1
+	if nhArgs.IsMapping {
+		dt, _, localPath, _, _, _ := CheckDssUrlMapping(ucArgs[nhArgs.DssIx])
+		pt := dt + ":/" + localPath
+		dssType, root, err = CheckDssSpec(pt)
+	} else {
+		dssType, root, _, err = CheckDssPath(ucArgs[nhArgs.DssIx])
+		if err != nil {
+			dssType, root, err = CheckDssSpec(ucArgs[nhArgs.DssIx])
+		}
 	}
-	ure, err := GetUiRunEnv[OT, VT](ctx, dssType[0] == 'x', nhArgs.DssIx < len(ucArgs)-1)
+	ure, err := GetUiRunEnv[OT, VT](ctx, dssType[0] == 'x', isLeft)
 	if err != nil {
 		return nil, err
 	}

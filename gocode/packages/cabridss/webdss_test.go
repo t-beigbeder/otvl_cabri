@@ -20,7 +20,7 @@ func createWebDssServer(tfs *testfs.Fs, addr, root string, params CreateNewParam
 	if err != nil {
 		return nil, fmt.Errorf("createWebDssServer failed with error %v", err)
 	}
-	httpConfig := WebDssHttpConfig{Addr: addr}
+	httpConfig := WebServerConfig{Addr: addr, HasLog: true}
 	if strings.Contains(addr, "443") {
 		httpConfig.IsTls = true
 		httpConfig.TlsCert = "cert.pem"
@@ -28,7 +28,7 @@ func createWebDssServer(tfs *testfs.Fs, addr, root string, params CreateNewParam
 		httpConfig.BasicAuthUser = "user"
 		httpConfig.BasicAuthPassword = "passw0rd"
 	}
-	return NewWebDssServer(httpConfig, root, WebDssServerConfig{Dss: dss.(HDss), HasLog: true})
+	return NewWebDssServer(root, WebDssServerConfig{WebServerConfig: httpConfig, Dss: dss.(HDss)})
 }
 
 func TestNewWebDssServer(t *testing.T) {

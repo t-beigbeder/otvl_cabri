@@ -152,6 +152,10 @@ func aQueryContent(ch string, dss HDss) *mExist {
 	return &mExist{Exist: ex}
 }
 
+func aRemoveContent(ch string, dss HDss) error {
+	return dss.(*ODss).proxy.removeContent(ch)
+}
+
 func cInitialize(apc WebApiClient) (*mInitialized, error) {
 	wdc := apc.GetConfig().(webDssClientConfig)
 	var out mInitialized
@@ -300,6 +304,20 @@ func cQueryContent(apc WebApiClient, ch string) (*mExist, error) {
 	return &out, nil
 }
 
+func cRemoveContent(apc WebApiClient, ch string) error {
+	wdc := apc.GetConfig().(webDssClientConfig)
+	var err error
+	if wdc.LibApi {
+		err = aRemoveContent(ch, wdc.libDss)
+	} else {
+		_, err = apc.SimpleDoAsJson(http.MethodDelete, apc.Url()+"removeContent/"+ch, nil, nil)
+	}
+	if err != nil {
+		return fmt.Errorf("in cRemoveContent: %v", err)
+	}
+	return nil
+}
+
 func cDumpIndex(apc WebApiClient) (*mDump, error) {
 	wdc := apc.GetConfig().(webDssClientConfig)
 	var out mDump
@@ -321,7 +339,7 @@ func cScanPhysicalStorage(apc WebApiClient) (*mSPS, error) {
 	wdc := apc.GetConfig().(webDssClientConfig)
 	var out mSPS
 	if wdc.LibApi {
-		sti, errs := wdc.libDss.ScanStorage()
+		sti, errs := wdc.libDss.ScanStorage(false, false)
 		if errs == nil {
 			errs = &ErrorCollector{}
 		}

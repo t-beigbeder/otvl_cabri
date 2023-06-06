@@ -3,6 +3,7 @@ package cabridss
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 type Rights struct {
@@ -69,4 +70,32 @@ func setSysAclNotUx(path string, acl []ACLEntry) error {
 		return fmt.Errorf("in setSysAclNotUx: %v", err)
 	}
 	return nil
+}
+
+// CheckUiACL convert a list of <user:rights> strings into actual ACL
+func CheckUiACL(sacl []string) (acl []ACLEntry, err error) {
+	for _, sac := range sacl {
+		sacsubs := strings.Split(sac, ":")
+		if len(sacsubs) != 2 {
+			return nil, fmt.Errorf("invalid ACL string %s, not <user:rights>", sac)
+		}
+		u, rights := sacsubs[0], sacsubs[1]
+		ur := Rights{}
+		for _, char := range rights {
+			if char == 'r' {
+				ur.Read = true
+			} else if char == 'w' {
+				ur.Write = true
+			} else if char == 'x' {
+				ur.Execute = true
+			} else {
+				return nil, fmt.Errorf("invalid character %c for access right (not in 'rwx')", char)
+			}
+		}
+		if rights == "" {
+			ur = Rights{Read: true, Write: true, Execute: true}
+		}
+		acl = append(acl, ACLEntry{User: u, Rights: ur})
+	}
+	return
 }

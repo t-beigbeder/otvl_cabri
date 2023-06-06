@@ -171,6 +171,14 @@ func (odoi *oDssObjImpl) queryContent(ch string) (bool, error) {
 	return true, nil
 }
 
+func (odoi *oDssObjImpl) removeContent(ch string) error {
+	cn := fmt.Sprintf("content-%s", ch)
+	if err := odoi.is3.Delete(cn); err != nil {
+		return fmt.Errorf("in removeContent: %w", err)
+	}
+	return nil
+}
+
 func (odoi *oDssObjImpl) spClose() error { return nil }
 
 func (odoi *oDssObjImpl) dumpIndex() string { return odoi.index.Dump() }

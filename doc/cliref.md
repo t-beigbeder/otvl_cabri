@@ -29,8 +29,12 @@ DSS configuration and index are stored.
 - smf: object storage mocked as files for development and tests,
 in which case `<location>` is the directory where DSS configuration, index,
 metadata and data files are stored.
-  - example: `/home/guest/cabri_tests/smf_backup`
+  - example: `smf:/home/guest/cabri_tests/smf_backup`
+- webapi+http, webapi+https: remote access to object or object-like DSS,
+in which case `<location>` takes the form `://<host>:<port>/<url-path>`
+  - example: `webapi+http://localhost:3000/demo`
 - xolf, xobj and xsmf stand for encrypted DSS of the corresponding type
+- xwebapi+http, xwebapi+https must be used as well if the remote DSS is encrypted
 
 ## Object storage creation parameters
 

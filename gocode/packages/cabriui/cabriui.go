@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
-	"strconv"
 	"strings"
-	"time"
 )
 
 type BaseOptions struct {
@@ -29,7 +28,7 @@ type BaseOptions struct {
 	ObsAccessKeys []string
 	ObsSecretKeys []string
 	TlsCert       string // certificate file on https server or untrusted CA on https client
-	TlsNoCheck    bool   // no check of certifcate by https client
+	TlsNoCheck    bool   // no check of certificate by https client
 	// Left entities located here in case of sync CLI for convenience
 	LeftUsers []string
 	LeftACL   []string
@@ -166,31 +165,8 @@ func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
 	return
 }
 
-func CheckUiACL(sacl []string) (acl []cabridss.ACLEntry, err error) {
-	for _, sac := range sacl {
-		sacsubs := strings.Split(sac, ":")
-		if len(sacsubs) != 2 {
-			return nil, fmt.Errorf("invalid ACL string %s, not <user:rights>", sac)
-		}
-		u, rights := sacsubs[0], sacsubs[1]
-		ur := cabridss.Rights{}
-		for _, char := range rights {
-			if char == 'r' {
-				ur.Read = true
-			} else if char == 'w' {
-				ur.Write = true
-			} else if char == 'x' {
-				ur.Execute = true
-			} else {
-				return nil, fmt.Errorf("invalid character %c for access right (not in 'rwx')", char)
-			}
-		}
-		if rights == "" {
-			ur = cabridss.Rights{Read: true, Write: true, Execute: true}
-		}
-		acl = append(acl, cabridss.ACLEntry{User: u, Rights: ur})
-	}
-	return
+func CheckUiACL(sacl []string) ([]cabridss.ACLEntry, error) {
+	return cabridss.CheckUiACL(sacl)
 }
 
 func CheckDssUrlMapping(dum string) (dssType, addr, localPath, root string, isTls bool, err error) {
@@ -199,7 +175,7 @@ func CheckDssUrlMapping(dum string) (dssType, addr, localPath, root string, isTl
 		err = fmt.Errorf("DSS URL mapping %s is invalid", dum)
 		return
 	}
-	dssType = frags[0][:strings.Index(frags[0], "+http")]
+	dssType = frags[0][:strings.LastIndex(frags[0], "+http")]
 	dtc, ok := dssTypes[dssType]
 	if !ok || !dtc.client {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", dssType)
@@ -221,20 +197,8 @@ func CheckDssUrlMapping(dum string) (dssType, addr, localPath, root string, isTl
 	return
 }
 
-func CheckTimeStamp(value string) (unix int64, err error) {
-	if value == "" {
-		return
-	}
-	var ts time.Time
-	if ts, err = time.Parse(time.RFC3339, value); err == nil {
-		unix = ts.Unix()
-		return
-	}
-	if unix, err = strconv.ParseInt(value, 10, 64); err == nil {
-		return
-	}
-	err = fmt.Errorf("timestamp %s must be either RFC3339 (eg 2020-08-13T11:56:41Z) or a unix time integer", value)
-	return
+func CheckTimeStamp(value string) (int64, error) {
+	return internal.CheckTimeStamp(value)
 }
 
 func GetBaseConfig(opts BaseOptions, index int, root, localPath, mp string) (cabridss.DssBaseConfig, error) {

@@ -113,6 +113,7 @@ func (wdi *webDssImpl) initialize(me oDssProxy, config interface{}, lsttime int6
 	if err != nil {
 		return fmt.Errorf("in initialize: %v", err)
 	}
+	wdi.apc.SetCabriHeader("WebApi")
 	if wdc.NoClientLimit {
 		wdi.apc.SetNoLimit()
 	}
@@ -353,6 +354,15 @@ func (wdi *webDssImpl) queryContent(ch string) (exist bool, err error) {
 	return ex.Exist, nil
 }
 
+func (wdi *webDssImpl) removeContent(ch string) error {
+	err := cRemoveContent(wdi.apc, ch)
+	if err != nil {
+		return fmt.Errorf("in removeContent: %w", err)
+	}
+	return nil
+
+}
+
 func (wdi *webDssImpl) spClose() error {
 	if !wdi.libApi {
 		return nil
@@ -383,7 +393,9 @@ func copyMap[T any](dst map[string]T, src map[string]T) {
 func (wdi *webDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	copyMap(sti.Path2Meta, sts.Sti.Path2Meta)
 	copyMap(sti.Path2Content, sts.Sti.Path2Content)
+	copyMap(sti.Path2CContent, sts.Sti.Path2CContent)
 	copyMap(sti.ExistingCs, sts.Sti.ExistingCs)
+	copyMap(sti.ExistingEcs, sts.Sti.ExistingEcs)
 	copyMap(sti.Path2Error, sts.Sti.Path2Error)
 	errs = &sts.Errs
 }

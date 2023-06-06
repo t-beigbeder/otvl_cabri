@@ -508,7 +508,7 @@ func runTestHistory(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb f
 		}
 	}
 
-	sti, perr := dss.ScanStorage()
+	sti, perr := dss.ScanStorage(false, false)
 	if perr != nil {
 		return perr
 	}
@@ -651,7 +651,7 @@ func runTestMultiHistory(t *testing.T, createDssCb func(*testfs.Fs) error, newDs
 		}
 	}
 
-	sti, perr := dss.ScanStorage()
+	sti, perr := dss.ScanStorage(false, false)
 	if perr != nil {
 		return perr
 	}

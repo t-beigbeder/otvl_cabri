@@ -214,6 +214,14 @@ func (odoi *oDssOlfImpl) queryContent(ch string) (bool, error) {
 	return true, nil
 }
 
+func (odoi *oDssOlfImpl) removeContent(ch string) error {
+	cpath := ufpath.Join(odoi.root, "content", internal.Str32ToPath(ch, odoi.size))
+	if err := odoi.getAfs().Remove(cpath); err != nil {
+		return fmt.Errorf("in removeContent: %w", err)
+	}
+	return nil
+}
+
 func (odoi *oDssOlfImpl) spClose() error { return nil }
 
 func (odoi *oDssOlfImpl) dumpIndex() string { return odoi.index.Dump() }

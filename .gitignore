@@ -1,5 +1,6 @@
 # project
 tmp/
+gocode/packages/cabridss/version.go
 
 # goland
 /.idea

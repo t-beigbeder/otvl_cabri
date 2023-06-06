@@ -176,12 +176,24 @@ func (aii AuditIndexInfo) String() string {
 }
 
 type StorageInfo struct {
-	Path2Meta    map[string][]byte           `json:"path2Meta"`
-	ExistingCs   map[string]bool             `json:"existingCs"`
-	Path2Content map[string]string           `json:"path2Content"`
-	Path2Error   map[string]error            `json:"path2Error"`
-	XLMetas      map[string]map[int64][]byte `json:"xlmetas"`
-	XRMetas      map[string]map[int64][]byte `json:"xrmetas"`
+	Path2Meta     map[string][]byte           `json:"path2Meta"`
+	ExistingCs    map[string]bool             `json:"existingCs"`
+	ExistingEcs   map[string]bool             `json:"existingEcs"`
+	Path2Content  map[string]string           `json:"path2Content"`
+	Path2CContent map[string]string           `json:"path2CContent"`
+	Path2Error    map[string]error            `json:"path2Error"`
+	XLMetas       map[string]map[int64][]byte `json:"xlmetas"` // Local meta data
+	XRMetas       map[string]map[int64][]byte `json:"xrmetas"` // Remote meta data
+}
+
+type HistoryChunk struct {
+	Start int64 `json:"start"` // period start time POSIX aligned to resolution
+	End   int64 `json:"end"`   // period end time POSIX aligned to resolution
+	Count int   `json:"count"` // number of history updates in the time period
+}
+
+func (hc HistoryChunk) String() string {
+	return fmt.Sprintf("%s/%s %8d", UnixUTC(hc.Start), UnixUTC(hc.End), hc.Count)
 }
 
 // HDss is the Data Storage System interface for DSS with history support.
@@ -208,6 +220,8 @@ type HDss interface {
 	// evaluate don't remove, just report work to be done
 	// start is the inclusive index time above which entries must be removed, zero meanning all past entries
 	// end is the inclusive index time below which entries must be removed, zero meaning all future entries
+	//
+	// returns:
 	// - the history (inclusive times when the entry is removed) for all entries
 	// - err error if any happens
 	RemoveHistory(npath string, recursive, evaluate bool, start, end int64) (map[string][]HistoryInfo, error)
@@ -231,7 +245,19 @@ type HDss interface {
 	AuditIndex() (map[string][]AuditIndexInfo, error)
 
 	// ScanStorage scans the DSS storage and loads meta and content sha256 sum
-	ScanStorage() (StorageInfo, *ErrorCollector)
+	//
+	// purge removes unreferenced content from the repository
+	// purgeHidden removes hidden meta and content from the repository
+	ScanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector)
+
+	// GetHistoryChunks returns history chunks loaded from local index
+	//
+	// resolution s, m, h, d from seconds to days
+	//
+	// returns:
+	// - the DSS activity periods sorted by time
+	// - err error if any happens
+	GetHistoryChunks(resolution string) ([]HistoryChunk, error)
 
 	// Reindex scans the DSS storage and loads meta and content sha256 sum into the index
 	Reindex() (StorageInfo, *ErrorCollector)

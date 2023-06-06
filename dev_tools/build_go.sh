@@ -3,30 +3,10 @@ cmd_name=`basename $0`
 if [ "`echo $cmd_dir | cut -c1`" != "/" ] ; then
     cmd_dir="`pwd`/$cmd_dir"
 fi
+. $cmd_dir/build_commons.sh
 base_dir="`echo $cmd_dir | sed -e s=/dev_tools==`/gocode"
 cd $base_dir
 
-log() {
-  TS=`date +%Y/%m/%d" "%H:%M:%S",000"`
-  echo "$TS | $1 | $cmd_name: $2"
-}
-
-error() {
-  log ERROR "$1"
-}
-
-warn() {
-  log WARNING "$1"
-}
-
-info() {
-  log INFO "$1"
-}
-
-run_command() {
-    info "run command \"$*\""
-    "$@" || (error "while running command \"$*\"" && return 1)
-}
 
 cover_package() {
   cd $base_dir/packages/$1 && \
@@ -39,6 +19,7 @@ PATH="$HOME/go/bin:$PATH"
 st=0
 info "starting"
 true && \
+  write_go_version && \
   mkdir -p $base_dir/build && \
   cover_package internal && \
   cover_package ufpath && \

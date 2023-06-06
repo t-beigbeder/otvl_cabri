@@ -18,8 +18,8 @@ func createWebDssServer(addr, root string, params cabridss.CreateNewParams) (cab
 	if err != nil {
 		return nil, fmt.Errorf("createWebDssServer failed with error %v", err)
 	}
-	httpConfig := cabridss.WebDssHttpConfig{Addr: addr}
-	s, err := cabridss.NewWebDssServer(httpConfig, root, cabridss.WebDssServerConfig{Dss: dss.(cabridss.HDss), HasLog: false})
+	httpConfig := cabridss.WebServerConfig{Addr: addr, HasLog: false}
+	s, err := cabridss.NewWebDssServer(root, cabridss.WebDssServerConfig{WebServerConfig: httpConfig, Dss: dss.(cabridss.HDss)})
 	return s, err
 }
 

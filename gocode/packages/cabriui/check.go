@@ -79,7 +79,7 @@ func checkS3List(ctx context.Context) error {
 	if err = is3.Initialize(); err != nil {
 		return err
 	}
-	var ls internal.StringSlice
+	var ls internal.StringSliceEOL
 	if ls, err = is3.List(prefix); err != nil {
 		return err
 	}

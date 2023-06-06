@@ -3,41 +3,15 @@ cmd_name=`basename $0`
 if [ "`echo $cmd_dir | cut -c1`" != "/" ] ; then
     cmd_dir="`pwd`/$cmd_dir"
 fi
+. $cmd_dir/build_commons.sh
 base_dir="`echo $cmd_dir | sed -e s=/dev_tools==`/gocode"
 cd $base_dir
-
-log() {
-  TS=`date +%Y/%m/%d" "%H:%M:%S",000"`
-  echo "$TS | $1 | $cmd_name: $2"
-}
-
-error() {
-  log ERROR "$1"
-}
-
-warn() {
-  log WARNING "$1"
-}
-
-info() {
-  log INFO "$1"
-}
-
-run_command() {
-    info "run command \"$*\""
-    "$@" || (error "while running command \"$*\"" && return 1)
-}
-
-cover_package() {
-  cd $base_dir/packages/$1 && \
-  go test $2 -coverprofile=$base_dir/build/$1.coverage.out . && \
-  go tool cover -html=$base_dir/build/$1.coverage.out -o $base_dir/build/$1.coverage.html
-}
 
 PATH="$HOME/go/bin:$PATH"
 st=0
 info "starting"
 true && \
+  write_go_version && \
   mkdir -p $base_dir/build && \
   mkdir -p $base_dir/build $base_dir/cmds/locsv/frontend_build && \
   touch $base_dir/cmds/locsv/frontend_build/dummy && \
@@ -51,6 +25,7 @@ true && \
   go vet . 2> $base_dir/build/cabri.vet.out >&1 && \
   go build -o $base_dir/build/cabri ./main.go && \
   GOOS=windows GOARCH=amd64 go build -o $base_dir/build/cabri.exe ./main.go && \
+  distribute_bin $base_dir/build/cabri $base_dir/build/cabri.exe && \
   true || (info failed && exit 1)
 st=$?
 info "ended"

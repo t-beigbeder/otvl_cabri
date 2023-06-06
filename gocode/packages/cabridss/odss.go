@@ -32,7 +32,8 @@ type oDssBaseProxy interface {
 	getRepoId() string
 	isEncrypted() bool
 	auditIndex() (map[string][]AuditIndexInfo, error)
-	scanStorage() (StorageInfo, *ErrorCollector)
+	scanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector)
+	getHistoryChunks(resolution string) ([]HistoryChunk, error)
 	reindex() (StorageInfo, *ErrorCollector)
 	// other
 	doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error
@@ -66,6 +67,7 @@ type oDssSpecificProxy interface {
 	spGetContentReader(ch string) (io.ReadCloser, error)
 	doGetContentReader(npath string, meta Meta) (io.ReadCloser, error)
 	queryContent(ch string) (exist bool, err error)
+	removeContent(ch string) error
 	spClose() error
 	dumpIndex() string
 	scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector)
@@ -249,7 +251,13 @@ func (ods *ODss) IsRepoEncrypted() bool { return ods.proxy.isRepoEncrypted() }
 
 func (ods *ODss) AuditIndex() (map[string][]AuditIndexInfo, error) { return ods.proxy.auditIndex() }
 
-func (ods *ODss) ScanStorage() (StorageInfo, *ErrorCollector) { return ods.proxy.scanStorage() }
+func (ods *ODss) ScanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
+	return ods.proxy.scanStorage(purge, purgeHidden)
+}
+
+func (ods *ODss) GetHistoryChunks(resolution string) ([]HistoryChunk, error) {
+	return ods.proxy.getHistoryChunks(resolution)
+}
 
 func (ods *ODss) Reindex() (StorageInfo, *ErrorCollector) { return ods.proxy.reindex() }
 
@@ -704,11 +712,7 @@ func (odbi *oDssBaseImpl) getHistory(npath string, recursive bool, resolution st
 	return eRes, err
 }
 
-func (odbi *oDssBaseImpl) doRemoveHistory(ipath string, isDir bool, recursive bool, evaluate bool, start int64, end int64, oRes map[string][]historyEntry) error {
-	iRes := map[string][]historyEntry{}
-	if err := odbi.doGetHistory(ipath, isDir, recursive, "s", iRes); err != nil {
-		return fmt.Errorf("in RemoveHistory: %v", err)
-	}
+func (odbi *oDssBaseImpl) doRemoveHistory(ripath string, isDir bool, recursive bool, evaluate bool, start int64, end int64, oRes map[string][]historyEntry) error {
 	if start == 0 {
 		start = MIN_TIME
 	}
@@ -717,30 +721,41 @@ func (odbi *oDssBaseImpl) doRemoveHistory(ipath string, isDir bool, recursive bo
 	} else {
 		end = end + internal.Sec2Nano(1)
 	}
-	for path, hes := range iRes {
-		oRes[path] = []historyEntry{}
-		for _, he := range hes {
-			ipath = RemoveSlashIfNsIf(path, he.meta.IsNs)
-			if he.start > end || he.start < start || he.end < start || he.end > end {
-				continue
-			}
-			oRes[path] = append(oRes[path], he)
-			if !evaluate {
-				if err := odbi.me.xRemoveMeta(he.meta); err != nil {
-					return fmt.Errorf("in doRemoveHistory: %v", err)
-				}
-				itime := he.meta.Itime
-				if odbi.isRepoEncrypted() {
-					ipath = he.meta.EMId
-					itime = MIN_TIME
-				}
-				if err := odbi.me.removeMeta(ipath, itime); err != nil {
-					return fmt.Errorf("in doRemoveHistory: %v", err)
-				}
-			}
+	done := false
+	for !done {
+		iRes := map[string][]historyEntry{}
+		if err := odbi.doGetHistory(ripath, isDir, recursive, "s", iRes); err != nil {
+			return fmt.Errorf("in RemoveHistory: %v", err)
 		}
-		if len(oRes[path]) == 0 {
-			delete(oRes, path)
+		done = true
+		for path, hes := range iRes {
+			if _, ok := oRes[path]; !ok {
+				oRes[path] = []historyEntry{}
+			}
+			for _, he := range hes {
+				ipath := RemoveSlashIfNsIf(path, he.meta.IsNs)
+				if he.start > end || he.start < start || he.end < start || he.end > end {
+					continue
+				}
+				oRes[path] = append(oRes[path], he)
+				if !evaluate {
+					done = false
+					if err := odbi.me.xRemoveMeta(he.meta); err != nil {
+						return fmt.Errorf("in doRemoveHistory: %v", err)
+					}
+					itime := he.meta.Itime
+					if odbi.isRepoEncrypted() {
+						ipath = he.meta.EMId
+						itime = MIN_TIME
+					}
+					if err := odbi.me.removeMeta(ipath, itime); err != nil {
+						return fmt.Errorf("in doRemoveHistory: %v", err)
+					}
+				}
+			}
+			if len(oRes[path]) == 0 {
+				delete(oRes, path)
+			}
 		}
 	}
 	return nil
@@ -932,7 +947,7 @@ func (odbi *oDssBaseImpl) auditIndex() (map[string][]AuditIndexInfo, error) {
 	if len(mai) > 0 {
 		return mai, nil
 	}
-	sti, errs := odbi.scanStorage()
+	sti, errs := odbi.scanStorage(false, false)
 	if errs != nil {
 		return nil, fmt.Errorf("in doAuditIndexFromStorage: %v", errs)
 	}
@@ -955,14 +970,50 @@ func (odbi *oDssBaseImpl) auditIndex() (map[string][]AuditIndexInfo, error) {
 	return res, nil
 }
 
-func (odbi *oDssBaseImpl) scanStorage() (StorageInfo, *ErrorCollector) {
+func (odbi *oDssBaseImpl) purgeContent(sti StorageInfo, errs *ErrorCollector) {
+	if odbi.isRepoEncrypted() {
+		for _, ech := range sti.Path2Content {
+			found := false
+			for eEch, _ := range sti.ExistingEcs {
+				if eEch == ech {
+					found = true
+					break
+				}
+			}
+			if !found {
+				if err := odbi.me.removeContent(ech); err != nil {
+					errs.Collect(err)
+				}
+			}
+		}
+		return
+	}
+	for _, ch := range sti.Path2Content {
+		found := false
+		for eCh, _ := range sti.ExistingCs {
+			if eCh == ch {
+				found = true
+				break
+			}
+		}
+		if !found {
+			if err := odbi.me.removeContent(ch); err != nil {
+				errs.Collect(err)
+			}
+		}
+	}
+}
+
+func (odbi *oDssBaseImpl) scanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
 	sti := StorageInfo{
-		Path2Meta:    map[string][]byte{},
-		Path2Content: map[string]string{},
-		ExistingCs:   map[string]bool{},
-		Path2Error:   map[string]error{},
-		XLMetas:      map[string]map[int64][]byte{},
-		XRMetas:      map[string]map[int64][]byte{},
+		Path2Meta:     map[string][]byte{},
+		Path2Content:  map[string]string{},
+		Path2CContent: map[string]string{},
+		ExistingCs:    map[string]bool{},
+		ExistingEcs:   map[string]bool{},
+		Path2Error:    map[string]error{},
+		XLMetas:       map[string]map[int64][]byte{},
+		XRMetas:       map[string]map[int64][]byte{},
 	}
 	errs := &ErrorCollector{}
 	odbi.me.scanPhysicalStorage(sti, errs)
@@ -1010,17 +1061,26 @@ func (odbi *oDssBaseImpl) scanStorage() (StorageInfo, *ErrorCollector) {
 			continue
 		}
 	}
+	_, isEdss := (odbi.me).(*eDssImpl)
 	for path, ccs := range sti.Path2Content {
-		if odbi.isRepoEncrypted() {
+		if odbi.isRepoEncrypted() && !isEdss {
 			// will check the following after decryption on client side
 			// and also maybe we are there
 			continue
 		}
-		_, ok := sti.ExistingCs[ccs]
+		var ok bool
+		if isEdss {
+			_, ok = sti.ExistingEcs[ccs]
+		} else {
+			_, ok = sti.ExistingCs[ccs]
+		}
 		if !ok {
 			pathErr(path, fmt.Errorf("%s (ch %s) is not used anymore", path, ccs))
 			continue
 		}
+	}
+	if purge {
+		odbi.purgeContent(sti, errs)
 	}
 	if len(*errs) > 0 {
 		return StorageInfo{}, errs
@@ -1039,12 +1099,57 @@ func (odbi *oDssBaseImpl) scanStorage() (StorageInfo, *ErrorCollector) {
 	return sti, nil
 }
 
+func (odbi *oDssBaseImpl) getHistoryChunks(resolution string) ([]HistoryChunk, error) {
+	_, lmetas, _, err := odbi.index.(*pIndex).loadInMemory()
+	if err != nil {
+		return nil, err
+	}
+	tr := TimeResolution(resolution)
+	counts := map[int64]int{}
+	for _, v := range lmetas {
+		for start, _ := range v {
+			sa := tr.Align(start)
+			counts[sa] = counts[sa] + 1
+		}
+	}
+	var res []HistoryChunk
+	if len(counts) == 0 {
+		return res, nil
+	}
+	var times []int64
+	for t, _ := range counts {
+		times = append(times, t)
+	}
+	sort.Slice(times, func(i, j int) bool {
+		return times[i] < times[j]
+	})
+	res = append(res, HistoryChunk{Start: times[0], End: times[0] + tr.NanoSeconds(), Count: 0})
+	for _, t := range times {
+		pc := res[len(res)-1]
+		if t == pc.Start {
+			pc.Count += counts[t]
+			res[len(res)-1] = pc
+			continue
+		}
+		if t == pc.End {
+			pc.Count += counts[t]
+			pc.End = t + tr.NanoSeconds()
+			res[len(res)-1] = pc
+			continue
+		}
+		res = append(res, HistoryChunk{Start: t, End: t + tr.NanoSeconds(), Count: counts[t]})
+	}
+	return res, nil
+}
+
 func (odbi *oDssBaseImpl) reindex() (StorageInfo, *ErrorCollector) {
 	sti := StorageInfo{
-		Path2Meta:    map[string][]byte{},
-		Path2Content: map[string]string{},
-		ExistingCs:   map[string]bool{},
-		Path2Error:   map[string]error{},
+		Path2Meta:     map[string][]byte{},
+		Path2Content:  map[string]string{},
+		Path2CContent: map[string]string{},
+		ExistingCs:    map[string]bool{},
+		ExistingEcs:   map[string]bool{},
+		Path2Error:    map[string]error{},
 	}
 	errs := &ErrorCollector{}
 	pi, ok := odbi.index.(*pIndex)

@@ -19,6 +19,7 @@ Other documentation is referenced in the pages above, including:
 - [DSS management](doc/mng.md)
 - [Reference documentation for the CLI](doc/cliref.md)
 - [Client configuration](doc/cliconf.md)
+- [Web API](doc/restapi.md)
 
 ## General presentation
 
@@ -57,11 +58,19 @@ conditions.
 
 ### Remote access
 
-Cabri provides an HTTP remote acccess that primarily enables multi-user access to shared data,
+Cabri provides an HTTP remote access that primarily enables multi-user access to shared data,
 but it also may be used for remote access to specific physical devices.
 
 When S3 API for cloud object storage is not considered reliable, secure, or fast enough from a local network,
 remote access via a proxy in the cloud can also be used, so that S3 calls are performed fully in the cloud.
+
+### CLI and API
+
+Cabri can be used:
+
+- through the CLI (Command Line Interface)
+- through its native Golang API
+- through a Web API for other languages 
 
 ### Data synchronization
 
@@ -106,7 +115,7 @@ Cabri makes use of indexes to enable fast access to metadata:
 
 - in the cloud
 - from the history
-- encrypted, in which case it is kept local
+- encrypted, in which case decrypted metadata in the index is kept local
 
 Indexes can be rebuilt if broken or lost by performing a full scan of the repository.
 
@@ -140,7 +149,7 @@ Indexes can be rebuilt if broken or lost by performing a full scan of the reposi
 
 ### API
 
-Cabri comes with a Go API, an HTTP API, and a Go HTTP client (same API as Go native)
+Cabri comes with a Go API, and an HTTP API
 providing technology neutral storage services similar to POSIX file access API:
 
 - stat entry: size, mtime, access control lists
@@ -156,8 +165,16 @@ Additional services concern:
 - the management of the indexes
 - the activation of an HTTP API server
 
-The Go API is documented here:
-[pkg.go.dev](https://pkg.go.dev/github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss). 
+The Go API documentation can be retrieved at
+[pkg.go.dev](https://pkg.go.dev/github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss),
+the main entries being:
+
+- [DSS](https://pkg.go.dev/github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss#Dss)
+for `fsy` DSS
+- [HDSS](https://pkg.go.dev/github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss#HDss)
+for other kinds of DSS
+
+The Web API is documented [here](doc/restapi.md).
 
 ### UI
 

@@ -6,6 +6,8 @@ import (
 	"hash"
 	"io"
 	"sort"
+	"strconv"
+	"time"
 )
 
 type SliceStringer[T fmt.Stringer] struct{ Slice []T }
@@ -20,9 +22,17 @@ func (ss SliceStringer[T]) String() (res string) {
 	return
 }
 
-type StringSlice []string
+type StringStringer string
 
-func (ss StringSlice) String() (res string) {
+func (s StringStringer) String() string { return string(s) }
+
+type StringsStringer []string
+
+func (sss StringsStringer) String() string { return fmt.Sprintf("%v", []string(sss)) }
+
+type StringSliceEOL []string
+
+func (ss StringSliceEOL) String() (res string) {
 	for _, s := range ss {
 		if res != "" {
 			res += "\n"
@@ -67,4 +77,20 @@ func ShaFrom(r io.Reader) string {
 	io.Copy(&w, r)
 	cs := w.h.Sum(nil)
 	return Sha256ToStr32(cs)
+}
+
+func CheckTimeStamp(value string) (unix int64, err error) {
+	if value == "" {
+		return
+	}
+	var ts time.Time
+	if ts, err = time.Parse(time.RFC3339, value); err == nil {
+		unix = ts.Unix()
+		return
+	}
+	if unix, err = strconv.ParseInt(value, 10, 64); err == nil {
+		return
+	}
+	err = fmt.Errorf("timestamp %s must be either RFC3339 (eg 2020-08-13T11:56:41Z) or a unix time integer", value)
+	return
 }
