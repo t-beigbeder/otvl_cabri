@@ -219,7 +219,7 @@ And another user will retrieve it:
 You will generally want to control access to data when using DSS in multi-user mode.
 ACL (Access Control List) can be used for such a purpose and their basic use is explained on a dedicated [page](acl.md).
 
-## Encrypting your data for unsafe storage
+## Encrypting your data for secure storage on unsafe media
 
 If your data is confidential, and you have to store it on unsafe media
 such as unencrypted laptop drive, USB drive, public cloud storage,

@@ -24,7 +24,7 @@ provided by the client when needed
 which guarantees that deployments in cloud environments keep confidential data secret
 in any circumstances.
 
-As a consequence, the REST API server will, in most cases, be used
+As a consequence, the REST API server will often be used
 on the local host in order to provide a Cabri API to other languages than Golang.
 
 ## Launching the REST API server
@@ -65,7 +65,7 @@ For POST or PUT, the following query parameters are used:
 - `mtime`: modification time, either RFC3339 (eg 2020-08-13T11:56:41Z) or a unix time integer
 - `acl`: see the CLI reference for syntax
 
-for POST, the namespace children are provided as `child` query parameter, with the child name
+For POST, the namespace children are provided as `child` query parameter, with the child name
 ending with "/" in the case of a sub-namespace.
 
 Following sample helps to clarify:

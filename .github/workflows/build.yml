@@ -1,0 +1,82 @@
+name: Build and upload binaries
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Build binaries
+    runs-on: ubuntu-latest
+    environment: "Build, release binaries"
+    strategy:
+      matrix:
+        include:
+          - {GOOS: linux, GOARCH: amd64}
+#          - {GOOS: linux, GOARCH: arm, GOARM: 6}
+#          - {GOOS: linux, GOARCH: arm64}
+#          - {GOOS: darwin, GOARCH: amd64}
+#          - {GOOS: darwin, GOARCH: arm64}
+          - {GOOS: windows, GOARCH: amd64}
+#          - {GOOS: freebsd, GOARCH: amd64}
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.x
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Check release
+        run: |
+          VERSION="$(cat dev_tools/current_version.txt)"
+          if [ "$GITHUB_REF_NAME" != "$VERSION" ] ; then
+            echo "Release $GITHUB_REF_NAME doesn't match the version $VERSION"
+            exit 1
+          fi
+      - name: Build binary
+        run: |
+          cp LICENSE "$RUNNER_TEMP/LICENSE"
+          echo -e "\n---\n" >> "$RUNNER_TEMP/LICENSE"
+          curl -L "https://go.dev/LICENSE?m=text" >> "$RUNNER_TEMP/LICENSE"
+          VERSION="$(cat dev_tools/current_version.txt)"
+          DIR="$(mktemp -d)"
+          mkdir "$DIR/cabri"
+          cp "$RUNNER_TEMP/LICENSE" "$DIR/cabri"
+          echo "package cabridss" > gocode/packages/cabridss/version.go
+          echo const CabriVersion = "\"$current_version `git show --no-patch --no-notes --pretty='%h %cd'`\"" >> gocode/packages/cabridss/version.go
+          cd gocode/cabri
+          if [ "$GOOS" == "windows" ]; then
+            go build -o "$DIR/cabri/cabri.exe" ./main.go
+            ( cd "$DIR"; zip cabri.zip -r cabri )
+            mv "$DIR/cabri.zip" "../../cabri-$VERSION-$GOOS-$GOARCH.zip"
+          else
+            go build -o "$DIR/cabri/cabri" ./main.go
+            tar -cvzf "../../cabri-$VERSION-$GOOS-$GOARCH.tar.gz" -C "$DIR" cabri
+          fi
+        env:
+          GOOS: ${{ matrix.GOOS }}
+          GOARCH: ${{ matrix.GOARCH }}
+          GOARM: ${{ matrix.GOARM }}
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: cabri-binaries
+          path: cabri-*
+  upload:
+    name: Upload release binaries
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download workflow artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: cabri-binaries
+      - name: Upload release artifacts
+        run: gh release upload "$GITHUB_REF_NAME" cabri-*
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}

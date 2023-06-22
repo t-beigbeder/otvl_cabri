@@ -21,7 +21,7 @@ type SyncOptions struct {
 	// if false synchronization is done from left to right
 	KeepContent bool                           // don't remove content deleted from one side in other side
 	NoCh        bool                           // don't evaluate checksum when not available, compare content's size and modification time
-	NoACL       bool                           // don't evaluate ACL, use default ACL
+	NoACL       bool                           // don't check ACL
 	LeftMapACL  map[string][]cabridss.ACLEntry // left to right ACL user names mapping
 	RightMapACL map[string][]cabridss.ACLEntry // right to left ACL user names mapping
 	BeVerbose   BeVerboseFunc                  // callback for process verbosity
@@ -29,9 +29,14 @@ type SyncOptions struct {
 }
 
 func makeDssWritable(dss cabridss.Dss, path string, options SyncOptions) error {
-	fsy, ok := dss.(*cabridss.FsyDss)
-	if !ok {
+	fsy, okFsy := dss.(*cabridss.FsyDss)
+	hdss, okHdss := dss.(cabridss.HDss)
+	if okHdss {
+		hdss.SetSu()
 		return nil
+	}
+	if !okFsy {
+		panic("logic")
 	}
 	if options.Evaluate || !options.InDepth {
 		return nil

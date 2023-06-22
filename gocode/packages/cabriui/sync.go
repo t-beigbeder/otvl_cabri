@@ -230,13 +230,13 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 	stats := sr.GetStats()
 	if opts.DryRun || opts.Verbose {
 		ssr := sr.SortByPath()
-		wrt := syncUow(ctx).UiErrWriter()
+		wrt := syncUow(ctx).UiOutWriter()
 		if opts.Summary {
 			ssr.SummaryOutput(wrt)
 		} else {
 			ssr.TextOutput(wrt)
 		}
-		syncErr(ctx, fmt.Sprintf(
+		syncOut(ctx, fmt.Sprintf(
 			"created: %d, updated %d, removed %d, kept %d, touched %d, error(s) %d\n",
 			stats.CreNum, stats.UpdNum, stats.RmvNum, stats.KeptNum, stats.MUpNum, stats.ErrNum))
 	}

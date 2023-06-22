@@ -81,11 +81,13 @@ func webApi(ctx context.Context, args []string) error {
 				dssSubType = dssType[1:]
 			}
 			if dssSubType == "obs" || dssSubType == "smf" {
-				params = cabridss.CreateNewParams{DssType: dssType, LocalPath: localPath, ConfigPassword: ure.MasterPassword}
+				params = cabridss.CreateNewParams{DssType: dssSubType, LocalPath: localPath}
 			} else if dssSubType == "olf" {
-				params = cabridss.CreateNewParams{DssType: "olf", Root: localPath, ConfigPassword: ure.MasterPassword}
+				params = cabridss.CreateNewParams{DssType: "olf", Root: localPath}
 			}
 			params.Encrypted = dssType[0] == 'x'
+			params.ConfigPassword = ure.MasterPassword
+			params.ConfigDir = ure.ConfigDir
 			dss, err = cabridss.CreateOrNewDss(params)
 		} else {
 			dss, err = NewHDss[WebApiOptions, *WebApiVars](ctx, nil, NewHDssArgs{DssIx: i, ObsIx: obsIx, Lasttime: webApiOpts(ctx).getLastTime(), IsMapping: true})

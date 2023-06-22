@@ -266,6 +266,9 @@ func GetObsConfig(opts BaseOptions, index int, root, mp string) (cabridss.ObsCon
 	if err != nil {
 		return cabridss.ObsConfig{}, err
 	}
+	if bc.XImpl == "" {
+		bc.XImpl = "bdb"
+	}
 	if bc.GetIndex == nil {
 		bc.GetIndex = cabridss.GetPIndex
 	}

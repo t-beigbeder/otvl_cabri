@@ -1,7 +1,10 @@
 # Cabri Data Storage System
 
-Cabri is an hybrid (local and cloud) Data Storage System,
-also providing a fast and secure synchronization service.
+Cabri enables secured data storage and synchronization
+on various media.
+
+It provides an API (Golang and REST) and a CLI.
+A GUI is under development.
 
 Cabri is currently in beta release.
 
@@ -19,7 +22,7 @@ Other documentation is referenced in the pages above, including:
 - [DSS management](doc/mng.md)
 - [Reference documentation for the CLI](doc/cliref.md)
 - [Client configuration](doc/cliconf.md)
-- [Web API](doc/restapi.md)
+- [REST API](doc/restapi.md)
 
 ## General presentation
 
@@ -127,7 +130,7 @@ Indexes can be rebuilt if broken or lost by performing a full scan of the reposi
   providing technology neutral storage services for data along with its metadata:
   hierarchical naming, modification time and access control information. A DSS can be
   - fsy: a portion if a native filesystem (no history, no deduplication, no encryption)
-  - obj: a portion of an object store (Swift container or Amazon S3 bucket)
+  - obs: a portion of an object store (Swift container or Amazon S3 bucket)
     providing history, deduplication or encryption, and supporting eventual consistency limitations
   - olf: object-like files on a native filesystem to provide history, deduplication or encryption
   - smf: object storage mocked as files for development and tests
@@ -149,7 +152,7 @@ Indexes can be rebuilt if broken or lost by performing a full scan of the reposi
 
 ### API
 
-Cabri comes with a Go API, and an HTTP API
+Cabri comes with a Go API, and a REST HTTP API
 providing technology neutral storage services similar to POSIX file access API:
 
 - stat entry: size, mtime, access control lists
@@ -174,7 +177,7 @@ for `fsy` DSS
 - [HDSS](https://pkg.go.dev/github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss#HDss)
 for other kinds of DSS
 
-The Web API is documented [here](doc/restapi.md).
+The REST API is documented [here](doc/restapi.md).
 
 ### UI
 

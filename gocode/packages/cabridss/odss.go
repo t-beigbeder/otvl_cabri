@@ -35,6 +35,7 @@ type oDssBaseProxy interface {
 	scanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector)
 	getHistoryChunks(resolution string) ([]HistoryChunk, error)
 	reindex() (StorageInfo, *ErrorCollector)
+	setSu()
 	// other
 	doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error
 	setIndex(config DssBaseConfig, localPath string) error // to be called by oDssSpecificProxy.initialize
@@ -261,10 +262,13 @@ func (ods *ODss) GetHistoryChunks(resolution string) ([]HistoryChunk, error) {
 
 func (ods *ODss) Reindex() (StorageInfo, *ErrorCollector) { return ods.proxy.reindex() }
 
+func (ods *ODss) SetSu() { ods.proxy.setSu() }
+
 type oDssBaseImpl struct {
 	me            oDssProxy
 	lsttime       int64        // if not zero is the upper time of entries retrieved in it
 	aclusers      []string     // if not nil List of ACL users to check access
+	isSu          bool         // superuser access to enable synchro
 	mockct        int64        // if not zero mock current time
 	metamockcbs   *MetaMockCbs // if not nil callbacks for json marshal/unmarshal
 	index         Index        // the DSS index, possibly nIndex which is a noop index
@@ -322,6 +326,9 @@ func (odbi *oDssBaseImpl) doGetMeta(npath string) (Meta, error) {
 }
 
 func (odbi *oDssBaseImpl) hasReadAcl(meta Meta) bool {
+	if odbi.isSu {
+		return true
+	}
 	readable := len(odbi.aclusers) == 0
 	for _, user := range odbi.aclusers {
 		for _, ace := range meta.GetAcl() {
@@ -338,6 +345,9 @@ func (odbi *oDssBaseImpl) hasReadAcl(meta Meta) bool {
 }
 
 func (odbi *oDssBaseImpl) hasWriteAcl(meta Meta) bool {
+	if odbi.isSu {
+		return true
+	}
 	writable := len(odbi.aclusers) == 0
 	for _, user := range odbi.aclusers {
 		for _, ace := range meta.GetAcl() {
@@ -1175,6 +1185,8 @@ func (odbi *oDssBaseImpl) reindex() (StorageInfo, *ErrorCollector) {
 	}
 	return sti, nil
 }
+
+func (odbi *oDssBaseImpl) setSu() { odbi.isSu = true }
 
 func (odbi *oDssBaseImpl) isRepoEncrypted() bool { return odbi.repoEncrypted }
 

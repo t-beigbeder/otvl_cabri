@@ -261,6 +261,9 @@ type HDss interface {
 
 	// Reindex scans the DSS storage and loads meta and content sha256 sum into the index
 	Reindex() (StorageInfo, *ErrorCollector)
+
+	// SetSu enables superuser access for synchro
+	SetSu()
 }
 
 var appFs = afero.NewOsFs()

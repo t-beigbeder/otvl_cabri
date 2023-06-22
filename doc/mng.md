@@ -117,3 +117,27 @@ Unused DSS entries can be removed in the history with the `rmhisto` subcommand:
 In the example above, entries up to `2023-05-07T08:46:19` may be removed with:
 
     $ cabri cli dss rmhisto --et 2023-05-07T08:46:19Z olf:/home/guest/cabri_olf/olfsimpleacl@d1/d11/ -r
+
+## Remove unused content
+
+The `dss scan` subcommand can be used to locate and remove 
+unused data content after having removed some entries with the
+`dss rmhisto` subcommand:
+
+    $ cabri cli dss scan
+    Usage:
+    cabri cli dss scan [flags]
+    
+    Flags:
+    -f, --full           if summary requested, performs a full scan
+    -h, --help           help for scan
+    --hidden         also purge hidden metadata and content
+    --purge          purge unused content
+    -r, --resol string   if summary requested, resolution s, m, h, d from seconds to days to display the result (default "s")
+    -s, --summary        don't scan, only provide a summary of time periods
+
+Using the `--purge` flag:
+
+    $ cabri cli dss scan olf:/home/guest/cabri_olf/olfsimpleacl --purge --pfile /tmp/pf
+    Error: Collected errors:
+        Error 0: /home/guest/cabri_olf/olfsimpleacl/content/9c/71185977b6dfe6a2023af4401f91f8 (ch 9c71185977b6dfe6a2023af4401f91f8) is not used anymore

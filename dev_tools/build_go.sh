@@ -3,6 +3,7 @@ cmd_name=`basename $0`
 if [ "`echo $cmd_dir | cut -c1`" != "/" ] ; then
     cmd_dir="`pwd`/$cmd_dir"
 fi
+. $cmd_dir/ci_commons.sh
 . $cmd_dir/build_commons.sh
 base_dir="`echo $cmd_dir | sed -e s=/dev_tools==`/gocode"
 cd $base_dir

@@ -22,7 +22,7 @@ Where type can be:
 - olf: object-like files on a native filesystem, in which case `<location>`
 is the directory where DSS configuration, index, metadata and data files are stored.
   - example: `olf:/media/guest/usbkey/simple_backup`
-- obj: a portion of an object store (Swift container or Amazon S3 bucket),
+- obs: a portion of an object store (Swift container or Amazon S3 bucket),
 in which case `<location>` is the directory where
 DSS configuration and index are stored.
   - example: `obs:/home/guest/cabri_config/cloud_backup`
@@ -33,7 +33,7 @@ metadata and data files are stored.
 - webapi+http, webapi+https: remote access to object or object-like DSS,
 in which case `<location>` takes the form `://<host>:<port>/<url-path>`
   - example: `webapi+http://localhost:3000/demo`
-- xolf, xobj and xsmf stand for encrypted DSS of the corresponding type
+- xolf, xobs and xsmf stand for encrypted DSS of the corresponding type
 - xwebapi+http, xwebapi+https must be used as well if the remote DSS is encrypted
 
 ## Object storage creation parameters
@@ -63,6 +63,6 @@ knowing that the trailing slash has to be omitted for commands
 dealing exclusively with namespaces.
 
 Examples:
-    - fsy:/home/guest/simple_directory@
-    - olf:/media/guest/usbkey/simple_backup@
-    - obs:/home/guest/cabri_config/simple_backup@sub_namespace
+- fsy:/home/guest/simple_directory@
+- olf:/media/guest/usbkey/simple_backup@
+- obs:/home/guest/cabri_config/simple_backup@sub_namespace

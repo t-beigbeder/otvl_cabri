@@ -88,9 +88,9 @@ func TestSynchronizeArboTiny(t *testing.T) {
 		t.Fatalf("unsynchronized")
 	}
 	syncOptions := SyncOptions{Recursive: true, DryRun: true, NoACL: true}
-	var errBuf bytes.Buffer
+	var outBuf bytes.Buffer
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", ufpath.Join(tfs.Path(), "fsy")),
 			fmt.Sprintf("olf:%s@", ufpath.Join(tfs.Path(), "olf")),
@@ -99,7 +99,7 @@ func TestSynchronizeArboTiny(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(errBuf.String(), "\n")
+	lines := strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 80 || lines[len(lines)-2] != "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" {
 		t.Fatalf("stats %v %d", lines, len(lines))
@@ -150,9 +150,9 @@ func TestSynchronizeArboBase(t *testing.T) {
 		t.Fatalf("unsynchronized")
 	}
 	syncOptions := SyncOptions{Recursive: true, DryRun: true, NoACL: true}
-	var errBuf bytes.Buffer
+	var outBuf bytes.Buffer
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", ufpath.Join(tfs.Path(), "fsy")),
 			fmt.Sprintf("olf:%s@", ufpath.Join(tfs.Path(), "olf")),
@@ -161,7 +161,7 @@ func TestSynchronizeArboBase(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(errBuf.String(), "\n")
+	lines := strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 2838 || lines[len(lines)-2] != "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" {
 		t.Fatalf("stats %v", lines[len(lines)-2])
@@ -232,9 +232,9 @@ func TestSynchronizeArboNoFear(t *testing.T) {
 	}
 
 	syncOptions := SyncOptions{Recursive: true, DryRun: true, NoACL: true}
-	var errBuf bytes.Buffer
+	var outBuf bytes.Buffer
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", ufpath.Join(tfs.Path(), "fsy")),
 			fmt.Sprintf("olf:%s@", ufpath.Join(tfs.Path(), "olf")),
@@ -243,16 +243,16 @@ func TestSynchronizeArboNoFear(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(errBuf.String(), "\n")
+	lines := strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 1814 || lines[len(lines)-2] != "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" {
 		t.Fatalf("stats %d %v", len(lines), lines[len(lines)-2])
 	}
 
 	syncOptions = SyncOptions{Recursive: true, DryRun: true, RightTime: "2002-01-19T02:56:32Z", NoACL: true}
-	errBuf = bytes.Buffer{}
+	outBuf = bytes.Buffer{}
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", ufpath.Join(tfs.Path(), "bck/0")),
 			fmt.Sprintf("olf:%s@", ufpath.Join(tfs.Path(), "olf")),
@@ -261,16 +261,16 @@ func TestSynchronizeArboNoFear(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines = strings.Split(errBuf.String(), "\n")
+	lines = strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 1479 || lines[len(lines)-2] != "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" {
 		t.Fatalf("stats %d %v", len(lines), lines[len(lines)-2])
 	}
 
 	syncOptions = SyncOptions{Recursive: true, DryRun: true, RightTime: "2002-02-21T22:52:31Z", NoACL: true}
-	errBuf = bytes.Buffer{}
+	outBuf = bytes.Buffer{}
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", ufpath.Join(tfs.Path(), "bck/1")),
 			fmt.Sprintf("olf:%s@", ufpath.Join(tfs.Path(), "olf")),
@@ -279,16 +279,16 @@ func TestSynchronizeArboNoFear(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines = strings.Split(errBuf.String(), "\n")
+	lines = strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 1586 || lines[len(lines)-2] != "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" {
 		t.Fatalf("stats %d %v", len(lines), lines[len(lines)-2])
 	}
 
 	syncOptions = SyncOptions{Recursive: true, DryRun: true, RightTime: "2002-03-29T13:26:54Z", NoACL: true}
-	errBuf = bytes.Buffer{}
+	outBuf = bytes.Buffer{}
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", ufpath.Join(tfs.Path(), "bck/2")),
 			fmt.Sprintf("olf:%s@", ufpath.Join(tfs.Path(), "olf")),
@@ -297,7 +297,7 @@ func TestSynchronizeArboNoFear(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines = strings.Split(errBuf.String(), "\n")
+	lines = strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 1674 || lines[len(lines)-2] != "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" {
 		t.Fatalf("stats %d %v", len(lines), lines[len(lines)-2])
@@ -359,9 +359,9 @@ func TestSynchronizeArboBiDir(t *testing.T) {
 	//}
 
 	syncOptions := SyncOptions{Recursive: true, DryRun: true, BiDir: true, NoACL: true}
-	var errBuf bytes.Buffer
+	var outBuf bytes.Buffer
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", ufpath.Join(tfs.Path(), "fsy")),
 			fmt.Sprintf("olf:%s@", ufpath.Join(tfs.Path(), "olf")),
@@ -370,16 +370,16 @@ func TestSynchronizeArboBiDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(errBuf.String(), "\n")
+	lines := strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 1644 || lines[len(lines)-2] != "created: 210, updated 321, removed 0, kept 0, touched 4, error(s) 0" {
 		t.Fatalf("stats %d %v", len(lines), lines[len(lines)-2])
 	}
 
 	syncOptions = SyncOptions{Recursive: true, DryRun: false, BiDir: true, Verbose: true, NoACL: true}
-	errBuf = bytes.Buffer{}
+	outBuf = bytes.Buffer{}
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", ufpath.Join(tfs.Path(), "fsy")),
 			fmt.Sprintf("olf:%s@", ufpath.Join(tfs.Path(), "olf")),
@@ -388,16 +388,16 @@ func TestSynchronizeArboBiDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines = strings.Split(errBuf.String(), "\n")
+	lines = strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 1644 || lines[len(lines)-2] != "created: 210, updated 321, removed 0, kept 0, touched 4, error(s) 0" {
 		t.Fatalf("stats %d %v", len(lines), lines[len(lines)-2])
 	}
 
 	syncOptions = SyncOptions{Recursive: true, DryRun: true, BiDir: true, NoACL: true}
-	errBuf = bytes.Buffer{}
+	outBuf = bytes.Buffer{}
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", ufpath.Join(tfs.Path(), "fsy")),
 			fmt.Sprintf("olf:%s@", ufpath.Join(tfs.Path(), "olf")),
@@ -406,7 +406,7 @@ func TestSynchronizeArboBiDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lines = strings.Split(errBuf.String(), "\n")
+	lines = strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 1644 || lines[len(lines)-2] != "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" {
 		t.Fatalf("stats %d %v", len(lines), lines[len(lines)-2])
@@ -460,9 +460,9 @@ func runTestSynchronizeToObs(t *testing.T) error {
 	bo := getObjOptions()
 	bo.IndexImplems = []string{"no", "memory"}
 	syncOptions := SyncOptions{BaseOptions: bo, Recursive: true, DryRun: true, NoACL: true}
-	var errBuf bytes.Buffer
+	var outBuf bytes.Buffer
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", tfs.Path()),
 			fmt.Sprintf("obs:@s1"),
@@ -471,16 +471,16 @@ func runTestSynchronizeToObs(t *testing.T) error {
 	if err != nil {
 		return err
 	}
-	lines := strings.Split(errBuf.String(), "\n")
+	lines := strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 6 || lines[len(lines)-2] != "created: 3, updated 1, removed 0, kept 0, touched 0, error(s) 0" {
 		return fmt.Errorf("stats %d %v", len(lines), lines[len(lines)-2])
 	}
 
 	syncOptions = SyncOptions{BaseOptions: bo, Recursive: true, Verbose: true, NoACL: true}
-	errBuf = bytes.Buffer{}
+	outBuf = bytes.Buffer{}
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("fsy:%s@", tfs.Path()),
 			fmt.Sprintf("obs:@s1"),
@@ -489,16 +489,16 @@ func runTestSynchronizeToObs(t *testing.T) error {
 	if err != nil {
 		return err
 	}
-	lines = strings.Split(errBuf.String(), "\n")
+	lines = strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 6 || lines[len(lines)-2] != "created: 3, updated 1, removed 0, kept 0, touched 0, error(s) 0" {
 		return fmt.Errorf("stats %d %v", len(lines), lines)
 	}
 
 	syncOptions = SyncOptions{BaseOptions: bo, Recursive: true, Verbose: true, NoACL: true}
-	errBuf = bytes.Buffer{}
+	outBuf = bytes.Buffer{}
 	err = CLIRun[SyncOptions, *SyncVars](
-		nil, os.Stdout, &errBuf,
+		nil, &outBuf, os.Stderr,
 		syncOptions, []string{
 			fmt.Sprintf("obs:@s1"),
 			fmt.Sprintf("obs:@s2"),
@@ -507,7 +507,7 @@ func runTestSynchronizeToObs(t *testing.T) error {
 	if err != nil {
 		return err
 	}
-	lines = strings.Split(errBuf.String(), "\n")
+	lines = strings.Split(outBuf.String(), "\n")
 	_ = lines
 	if len(lines) != 6 || lines[len(lines)-2] != "created: 3, updated 1, removed 0, kept 0, touched 0, error(s) 0" {
 		return fmt.Errorf("stats %d %v", len(lines), lines)

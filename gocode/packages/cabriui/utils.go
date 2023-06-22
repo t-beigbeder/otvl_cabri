@@ -305,6 +305,7 @@ func NewXolfDss(opts BaseOptions, setCfgFunc func(bc *cabridss.DssBaseConfig), i
 					LibApi:         true,
 					ConfigDir:      oc.ConfigDir,
 					ConfigPassword: mp,
+					Unlock:         oc.Unlock,
 					ReducerLimit:   oc.ReducerLimit,
 				},
 				LibApiDssConfig: cabridss.LibApiDssConfig{
@@ -337,6 +338,7 @@ func NewXobsDss(opts BaseOptions, setCfgFunc func(bc *cabridss.DssBaseConfig), i
 	if setCfgFunc != nil {
 		setCfgFunc(&bc)
 	}
+	oc.Unlock = bc.Unlock
 	if bc.GetIndex == nil {
 		oc.GetIndex = cabridss.GetPIndex
 	}
@@ -347,6 +349,7 @@ func NewXobsDss(opts BaseOptions, setCfgFunc func(bc *cabridss.DssBaseConfig), i
 					LibApi:         true,
 					ConfigDir:      oc.ConfigDir,
 					ConfigPassword: mp,
+					Unlock:         oc.Unlock,
 					ReducerLimit:   oc.ReducerLimit,
 				},
 				LibApiDssConfig: cabridss.LibApiDssConfig{
