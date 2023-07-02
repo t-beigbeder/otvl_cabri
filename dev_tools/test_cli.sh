@@ -96,7 +96,7 @@ run_basic_sync() {
   run_silent cabri cli sync $ori@ $dest@ -rv && \
   find_out "created: 12" && \
   run_silent cabri cli sync $ori@ $dest@ -rd && \
-  find_out "created: 0"
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0"
 }
 
 run_advanced_sync() {
@@ -108,7 +108,8 @@ run_advanced_sync() {
   run_silent cabri cli sync $ori@ $dest@ -rv && \
   find_out "created: 23" && \
   run_silent cabri cli sync $ori@ $dest@ -rd && \
-  find_out "created: 0" && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  ([ "$test_cli_fast" ] || sleep 2) && \
   update_advanced $adv && \
   run_silent cabri cli sync $ori@ $dest@ -rd && \
   find_out "created: 2, updated 3," && \
@@ -125,6 +126,28 @@ run_basic_unlock() {
   run_error cabri cli lsns $dss@ 2> /dev/null && \
   run_silent cabri cli dss unlock $dss 2> /dev/null && \
   run_silent cabri cli lsns $dss@ && \
+  true
+}
+
+run_index_err() {
+  dss=$1
+  run_error cabri cli dss audit $dss 2> /dev/null && \
+  true
+}
+
+run_index() {
+  dss=$1
+  dssd=$2
+  run_silent cabri cli dss audit $dss && \
+  run_silent cabri cli dss scan $dss && \
+  run_silent cabri cli dss lshisto -rs $dss@ && \
+  get_out && sh1=$SHOUT && \
+  run_silent cp $dssd/index.bdb $dssd/index.bdb.bck && \
+  run_silent cp -a $HOME/.cabri $HOME/.cabri.bck && \
+  run_silent cabri cli dss reindex $dss && \
+  run_silent cabri cli dss lshisto -rs $dss@ && \
+  get_out && [ "$SHOUT" = "$sh1" ] && \
+#  backup_error && \
   true
 }
 
@@ -271,6 +294,19 @@ test_advanced_sync_xolf() {
   true
 }
 
+test_sync_back_and_forth() {
+  info test_sync_back_and_forth && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  olf=olf:${TD}/olf && \
+  make_olf $TD/olf $olf && \
+  run_basic_sync $fsy $olf && \
+  run_silent cabri cli sync $olf@ $fsy@ -rdn && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  true
+}
+
 test_basic_unlock_olf() {
     info test_basic_unlock_olf && \
     setup_test && \
@@ -359,9 +395,142 @@ test_basic_unlock_xwobs() {
     true
 }
 
+test_index_olf() {
+  info test_index_olf && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  olf=olf:${TD}/olf && \
+  make_olf $TD/olf $olf && \
+  run_basic_sync $fsy $olf && \
+  run_index_err $olf && \
+  true
+}
+
+test_index_polf() {
+  info test_index_polf && \
+  setup_test && \
+  untar_advanced && \
+  adv=${TD}/advanced && \
+  fsy=fsy:${TD}/advanced && \
+  olf=olf:${TD}/olf && \
+  make_polf $TD/olf $olf && \
+  run_advanced_sync $fsy $olf $adv && \
+  run_index $olf $TD/olf && \
+  true
+}
+
+test_index_xolf() {
+  info test_index_xolf && \
+  setup_test && \
+  untar_advanced && \
+  adv=${TD}/advanced && \
+  fsy=fsy:${TD}/advanced && \
+  olf=xolf:${TD}/olf && \
+  make_olf $TD/olf $olf && \
+  run_advanced_sync $fsy $olf $adv && \
+  run_index $olf $TD/olf && \
+  true
+}
+
+test_index_obs() {
+  info test_index_obs && \
+  setup_test && \
+  untar_advanced && \
+  adv=${TD}/advanced && \
+  fsy=fsy:${TD}/advanced && \
+  obs=obs:${TD}/obs && \
+  make_obs $TD/obs $obs && \
+  run_advanced_sync $fsy $obs $adv && \
+  run_index $obs $TD/obs && \
+  true
+}
+
+test_index_xobs() {
+  info test_index_xobs && \
+  setup_test && \
+  untar_advanced && \
+  adv=${TD}/advanced && \
+  fsy=fsy:${TD}/advanced && \
+  obs=xobs:${TD}/obs && \
+  make_obs $TD/obs $obs && \
+  run_advanced_sync $fsy $obs $adv && \
+  run_index $obs $TD/obs && \
+  true
+}
+
+test_index_wolf() {
+  info test_index_wolf && \
+  setup_test && \
+  untar_advanced && \
+  adv=${TD}/advanced && \
+  fsy=fsy:${TD}/advanced && \
+  olf=olf:${TD}/olf && \
+  make_polf $TD/olf $olf $TD/wc && \
+  run_bg_silent cabri webapi --cdir $TD/wc olf+http://localhost:3000/$TD/olf@wo && \
+  sleep 1 && \
+  wo=webapi+http://localhost:3000/wo && \
+  run_advanced_sync $fsy $wo $adv && \
+  run_index $wo $TD/olf && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_index_wobs() {
+  info test_index_wobs && \
+  setup_test && \
+  untar_advanced && \
+  adv=${TD}/advanced && \
+  fsy=fsy:${TD}/advanced && \
+  obs=obs:${TD}/obs && \
+  make_obs $TD/obs $obs $TD/wc && \
+  run_bg_silent cabri webapi --cdir $TD/wc obs+http://localhost:3000/$TD/obs@wo && \
+  sleep 1 && \
+  wo=webapi+http://localhost:3000/wo && \
+  run_advanced_sync $fsy $wo $adv && \
+  run_index $wo $TD/obs && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_index_xwolf() {
+  info test_index_xwolf && \
+  setup_test && \
+  untar_advanced && \
+  adv=${TD}/advanced && \
+  fsy=fsy:${TD}/advanced && \
+  olf=xolf:${TD}/olf && \
+  make_olf $TD/olf $olf $TD/wc && \
+  run_bg_silent cabri webapi --cdir $TD/wc xolf+http://localhost:3000/$TD/olf@wo && \
+  sleep 1 && \
+  wo=xwebapi+http://localhost:3000/wo && \
+  run_advanced_sync $fsy $wo $adv && \
+  run_index $wo $TD/olf && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_index_xwobs() {
+  info test_index_xwobs && \
+  setup_test && \
+  untar_advanced && \
+  adv=${TD}/advanced && \
+  fsy=fsy:${TD}/advanced && \
+  obs=xobs:${TD}/obs && \
+  make_obs $TD/obs $obs $TD/wc && \
+  run_bg_silent cabri webapi --cdir $TD/wc xobs+http://localhost:3000/$TD/obs@wo && \
+  sleep 1 && \
+  wo=xwebapi+http://localhost:3000/wo && \
+  run_advanced_sync $fsy $wo $adv && \
+  run_index $wo $TD/obs && \
+  run_silent kill $pidc && \
+  true
+}
+
 PATH="$base_dir/build:$HOME/go/bin:$PATH"
 OBS_ENV="--obsrg $OVHRG --obsep $OVHEP --obsct $OVHCT --obsak $OVHAK --obssk $OVHSK"
 st=0
+test_cli_fast=
 info "starting"
 true && \
   test_basic_sync_olf && \
@@ -375,6 +544,7 @@ true && \
   test_basic_sync_xwobs && \
   test_advanced_sync_olf && \
   test_advanced_sync_xolf && \
+  test_sync_back_and_forth && \
   test_basic_unlock_olf && \
   test_basic_unlock_xolf && \
   test_basic_unlock_obs && \
@@ -383,6 +553,15 @@ true && \
   test_basic_unlock_wobs && \
   test_basic_unlock_xwolf && \
   test_basic_unlock_xwobs && \
+  test_index_olf && \
+  test_index_polf && \
+  test_index_xolf && \
+  test_index_obs && \
+  test_index_xobs && \
+  test_index_wolf && \
+  test_index_wobs && \
+  test_index_xwolf && \
+  test_index_xwobs && \
   true || (info failed && exit 1)
 st=$?
 info "ended"

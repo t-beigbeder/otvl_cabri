@@ -470,8 +470,7 @@ func (apc *apiClient) SetNoLimit() { apc.client.noLimit = true }
 
 func (apc *apiClient) SetCabriHeader(h string) { apc.client.cabriHeader = h }
 
-func NewWebApiClient(protocol string, host string, port string, tlsConfig *TlsConfig, root string, config interface{}) (WebApiClient, error) {
-	timeout := 300000 * time.Millisecond
+func NewWebApiClient(protocol string, host string, port string, tlsConfig *TlsConfig, root string, config interface{}, timeout time.Duration) (WebApiClient, error) {
 	var (
 		ht     *http.Transport
 		client Client

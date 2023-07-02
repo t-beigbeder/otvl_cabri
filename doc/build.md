@@ -2,8 +2,6 @@
 
 ## Building from source
 
-This is currently the only way to get the application running.
-
 Instructions provided below must be run on a Linux system.
 
 Install a golang 1.20+ distribution, instructions are available
@@ -24,6 +22,8 @@ Build the executable:
     2022/12/20 17:34:55,000 | INFO | build_go_fast.sh: starting
     2022/12/20 17:35:00,000 | INFO | build_go_fast.sh: ended
 
-You will get the Linux executable in `gocode/build/cabri`
+You will get the Linux AMD64 executable in `gocode/build/cabri`
 and the Windows AMD64 one in `gocode/build/cabri.exe`. 
 Copy them wherever you want.
+
+Golang tooling enables to target other supported platforms as well, just adapt the script to your needs.

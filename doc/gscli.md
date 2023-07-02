@@ -1,5 +1,16 @@
 # Getting started with Cabri DSS using CLI
 
+## Getting the application
+
+The [repository](https://github.com/t-beigbeder/otvl_cabri) for this tool is hosted on GitHub,
+where its binaries can also be [downloaded](https://github.com/t-beigbeder/otvl_cabri/releases)
+for some target platforms.
+
+For other platforms or any other reason, you can build the application from source code,
+as explained on this [page](build.md).
+
+## Syntax
+
 The reference documentation for the CLI is provided [here](cliref.md).
 
 When in doubt with a command syntax, use the `--help` or `-h` flag, for instance:

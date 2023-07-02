@@ -45,14 +45,14 @@ jobs:
           mkdir "$DIR/cabri"
           cp "$RUNNER_TEMP/LICENSE" "$DIR/cabri"
           echo "package cabridss" > gocode/packages/cabridss/version.go
-          echo const CabriVersion = "\"$current_version `git show --no-patch --no-notes --pretty='%h %cd'`\"" >> gocode/packages/cabridss/version.go
+          echo const CabriVersion = "\"$GITHUB_REF_NAME `git show --no-patch --no-notes --pretty='%h %cd'`\"" >> gocode/packages/cabridss/version.go
           cd gocode/cabri
           if [ "$GOOS" == "windows" ]; then
-            go build -o "$DIR/cabri/cabri.exe" ./main.go
+            CGO_ENABLED=0 go build -o "$DIR/cabri/cabri.exe" ./main.go
             ( cd "$DIR"; zip cabri.zip -r cabri )
             mv "$DIR/cabri.zip" "../../cabri-$VERSION-$GOOS-$GOARCH.zip"
           else
-            go build -o "$DIR/cabri/cabri" ./main.go
+            CGO_ENABLED=0 go build -o "$DIR/cabri/cabri" ./main.go
             tar -cvzf "../../cabri-$VERSION-$GOOS-$GOARCH.tar.gz" -C "$DIR" cabri
           fi
         env:

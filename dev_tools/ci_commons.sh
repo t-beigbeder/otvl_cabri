@@ -67,3 +67,9 @@ run_bg_silent() {
 find_out() {
   grep "$@" $OUT > /dev/null || (error "command `cat $LCMD` didn't produce $*" && cat $OUT && return 1 )
 }
+
+get_out() {
+  SHOUT=`sha256sum < $OUT`
+  LCOUT=`wc -l < $OUT`
+  WCOUT=`wc -c < $OUT`
+}

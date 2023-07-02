@@ -11,9 +11,8 @@ Cabri is currently in beta release.
 Getting started:
 
 - [Getting started with the CLI](doc/gscli.md)
-- [Building the application for various platforms](doc/build.md).
 
-Other documentation is referenced in the pages above, including:
+Other documentation is referenced from this page, including:
 
 - [Tuning synchronization parameters](doc/synctune.md)
 - [Simple HTTPS implementation](doc/https.md)
@@ -23,6 +22,7 @@ Other documentation is referenced in the pages above, including:
 - [Reference documentation for the CLI](doc/cliref.md)
 - [Client configuration](doc/cliconf.md)
 - [REST API](doc/restapi.md)
+- [Building the application for various platforms](doc/build.md)
 
 ## General presentation
 
@@ -130,7 +130,7 @@ Indexes can be rebuilt if broken or lost by performing a full scan of the reposi
   providing technology neutral storage services for data along with its metadata:
   hierarchical naming, modification time and access control information. A DSS can be
   - fsy: a portion if a native filesystem (no history, no deduplication, no encryption)
-  - obs: a portion of an object store (Swift container or Amazon S3 bucket)
+  - obs: an object store (Swift container or Amazon S3 bucket)
     providing history, deduplication or encryption, and supporting eventual consistency limitations
   - olf: object-like files on a native filesystem to provide history, deduplication or encryption
   - smf: object storage mocked as files for development and tests

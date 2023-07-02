@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 type tVersion struct {
@@ -133,7 +134,7 @@ func TestNewWebApiClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	apc, _ := NewWebApiClient("", "", "3000", nil, "test", "sConfigClient")
+	apc, _ := NewWebApiClient("", "", "3000", nil, "test", "sConfigClient", time.Duration(0))
 	v, err := cGetTVersion(apc)
 	if err != nil {
 		t.Fatal(err)
@@ -185,7 +186,7 @@ func TestNewWebTlsApiClient(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	apc, err := NewWebApiClient("https", "localhost", "3443", &TlsConfig{"cert.pem", "key.pem", false, "joe", "secret"}, "test", "sConfigClient")
+	apc, err := NewWebApiClient("https", "localhost", "3443", &TlsConfig{"cert.pem", "key.pem", false, "joe", "secret"}, "test", "sConfigClient", time.Duration(0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +238,7 @@ func TestWebApiClientBurst(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	apc, _ := NewWebApiClient("", "", "3000", nil, "test", "sConfigClient")
+	apc, _ := NewWebApiClient("", "", "3000", nil, "test", "sConfigClient", time.Duration(0))
 	var err error
 	wg := sync.WaitGroup{}
 	wg.Add(220)
@@ -379,7 +380,7 @@ func runTestWebApiStream(t *testing.T) {
 	if err := s.Serve(); err != nil {
 		t.Fatal(err)
 	}
-	apc, _ := NewWebApiClient("", "", "3000", nil, "", nil)
+	apc, _ := NewWebApiClient("", "", "3000", nil, "", nil, time.Duration(0))
 	_, err = cPostStream(apc)
 	if err != nil {
 		t.Fatal(err)
@@ -409,7 +410,7 @@ func TestWebTestSleep(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	apc, _ := NewWebApiClient("", "", "3000", nil, "test", nil)
+	apc, _ := NewWebApiClient("", "", "3000", nil, "test", nil, time.Duration(0))
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%ssleep/%d", apc.Url(), 500), nil)
 	resp, err := apc.(*apiClient).client.Do(req)
 	if err != nil {

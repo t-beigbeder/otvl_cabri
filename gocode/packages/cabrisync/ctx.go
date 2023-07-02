@@ -82,7 +82,11 @@ func (syc *syncCtx) pErr() error {
 func (syc *syncCtx) cmpMeta(isRight bool) (updated, mUpdated bool) {
 	lMeta, _ := syc.left.meta.(cabridss.Meta)
 	rMeta, _ := syc.right.meta.(cabridss.Meta)
-	if lMeta.Size != rMeta.Size || (lMeta.Ch != "" && lMeta.Ch != rMeta.Ch) {
+	if lMeta.Size != rMeta.Size {
+		updated = true
+		return
+	}
+	if !syc.options.NoCh && lMeta.Ch != rMeta.Ch {
 		updated = true
 		return
 	}

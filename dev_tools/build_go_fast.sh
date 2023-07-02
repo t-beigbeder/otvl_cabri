@@ -19,12 +19,12 @@ true && \
   cd $base_dir/cmds/locsv && \
   goimports -w . && \
   go vet . 2> $base_dir/build/cmds.vet.out >&1 && \
-  go build -o $base_dir/build/locsv ./main.go && \
+  CGO_ENABLED=0 go build -o $base_dir/build/locsv ./main.go && \
   GOOS=windows GOARCH=amd64 go build -o $base_dir/build/locsv.exe ./main.go && \
   cd $base_dir/cabri && \
   goimports -w . && \
   go vet . 2> $base_dir/build/cabri.vet.out >&1 && \
-  go build -o $base_dir/build/cabri ./main.go && \
+  CGO_ENABLED=0 go build -o $base_dir/build/cabri ./main.go && \
   GOOS=windows GOARCH=amd64 go build -o $base_dir/build/cabri.exe ./main.go && \
   distribute_bin $base_dir/build/cabri $base_dir/build/cabri.exe && \
   true || (info failed && exit 1)

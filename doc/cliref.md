@@ -22,9 +22,9 @@ Where type can be:
 - olf: object-like files on a native filesystem, in which case `<location>`
 is the directory where DSS configuration, index, metadata and data files are stored.
   - example: `olf:/media/guest/usbkey/simple_backup`
-- obs: a portion of an object store (Swift container or Amazon S3 bucket),
+- obs: an object store (Swift container or Amazon S3 bucket),
 in which case `<location>` is the directory where
-DSS configuration and index are stored.
+the DSS configuration and index are stored.
   - example: `obs:/home/guest/cabri_config/cloud_backup`
 - smf: object storage mocked as files for development and tests,
 in which case `<location>` is the directory where DSS configuration, index,

@@ -109,7 +109,7 @@ func (wdi *webDssImpl) initialize(me oDssProxy, config interface{}, lsttime int6
 			basicAuthPassword: wdc.BasicAuthPassword,
 		}
 	}
-	wdi.apc, err = NewWebApiClient(wdc.WebProtocol, wdc.WebHost, wdc.WebPort, tlsConfig, wdc.WebRoot, remoteWdc)
+	wdi.apc, err = NewWebApiClient(wdc.WebProtocol, wdc.WebHost, wdc.WebPort, tlsConfig, wdc.WebRoot, remoteWdc, wdc.WebClientTimeout)
 	if err != nil {
 		return fmt.Errorf("in initialize: %v", err)
 	}
