@@ -138,6 +138,6 @@ unused data content after having removed some entries with the
 
 Using the `--purge` flag:
 
-    $ cabri cli dss scan olf:/home/guest/cabri_olf/olfsimpleacl --purge --pfile /tmp/pf
+    $ cabri cli dss scan olf:/home/guest/cabri_olf/olfsimpleacl --purge --pfile /home/guest/secrets/cabri
     Error: Collected errors:
         Error 0: /home/guest/cabri_olf/olfsimpleacl/content/9c/71185977b6dfe6a2023af4401f91f8 (ch 9c71185977b6dfe6a2023af4401f91f8) is not used anymore

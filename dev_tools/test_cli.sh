@@ -294,16 +294,88 @@ test_advanced_sync_xolf() {
   true
 }
 
-test_sync_back_and_forth() {
-  info test_sync_back_and_forth && \
+test_sync_back_and_forth_olf() {
+  info test_sync_back_and_forth_olf && \
   setup_test && \
   untar_simple && \
   fsy=fsy:${TD}/simple && \
+  run_silent cp -a ${TD}/simple ${TD}/simple2 && \
+  run_silent date > ${TD}/simple2/d1/f2bis && \
+  run_silent date >> ${TD}/simple2/d1/f2 && \
+  run_silent date > ${TD}/simple2/d2/d21/f5bis && \
   olf=olf:${TD}/olf && \
-  make_olf $TD/olf $olf && \
+  make_polf $TD/olf $olf && \
   run_basic_sync $fsy $olf && \
+  run_silent cabri cli sync fsy:${TD}/simple2@ $olf@ -rdn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync fsy:${TD}/simple2@ $olf@ -rvn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $olf@ $fsy@ -rdn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $olf@ $fsy@ -rvn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $olf@ $fsy@ -rdn && \
   find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync fsy:${TD}/simple2@ $fsy@ -rdn && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  true
+}
+
+test_sync_back_and_forth_xolf() {
+  info test_sync_back_and_forth_xolf && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  run_silent cp -a ${TD}/simple ${TD}/simple2 && \
+  run_silent date > ${TD}/simple2/d1/f2bis && \
+  run_silent date >> ${TD}/simple2/d1/f2 && \
+  run_silent date > ${TD}/simple2/d2/d21/f5bis && \
+  olf=xolf:${TD}/olf && \
+  make_olf $TD/olf $olf && \
+  run_basic_sync $fsy $olf && \
+  run_silent cabri cli sync fsy:${TD}/simple2@ $olf@ -rdn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync fsy:${TD}/simple2@ $olf@ -rvn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $olf@ $fsy@ -rdn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $olf@ $fsy@ -rvn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $olf@ $fsy@ -rdn && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync fsy:${TD}/simple2@ $fsy@ -rdn && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  true
+}
+
+test_sync_back_and_forth_xwolf() {
+  info test_sync_back_and_forth_xwolf && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  run_silent cp -a ${TD}/simple ${TD}/simple2 && \
+  run_silent date > ${TD}/simple2/d1/f2bis && \
+  run_silent date >> ${TD}/simple2/d1/f2 && \
+  run_silent date > ${TD}/simple2/d2/d21/f5bis && \
+  olf=xolf:${TD}/olf && \
+  make_olf $TD/olf $olf $TD/wc && \
+  run_bg_silent cabri webapi --cdir $TD/wc xolf+http://localhost:3000/$TD/olf@wo && \
+  sleep 1 && \
+  wo=xwebapi+http://localhost:3000/wo && \
+  run_basic_sync $fsy $wo && \
+  run_silent cabri cli sync fsy:${TD}/simple2@ $wo@ -rdn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync fsy:${TD}/simple2@ $wo@ -rvn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $wo@ $fsy@ -rdn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $wo@ $fsy@ -rvn && \
+  find_out "created: 2, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $wo@ $fsy@ -rdn && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync fsy:${TD}/simple2@ $fsy@ -rdn && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent kill $pidc && \
   true
 }
 
@@ -544,7 +616,9 @@ true && \
   test_basic_sync_xwobs && \
   test_advanced_sync_olf && \
   test_advanced_sync_xolf && \
-  test_sync_back_and_forth && \
+  test_sync_back_and_forth_olf && \
+  test_sync_back_and_forth_xolf && \
+  test_sync_back_and_forth_xwolf && \
   test_basic_unlock_olf && \
   test_basic_unlock_xolf && \
   test_basic_unlock_obs && \

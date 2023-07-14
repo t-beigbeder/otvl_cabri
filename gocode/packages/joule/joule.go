@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type UnitOfWork interface {
@@ -73,6 +74,10 @@ func (uow *sUOW) UiErrWriter() io.Writer { return newC2w(uow.uiErr) }
 
 type CLIRunner[OT any] struct {
 	Ctx            *context.Context
+	mux            sync.Mutex
+	isRunning      bool
+	isStopping     bool
+	workDelay      time.Duration
 	cancel         context.CancelFunc
 	workersWg      sync.WaitGroup
 	finalizer      func()
@@ -106,11 +111,17 @@ func NewCLIRunner[OT any](
 	return cr
 }
 
+func (cr *CLIRunner[OT]) SetWorkDelay(workDelay time.Duration) { cr.workDelay = workDelay }
+
 func (cr *CLIRunner[OT]) AddUow(
 	id string,
 	work func(context.Context, UnitOfWork, interface{}) (interface{}, error),
 ) UnitOfWork {
-
+	if cr.isStopping {
+		return nil
+	}
+	cr.mux.Lock()
+	defer cr.mux.Unlock()
 	if id == "" {
 		id = uuid.New().String()
 	}
@@ -125,6 +136,10 @@ func (cr *CLIRunner[OT]) AddUow(
 		cr.uowReg = map[string]*sUOW{}
 	}
 	cr.uowReg[id] = &uow
+	cr.workersWg.Add(1)
+	if cr.isRunning {
+		cr.controlWork(&uow)
+	}
 	return &uow
 }
 
@@ -167,6 +182,9 @@ func (cr *CLIRunner[OT]) initAndGetFinalizer() func() {
 
 func (cr *CLIRunner[OT]) controlWork(uow *sUOW) {
 	go func() {
+		if cr.workDelay != 0 {
+			time.Sleep(cr.workDelay)
+		}
 		uow.output, uow.err = uow.work(*cr.Ctx, uow, uow.input)
 		cr.workersWg.Done()
 	}()
@@ -219,15 +237,17 @@ func (cr *CLIRunner[OT]) Run() error {
 			return err
 		}
 	}
-
+	cr.mux.Lock()
 	for _, uow := range cr.uows {
-		cr.workersWg.Add(1)
 		cr.controlWork(uow)
 	}
+	cr.mux.Unlock()
 
+	cr.isRunning = true
 	stopUi := make(chan interface{})
 	uiStopped := cr.controlUI(stopUi)
 	cr.workersWg.Wait()
+	cr.isStopping = true
 	stopUi <- nil
 	<-uiStopped
 
@@ -237,4 +257,8 @@ func (cr *CLIRunner[OT]) Run() error {
 		}
 	}
 	return nil
+}
+
+func (cr *CLIRunner[OT]) CancelFunc() context.CancelFunc {
+	return cr.cancel
 }

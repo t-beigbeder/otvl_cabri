@@ -46,7 +46,7 @@ func TestControlCTwice(t *testing.T) {
 	cr.Run()
 }
 
-func TestCLIWG(t *testing.T) {
+func TestCLIWGSimple(t *testing.T) {
 	cr := NewCLIRunner[tOpts](
 		tOpts{oVal: 42}, []string{"31"}, os.Stdin, os.Stdout, os.Stderr,
 		func(cr *CLIRunner[tOpts]) error {
@@ -71,6 +71,53 @@ func TestCLIWG(t *testing.T) {
 			return nil
 		},
 	)
+	cr.Run()
+}
+
+func TestCLIWGAddAfter(t *testing.T) {
+	cr := NewCLIRunner[tOpts](
+		tOpts{oVal: 42}, []string{"31"}, os.Stdin, os.Stdout, os.Stderr,
+		func(cr *CLIRunner[tOpts]) error {
+			for i := 0; i < 10; i++ {
+				i := i
+				cr.AddUow(
+					fmt.Sprintf("uow%d", i),
+					func(ctx context.Context, uow UnitOfWork, input interface{}) (interface{}, error) {
+						time.Sleep(time.Second)
+						return fmt.Sprintf("uow#%d processed %v", i, input), nil
+					})
+			}
+			for i := 0; i < 10; i++ {
+				cr.GetUow(fmt.Sprintf("uow%d", i)).SetInput(fmt.Sprintf("#%d set to opts %v args %v", i, cr.Opts, cr.Args))
+			}
+			return nil
+		},
+		func(cr *CLIRunner[tOpts]) error {
+			for i := 0; i < 10; i++ {
+				fmt.Fprintf(os.Stderr, "Shutdown uow output %d %v\n", i,
+					cr.GetUow(fmt.Sprintf("uow%d", i)).GetOutput())
+			}
+			for i := 5; i < 10; i++ {
+				fmt.Fprintf(os.Stderr, "Shutdown uow output %d %v\n", i,
+					cr.GetUow(fmt.Sprintf("uow-after-%d", i)).GetOutput())
+			}
+			return nil
+		},
+	)
+	go func() {
+		for i := 5; i < 10; i++ {
+			i := i
+			time.Sleep(time.Duration(100*i) * time.Millisecond)
+			uow := cr.AddUow(
+				fmt.Sprintf("uow-after-%d", i),
+				func(ctx context.Context, uow UnitOfWork, input interface{}) (interface{}, error) {
+					time.Sleep(time.Second)
+					return fmt.Sprintf("uow-after#%d processed %v", i, input), nil
+				})
+			uow.SetInput(fmt.Sprintf("after #%d set to opts %v args %v", i, cr.Opts, cr.Args))
+		}
+	}()
+	cr.SetWorkDelay(time.Second)
 	cr.Run()
 }
 

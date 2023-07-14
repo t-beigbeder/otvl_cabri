@@ -1,0 +1,15 @@
+.git
+.dockerignore
+.gitignore
+.project
+.pydevproject
+.mypy_cache
+.pytest_cache
+.settings
+*.md
+doc
+**/dist
+**/node_modules
+**/Dockerfile
+**/build
+tmp/

@@ -80,7 +80,7 @@ func MasterPassword(uow joule.UnitOfWork, opts BaseOptions, askNumber int) (stri
 		if err != nil {
 			return "", err
 		}
-		if bs[len(bs)-1] == '\n' {
+		if len(bs) > 0 && bs[len(bs)-1] == '\n' {
 			bs = bs[:len(bs)-1]
 		}
 		return string(bs), nil
