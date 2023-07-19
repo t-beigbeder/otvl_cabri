@@ -100,7 +100,7 @@ func (srs *ScheduleRunStatus) doRunCommand(sc *ScheduleConfig, action SScheduled
 	if action.Type != "cmd" {
 		logSchedule(sc.ctx, fmt.Sprintf("%s: running \"%s\" for %s", srs.label, cmdLine, action))
 	}
-	elems := strings.Split(cmdLine, " ")
+	elems := strings.Split(os.ExpandEnv(cmdLine), " ")
 	cmd := exec.CommandContext(sc.ctx, elems[0], elems[1:]...)
 	if wd != "" {
 		cmd.Dir = wd

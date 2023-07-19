@@ -40,27 +40,27 @@ require (
 )
 
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss => ./packages/cabridss
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrisync => ./packages/cabrisync
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrifsu => ./packages/cabrifsu
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabritbx => ./packages/cabritbx
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/cabriui => ./packages/cabriui
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/em4ht => ./packages/em4ht
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/internal => ./packages/internal
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/joule => ./packages/joule
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/mockfs => ./packages/mockfs
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber => ./packages/plumber
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs => ./packages/testfs
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath => ./packages/ufpath
-// 
+//
 // replace github.com/t-beigbeder/otvl_cabri/gocode/cabri/cmd => ./cabri/cmd
