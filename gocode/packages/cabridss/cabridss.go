@@ -104,6 +104,17 @@ type Dss interface {
 
 	// Close can be necessary to perform final cleanup or index synchronization
 	Close() error
+
+	// SetSu enables superuser access for synchro
+	SetSu()
+
+	// SuEnableWrite enables physical write access for fsy: DSS in case SetSu is active
+	//
+	// npath is the full namespace + name without leading slash, trailing slash indicates it is a namespace
+	//
+	// returns:
+	// - err error if any happens
+	SuEnableWrite(npath string) error
 }
 
 type UnixUTC int64
@@ -261,9 +272,6 @@ type HDss interface {
 
 	// Reindex scans the DSS storage and loads meta and content sha256 sum into the index
 	Reindex() (StorageInfo, *ErrorCollector)
-
-	// SetSu enables superuser access for synchro
-	SetSu()
 }
 
 var appFs = afero.NewOsFs()

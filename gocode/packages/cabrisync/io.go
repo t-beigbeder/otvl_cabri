@@ -114,11 +114,21 @@ func (syc *syncCtx) mergeNsBefore(rent SyncReportEntry) {
 	mtime, lAcl, rAcl := syc.evalMergeNsMeta(rent)
 	if syc.err == nil &&
 		((syc.left.exist && len(syc.leftMg) != len(syc.left.exCh)) || (!syc.left.exist && rent.isRTL && rent.Created)) {
-		syc.err = syc.left.crUpNs(mtime, syc.leftMg, lAcl)
+		if syc.left.meta != nil {
+			syc.err = syc.left.dss.SuEnableWrite(syc.left.meta.GetPath())
+		}
+		if syc.err == nil {
+			syc.err = syc.left.crUpNs(mtime, syc.leftMg, lAcl)
+		}
 	}
 	if syc.err == nil &&
 		((syc.right.exist && len(syc.rightMg) != len(syc.right.exCh)) || (!syc.right.exist && !rent.isRTL && rent.Created)) {
-		syc.err = syc.right.crUpNs(mtime, syc.rightMg, rAcl)
+		if syc.right.meta != nil {
+			syc.err = syc.right.dss.SuEnableWrite(syc.right.meta.GetPath())
+		}
+		if syc.err == nil {
+			syc.err = syc.right.crUpNs(mtime, syc.rightMg, rAcl)
+		}
 	}
 }
 
@@ -166,6 +176,14 @@ func (syc *syncCtx) crUpContent(isRTL bool) error {
 	}
 	var oErrPrefix = fmt.Sprintf("in crUpContent: %c%s", ori.arrow(), ori.fullPath())
 	var tErrPrefix = fmt.Sprintf("in crUpContent: %c%s", tgt.arrow(), tgt.fullPath())
+	if tgt.meta != nil {
+		err := tgt.dss.SuEnableWrite(tgt.meta.GetPath())
+		if err != nil {
+			err = fmt.Errorf("%s %w", tErrPrefix, err)
+			syc.diagnose(fmt.Sprintf("<crUpContent %v", err), false)
+			return err
+		}
+	}
 
 	in, err := ori.dss.GetContentReader(ori.fullPath())
 	if err != nil {

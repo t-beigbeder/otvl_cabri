@@ -8,12 +8,29 @@ import (
 )
 
 func doEnableWrite(afs afero.Fs, path string, fi os.FileInfo, recursive bool) error {
-	mode := fi.Mode() | 1<<8 | 1<<7
-	if fi.IsDir() {
-		mode |= 1 << 6
-	}
-	if err := afs.Chmod(path, mode); err != nil {
+	uio, rw, err := HasFileWriteAccess(fi)
+	if err != nil {
 		return fmt.Errorf("in doEnableWrite: %v", err)
+	}
+	if !rw && !uio {
+		return fmt.Errorf("%s is read-only", path)
+	}
+	if !rw {
+		var mode os.FileMode
+		if uio {
+			mode = fi.Mode() | 1<<8 | 1<<7
+			if fi.IsDir() {
+				mode |= 1 << 6
+			}
+		} else {
+			mode = fi.Mode() | 1<<5 | 1<<4
+			if fi.IsDir() {
+				mode |= 1 << 3
+			}
+		}
+		if err := afs.Chmod(path, mode); err != nil {
+			return fmt.Errorf("in doEnableWrite: %v", err)
+		}
 	}
 	if !fi.IsDir() || !recursive {
 		return nil

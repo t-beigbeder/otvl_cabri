@@ -6,6 +6,7 @@ fi
 . $cmd_dir/ci_commons.sh
 . $cmd_dir/build_commons.sh
 root_dir="`echo $cmd_dir | sed -e s=/dev_tools==`"
+PATH="$root_dir/gocode/build:$PATH"
 test_count=0
 
 setup_test() {
@@ -22,6 +23,8 @@ setup_test() {
     OUT=$TD/tmp/out && \
     ERR=$TD/tmp/err && \
     cabri cli config --get && \
+    cabri cli config --gen u1 u2 && \
+    mkdir ${TD}/fsyb1 ${TD}/fsyb2 && \
     true
 }
 
@@ -40,6 +43,13 @@ update_advanced() {
   chmod +w $adv/d4/d42/d421ro && date >>  $adv/d4/d42/d421ro/f4211rw && \
   chmod +w $adv/d4/d42/d421ro/f4212ro && date >> $adv/d4/d42/d421ro/f4212ro && chmod -w $adv/d4/d42/d421ro/f4212ro && \
   chmod -w $adv/d4/d42/d421ro && \
+  true
+}
+
+update_acl() {
+  dir=$1 && \
+  date >> $dir/d1/d11/f3 && \
+  date >> $dir/d1/d11/f3bis && \
   true
 }
 
@@ -115,6 +125,52 @@ run_advanced_sync() {
   find_out "created: 2, updated 3," && \
   run_silent cabri cli sync $ori@ $dest@ -rv --summary && \
   find_out "created: 2, updated 3," && \
+  true
+}
+
+run_acl_sync() {
+  ori=$1
+  dest=$2
+  simple=$3
+  fsyb1=fsy:${TD}/fsyb1
+  fsyb2=fsy:${TD}/fsyb2
+  run_silent cabri cli sync $ori@ $dest@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -rd && \
+  find_out "created: 12, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $ori@ $dest@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -rv && \
+  find_out "created: 12, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $ori@ $dest@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -rv && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb1@ --macl u1: -rd && \
+  find_out "created: 12, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb1@ --macl u1: -rv && \
+  find_out "created: 12, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb1@ --macl u1: -rd && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb2@ --macl u2: -rd && \
+  find_out "created: 12, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb2@ --macl u2: -rv && \
+  find_out "created: 12, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb2@ --macl u2: -rd && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  update_acl $simple && \
+  run_silent cabri cli sync $ori@ $dest@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -rd && \
+  find_out "created: 1, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $ori@ $dest@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -rv && \
+  find_out "created: 1, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $ori@ $dest@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -rv && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb1@ --macl u1: -rd && \
+  find_out "created: 1, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb1@ --macl u1: -rv && \
+  find_out "created: 1, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb1@ --macl u1: -rd && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb2@ --macl u2: -rd && \
+  find_out "created: 1, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb2@ --macl u2: -rv && \
+  find_out "created: 1, updated 2, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $dest@ $fsyb2@ --macl u2: -rd && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
   true
 }
 
@@ -379,6 +435,19 @@ test_sync_back_and_forth_xwolf() {
   true
 }
 
+test_acl_sync_olf() {
+  info test_acl_sync_olf && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  olf=olf:${TD}/olf && \
+  simple=${TD}/simple && \
+  make_olf $TD/olf $olf && \
+  run_acl_sync $fsy $olf $simple && \
+  true
+
+}
+
 test_basic_unlock_olf() {
     info test_basic_unlock_olf && \
     setup_test && \
@@ -605,6 +674,7 @@ st=0
 test_cli_fast=
 info "starting"
 true && \
+  run_command cabri version && \
   test_basic_sync_olf && \
   test_basic_sync_polf && \
   test_basic_sync_xolf && \
@@ -619,6 +689,7 @@ true && \
   test_sync_back_and_forth_olf && \
   test_sync_back_and_forth_xolf && \
   test_sync_back_and_forth_xwolf && \
+  test_acl_sync_olf && \
   test_basic_unlock_olf && \
   test_basic_unlock_xolf && \
   test_basic_unlock_obs && \

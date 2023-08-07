@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/spf13/afero"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrifsu"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
@@ -49,6 +50,7 @@ type FsyDss struct {
 	root    string
 	afs     afero.Fs
 	reducer plumber.Reducer
+	su      bool
 }
 
 func (fsy *FsyDss) doMkUpdateNs(npath string, mtime int64, children []string, existing []string, acl []ACLEntry) error {
@@ -399,6 +401,20 @@ func (fsy *FsyDss) Close() error {
 		return fsy.reducer.Close()
 	}
 	return nil
+}
+
+func (fsy *FsyDss) SetSu() { fsy.su = true }
+
+func (fsy *FsyDss) SuEnableWrite(npath string) error {
+	if !fsy.su {
+		return fmt.Errorf("in SuEnableWrite: not in su mode")
+	}
+	_, ipath, err := checkNCpath(npath)
+	if err != nil {
+		return err
+	}
+	fp := ufpath.Join(fsy.root, ipath)
+	return cabrifsu.EnableWrite(fsy.GetAfs(), fp, false)
 }
 
 func (fsy *FsyDss) GetRoot() string { return fsy.root }

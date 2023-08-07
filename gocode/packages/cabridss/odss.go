@@ -264,6 +264,8 @@ func (ods *ODss) Reindex() (StorageInfo, *ErrorCollector) { return ods.proxy.rei
 
 func (ods *ODss) SetSu() { ods.proxy.setSu() }
 
+func (ods *ODss) SuEnableWrite(string) error { return nil }
+
 type oDssBaseImpl struct {
 	me            oDssProxy
 	lsttime       int64        // if not zero is the upper time of entries retrieved in it

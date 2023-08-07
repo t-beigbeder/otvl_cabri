@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrifsu"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/mockfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
@@ -857,7 +858,10 @@ func TestMappedAcl(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	defer tfs.Delete()
+	defer func() {
+		cabrifsu.EnableWrite(afero.NewOsFs(), tfs.Path(), true)
+		tfs.Delete()
+	}()
 	olfp := ufpath.Join(tfs.Path(), "olf")
 	olf, err := cabridss.CreateOlfDss(cabridss.OlfConfig{DssBaseConfig: cabridss.DssBaseConfig{LocalPath: olfp}, Root: olfp, Size: "s"})
 	if err != nil {
@@ -1206,7 +1210,10 @@ func TestMappedEncryptedAcl(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	defer tfs.Delete()
+	defer func() {
+		cabrifsu.EnableWrite(afero.NewOsFs(), tfs.Path(), true)
+		tfs.Delete()
+	}()
 	olfp = ufpath.Join(tfs.Path(), "xolf")
 	_, err = cabridss.CreateOlfDss(cabridss.OlfConfig{
 		DssBaseConfig: cabridss.DssBaseConfig{LocalPath: olfp, Encrypted: true},
@@ -1418,7 +1425,7 @@ func TestMappedEncryptedAcl(t *testing.T) {
 	}
 	report = Synchronize(nil, xolf1, "d2", fsy1, "d2", SyncOptions{InDepth: true, LeftMapACL: rmacl1r})
 	rs = report.GetStats()
-	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 2 {
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
 	}
 	report = Synchronize(nil, xolf1, "d3", fsy1, "d3", SyncOptions{InDepth: true, LeftMapACL: rmacl1})
@@ -1434,7 +1441,7 @@ func TestMappedEncryptedAcl(t *testing.T) {
 	}
 	report = Synchronize(nil, xolf1, "d2", fsy1, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1r})
 	rs = report.GetStats()
-	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 1 {
+	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
 	}
 	report = Synchronize(nil, xolf1, "d3", fsy1, "d3", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
