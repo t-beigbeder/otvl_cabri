@@ -1,18 +1,42 @@
 # Cabri Data Storage System
 
-Cabri enables secured data storage and synchronization
-on various media.
+## Share data with confidence using Cabri
 
-It provides an API (Golang and REST) and a CLI.
+Cabri is a free and open source tool designed specifically to store data
+and synchronize it on various media, among various places, with the people you want.
+
+It is both fast and secure, providing confidentiality in unsecured environments.
+
+It is mainly available as a command-line tool, but also provides an API (Golang and REST).
 A GUI is under development.
 
 Cabri is currently in beta release.
 
-Getting started:
+## Main features
 
-- [Getting started with the CLI](doc/gscli.md)
+- Cabri manages data storage on external devices such as USB drives
+and using Cloud Storage services compatible with Amazon S3
+- Cabri synchronizes local data files with those external storage systems 
+and external storage systems between each other
+possibly in both directions at the same time 
+- Storage is incremental
+- Storage may be encrypted, relying on public keys, meaning no secrets need to be shared
 
-Other documentation is referenced from this page, including:
+## Tooling
+
+- Access to external storage systems can be provided through a remote http server,
+enabling among others multi-user sharing and synchronization of common data
+from different locations
+- a REST API is available for access to data storage services
+- a basic configurable scheduler is provided enabling automatic data synchronization among users,
+but also from developers to hosted applications concerning data feeding
+
+## Read the documentation
+
+- [Introduction](doc/intro.md)
+- [Getting started](doc/gscli.md)
+
+Other documentation is referenced from these pages, including:
 
 - [Tuning synchronization parameters](doc/synctune.md)
 - [Simple HTTPS implementation](doc/https.md)
@@ -23,167 +47,3 @@ Other documentation is referenced from this page, including:
 - [Client configuration](doc/cliconf.md)
 - [REST API](doc/restapi.md)
 - [Building the application for various platforms](doc/build.md)
-
-## General presentation
-
-### Open Source
-
-Cabri is provided as
-[FOSS](https://en.wikipedia.org/wiki/Free_and_open-source_software)
-under the [BSD 3-Clause License](LICENSE).
-Following [Code of conduct](doc/coc.md) applies.
-
-### Data Storage System
-
-A Cabri Data Storage System (DSS) can be compared to a filesystem with respect to its ability
-to store data along with its metadata: hierarchical naming, modification time
-and access control information.
-
-Indeed, a portion of a native filesystem can be handled as a DSS
-and then synchronized with other kinds of DSS.
-
-Those other kinds of DSS may in turn provide additional features:
-
-- historization, enabling to keep snapshots of a full data hierarchy
-- deduplication, improving storage utilization and enabling a more efficient synchronization
-when data is just renamed
-- encryption, enabling the storage of confidential data on unsecure media such as USB drives,
-public cloud object stores and other unprotected storage systems
-
-Those other kinds of storage are independent of the operating system.
-
-### Object storage in the cloud
-
-Cabri supports storage in S3 enabled object stores,
-such as Openstack Swift containers or of course Amazon S3 buckets.
-By design, object stores only provide eventual consistency, and Cabri takes care of data consistency in such
-conditions.
-
-### Remote access
-
-Cabri provides an HTTP remote access that primarily enables multi-user access to shared data,
-but it also may be used for remote access to specific physical devices.
-
-When S3 API for cloud object storage is not considered reliable, secure, or fast enough from a local network,
-remote access via a proxy in the cloud can also be used, so that S3 calls are performed fully in the cloud.
-
-### CLI and API
-
-Cabri can be used:
-
-- through the CLI (Command Line Interface)
-- through its native Golang API
-- through a Web API for other languages 
-
-### Data synchronization
-
-Apart from basic storage services, Cabri provides a data synchronization service between DSS.
-Synchronization may be unidirectional or bidirectional.
-
-The service thus enables data backup, data distribution or both,
-along with historization, deduplication or encryption as already mentioned. 
-
-### Encryption
-
-Both the data and the metadata (such as hierarchical naming) may be encrypted using
-[public key encryption](https://en.wikipedia.org/wiki/Public-key_cryptography),
-which means that the encrypted data content may be shared efficiently with several users
-each owning a personal secret key.
-Only the corresponding public keys need to be shared, secret keys are kept confidential as intended.
-
-The users are the owners of their secret keys.
-Secret keys are never used outside the scope of the component requesting or updating data.
-This also means that when using encryption, confidential data is never exposed to third parties
-neither in transit nor at rest.
-The remark also applies to the HTTP remote access in which case all DSS data is kept encrypted
-as soon as it leaves the client or until it is delivered to it.
-
-Internally, Cabri makes use of [age](https://age-encryption.org/) technology
-whose specification can be found [here](https://github.com/C2SP/C2SP/blob/main/age.md).
-Many thanks to its author Filippo Valsorda!
-
-Data encryption is incompatible with deduplication because the same content
-is never encrypted the same twice.
-
-### Not a filesystem
-
-Cabri does not provide a POSIX like filesystem API nor does it provide the highest I/O rates.
-However, its components try to make the best use of the underlying system I/O capabilities
-both concerning the storage and the network if it is involved in the transfer,
-in particular by parallelizing processing as much as possible.
-
-### Indexing
-
-Cabri makes use of indexes to enable fast access to metadata:
-
-- in the cloud
-- from the history
-- encrypted, in which case decrypted metadata in the index is kept local
-
-Indexes can be rebuilt if broken or lost by performing a full scan of the repository.
-
-## Details
-
-### Concepts and terminology
-
-- DSS: a Data Storage System is a repository
-  providing technology neutral storage services for data along with its metadata:
-  hierarchical naming, modification time and access control information. A DSS can be
-  - fsy: a portion if a native filesystem (no history, no deduplication, no encryption)
-  - obs: an object store (Swift container or Amazon S3 bucket)
-    providing history, deduplication or encryption, and supporting eventual consistency limitations
-  - olf: object-like files on a native filesystem to provide history, deduplication or encryption
-  - smf: object storage mocked as files for development and tests
-- namespace: namespaces provide a hierarchical naming scheme, as POSIX directories do,
-  and as POSIX directories, they are composed of names separated by the character "/"
-  - by convention, names ending with "/" are considered to be namespaces,
-    their content is the list of their children names, which in turn are either namespaces or data 
-  - name not ending with "/" are data entries
-  - by convention, the root of the DSS is the empty string, it is an exception to the rules above
-- access control lists: they describe the access rights to the requested entries
-  - POSIX user, group and "other" for "fsy" DSSs along with their access rights
-  - `age` public keys along with their access rights for encrypted DSSs
-    (but the ability to decrypt the encrypted data and metadata is obviously a prerequisite)
-  - access control may be bypassed like for tools such as `tar` or `rsync`;
-    if access control has to be enforced, DSS files must be kept out of direct access
-    and a reverse proxy ensuring authentication has to be used along with remote access through the HTTP API  
-  - simple labels can be used and mapped to users, groups and public keys if wanted, this can be useful
-    for synchronizing data between DSSs using different conventions
-
-### API
-
-Cabri comes with a Go API, and a REST HTTP API
-providing technology neutral storage services similar to POSIX file access API:
-
-- stat entry: size, mtime, access control lists
-- namespaces creation and update (namespaces are like POSIX directories or Windows folders)
-- data content creation, update and retrieval
-- data or namespace removal is simply achieved by updating the parent namespace list of children
-
-Additional services concern:
-
-- synchronization between DSS
-- the management of the repository itself
-- the management of the repository history
-- the management of the indexes
-- the activation of an HTTP API server
-
-The Go API documentation can be retrieved at
-[pkg.go.dev](https://pkg.go.dev/github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss),
-the main entries being:
-
-- [DSS](https://pkg.go.dev/github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss#Dss)
-for `fsy` DSS
-- [HDSS](https://pkg.go.dev/github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss#HDss)
-for other kinds of DSS
-
-The REST API is documented [here](doc/restapi.md).
-
-### UI
-
-Cabri currently provides a [CLI](https://en.wikipedia.org/wiki/Command-line_interface)
-for all the services of the API, and also for performing synchronization.
-
-Cabri will soon come with a Web User Interface for the same services.
-This interface will be designed to be able to run locally,
-thus never exposing secrets nor confidential data to third parties.

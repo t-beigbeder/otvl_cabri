@@ -70,6 +70,8 @@ func schedule(ctx context.Context, cr *joule.CLIRunner[ScheduleOptions]) error {
 	if err = yaml.Unmarshal(bs, &spec); err != nil {
 		return err
 	}
+	t, err := yaml.Marshal(spec)
+	_ = t
 	scheduleErr(ctx, fmt.Sprintf("Running %v\n", os.Args))
 	sc := ScheduleConfig{ctx: ctx, cancel: cr.CancelFunc(), Spec: spec, run: map[string]*ScheduleRunStatus{}}
 	for k, _ := range spec {
