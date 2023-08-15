@@ -17,28 +17,36 @@ import (
 	"time"
 )
 
+type SScheduleBase struct {
+	Verbose bool `yaml:"verbose"`
+	DispOut bool `yaml:"dispOut"`
+	DispErr bool `yaml:"dispErr"`
+}
+
 type SCabriSyncSpec struct {
-	LeftUsers    []string `yaml:"leftUsers"`
-	LeftACL      []string `yaml:"leftACL"`
-	RightUsers   []string `yaml:"rightUsers"`
-	RightACL     []string `yaml:"rightACL"`
-	Recursive    bool     `yaml:"recursive"`
-	DryRun       bool     `yaml:"dryRun"`
-	BiDir        bool     `yaml:"biDir"`
-	KeepContent  bool     `yaml:"keepContent"`
-	NoCh         bool     `yaml:"noCh"`
-	NoACL        bool     `yaml:"noACL"`
-	MapACL       []string `yaml:"mapACL"`
-	Summary      bool     `yaml:"summary"`
-	Verbose      bool     `yaml:"verbose"`
-	VerboseLevel int      `yaml:"verboseLevel"`
-	LeftTime     string   `yaml:"leftTime"`
-	RightTime    string   `yaml:"rightTime"`
-	LeftDss      string   `yaml:"leftDss"`
-	RightDss     string   `yaml:"rightDss"`
+	SScheduleBase `yaml:"base"`
+	LeftUsers     []string `yaml:"leftUsers"`
+	LeftACL       []string `yaml:"leftACL"`
+	RightUsers    []string `yaml:"rightUsers"`
+	RightACL      []string `yaml:"rightACL"`
+	Recursive     bool     `yaml:"recursive"`
+	DryRun        bool     `yaml:"dryRun"`
+	BiDir         bool     `yaml:"biDir"`
+	KeepContent   bool     `yaml:"keepContent"`
+	NoCh          bool     `yaml:"noCh"`
+	NoACL         bool     `yaml:"noACL"`
+	MapACL        []string `yaml:"mapACL"`
+	Summary       bool     `yaml:"summary"`
+	Verbose       bool     `yaml:"verbose"`
+	VerboseLevel  int      `yaml:"verboseLevel"`
+	LeftTime      string   `yaml:"leftTime"`
+	RightTime     string   `yaml:"rightTime"`
+	LeftDss       string   `yaml:"leftDss"`
+	RightDss      string   `yaml:"rightDss"`
 }
 
 type SGitSpec struct {
+	SScheduleBase   `yaml:"base"`
 	RepoUrl         string `yaml:"repoUrl"`
 	ClonePath       string `yaml:"clonePath"`
 	CloneOptions    string `yaml:"cloneOptions"`
@@ -48,6 +56,7 @@ type SGitSpec struct {
 }
 
 type SScheduledAction struct {
+	SScheduleBase `yaml:"base"`
 	Type          string         `yaml:"type"` // currently "cabriSync", "git" or "cmd"
 	CabriSyncSpec SCabriSyncSpec `yaml:"cabriSyncSpec"`
 	GitSpec       SGitSpec       `yaml:"gitSpec"`
@@ -98,7 +107,9 @@ func logSchedule(ctx context.Context, line string) {
 
 func (srs *ScheduleRunStatus) doRunCommand(sc *ScheduleConfig, action SScheduledAction, cmdLine string, wd string) (stdout, stderr []byte, err error) {
 	if action.Type != "cmd" {
-		logSchedule(sc.ctx, fmt.Sprintf("%s: running \"%s\" for %s", srs.label, cmdLine, action))
+		if action.Verbose {
+			logSchedule(sc.ctx, fmt.Sprintf("%s: running \"%s\" for %s", srs.label, cmdLine, action))
+		}
 	}
 	elems := strings.Split(os.ExpandEnv(cmdLine), " ")
 	cmd := exec.CommandContext(sc.ctx, elems[0], elems[1:]...)
@@ -113,10 +124,14 @@ func (srs *ScheduleRunStatus) doRunCommand(sc *ScheduleConfig, action SScheduled
 	stderr = errb.Bytes()
 	if action.Type != "cmd" {
 		if len(stdout) != 0 {
-			logSchedule(sc.ctx, fmt.Sprintf("stdout: %s", string(stdout)))
+			if action.DispOut {
+				logSchedule(sc.ctx, fmt.Sprintf("stdout: %s", string(stdout)))
+			}
 		}
 		if len(stderr) != 0 {
-			logSchedule(sc.ctx, fmt.Sprintf("stderr: %s", string(stderr)))
+			if action.DispErr {
+				logSchedule(sc.ctx, fmt.Sprintf("stderr: %s", string(stderr)))
+			}
 		}
 	}
 	return
@@ -187,16 +202,22 @@ func (srs *ScheduleRunStatus) run(sc *ScheduleConfig) (isRunning bool, err error
 		srs.Count++
 		srs.LastTime = time.Now().UnixNano()
 		for _, action := range sc.Spec[srs.label].Actions {
-			logSchedule(sc.ctx, fmt.Sprintf("%s %s running", srs.label, action))
+			if action.Verbose {
+				logSchedule(sc.ctx, fmt.Sprintf("%s %s running", srs.label, action))
+			}
 			lc, so, se, err := srs.doRun(sc, action)
 			if err != nil && lc != "" {
 				logSchedule(sc.ctx, fmt.Sprintf("error on command \"%s\" in action %s\n", lc, srs.label))
 			}
 			if action.Type == "cmd" && len(so) != 0 {
-				logSchedule(sc.ctx, fmt.Sprintf("stdout: %s", string(so)))
+				if action.DispOut {
+					logSchedule(sc.ctx, fmt.Sprintf("stdout: %s", string(so)))
+				}
 			}
 			if action.Type == "cmd" && len(se) != 0 {
-				logSchedule(sc.ctx, fmt.Sprintf("stderr: %s", string(se)))
+				if action.DispErr {
+					logSchedule(sc.ctx, fmt.Sprintf("stderr: %s", string(se)))
+				}
 			}
 			if err != nil {
 				if sc.Spec[srs.label].ExitOnError {
@@ -207,10 +228,10 @@ func (srs *ScheduleRunStatus) run(sc *ScheduleConfig) (isRunning bool, err error
 					sc.cancel()
 				}
 				if !sc.Spec[srs.label].ContinueOnError {
-					logSchedule(sc.ctx, fmt.Sprintf("command error %v, stopping action %s\n", err, srs.label))
+					logSchedule(sc.ctx, fmt.Sprintf("command error %v on %s, stopping action %s\n", err, action, srs.label))
 					break
 				}
-				logSchedule(sc.ctx, fmt.Sprintf("command error %v, continue action %s\n", err, srs.label))
+				logSchedule(sc.ctx, fmt.Sprintf("command error %v on %s, continue action %s\n", err, action, srs.label))
 			}
 		}
 	}()
@@ -280,9 +301,5 @@ func Schedule(sc *ScheduleConfig) (time.Duration, error) {
 	if int64(gNext) < 1e9 {
 		gNext = time.Second
 	}
-	//println(fmt.Sprintf("next %d", gNext/1e9))
-	//for _, srs := range sc.run {
-	//	println(fmt.Sprintf("\t%+v", *srs))
-	//}
 	return gNext, nil
 }
