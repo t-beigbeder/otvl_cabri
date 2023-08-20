@@ -3,9 +3,9 @@
 ## Share data with confidence using Cabri
 
 Cabri is a free and open source tool designed specifically to store data
-and synchronize it on various media, among various places, with the people you want.
+and synchronize it on various media, between different places, with the people you want.
 
-It is both fast and secure, providing confidentiality in unsecured environments.
+It is both fast and secure, providing confidentiality in intrusted environments.
 
 It is mainly available as a command-line tool, but also provides an API (Golang and REST).
 A GUI is under development.
@@ -14,12 +14,11 @@ Cabri is currently in beta release.
 
 ## Main features
 
-- Cabri manages data storage on external devices such as USB drives
-and using Cloud Storage services compatible with Amazon S3
-- Cabri synchronizes local data files with those external storage systems 
-and external storage systems between each other
-possibly in both directions at the same time 
-- Storage is incremental
+- Cabri manages data storage on local and external devices such as USB drives,
+or using Cloud Storage services compatible with Amazon S3
+- Cabri provides a data synchronization service between those storage systems,
+  synchronization may be unidirectional or bidirectional 
+- Storage is incremental, no data is lost until you decide to remove some parts of the history
 - Storage may be encrypted, relying on public keys, meaning no secrets need to be shared
 
 ## Tooling
@@ -31,7 +30,16 @@ from different locations
 - a basic configurable scheduler is provided enabling automatic data synchronization among users,
 but also from developers to hosted applications concerning data feeding
 
+## Implementation
+
+- Most actions are performed in parallel, synchronization is as fast as the infrastructure permits
+- Cloud storage is natively "eventually consistent" and Cabri takes care of not trusting successful updates
+- Cabri makes use of indexes for fast synchronization or data retrieval, indexes may be rebuilt if broken
+- Encrypted data is only decrypted on the user endpoint even when using a remote http server
+
 ## Read the documentation
+
+The tool is documented through the links below:
 
 - [Introduction](doc/intro.md)
 - [Getting started](doc/gscli.md)
