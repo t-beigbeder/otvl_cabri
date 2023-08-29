@@ -345,6 +345,7 @@ func NewOlfDss(config OlfConfig, slsttime int64, aclusers []string) (HDss, error
 			proxy.close()
 			return nil, fmt.Errorf("in NewOlfDss: repository is encrypted")
 		} else {
+			proxy.close()
 			return nil, fmt.Errorf("in NewOlfDss: repository is not encrypted")
 		}
 	}

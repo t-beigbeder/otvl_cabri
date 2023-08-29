@@ -5,7 +5,7 @@
 Cabri is a free and open source tool designed specifically to store data
 and synchronize it on various media, between different places, with the people you want.
 
-It is both fast and secure, providing confidentiality in intrusted environments.
+It is both fast and secure, providing confidentiality in untrusted environments.
 
 It is mainly available as a command-line tool, but also provides an API (Golang and REST).
 A GUI is under development.

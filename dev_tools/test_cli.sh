@@ -326,6 +326,21 @@ test_basic_sync_xwobs() {
   true
 }
 
+test_basic_sync_wfs() {
+  info test_basic_sync_wfs && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  wfs=xobs:${TD}/wfs && \
+  mkdir $TD/wfs $TD/wc && \
+  run_bg_silent cabri webapi --cdir $TD/wc fsy+http://localhost:3000/$TD/wfs@wfs && \
+  sleep 1 && \
+  wfs=wfsapi+http://localhost:3000/wfs && \
+  run_basic_sync $fsy $wfs && \
+  run_silent kill $pidc && \
+  true
+}
+
 test_advanced_sync_olf() {
   info test_advanced_sync_olf && \
   setup_test && \
@@ -668,13 +683,63 @@ test_index_xwobs() {
   true
 }
 
-PATH="$base_dir/build:$HOME/go/bin:$PATH"
-OBS_ENV="--obsrg $OVHRG --obsep $OVHEP --obsct $OVHCT --obsak $OVHAK --obssk $OVHSK"
-st=0
-test_cli_fast=
-info "starting"
-true && \
-  run_command cabri version && \
+test_serve_olf_xolf() {
+  info test_serve_olf_xolf && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  olf=olf:${TD}/olf && \
+  make_polf $TD/olf $olf $TD/wc && \
+  run_error cabri webapi --cdir $TD/wc xolf+http://localhost:3000/$TD/olf@wo 2> /dev/null && \
+  run_bg_silent cabri webapi --cdir $TD/wc olf+http://localhost:3000/$TD/olf@wo && \
+  sleep 1 && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_serve_obs_xobs() {
+  info test_serve_obs_xobs && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  obs=obs:${TD}/obs && \
+  make_obs $TD/obs $obs $TD/wc && \
+  run_error cabri webapi --cdir $TD/wc xobs+http://localhost:3000/$TD/obs@wo 2> /dev/null && \
+  run_bg_silent cabri webapi --cdir $TD/wc obs+http://localhost:3000/$TD/obs@wo && \
+  sleep 1 && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_serve_xolf_olf() {
+  info test_serve_xolf_olf && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  olf=xolf:${TD}/olf && \
+  make_polf $TD/olf $olf $TD/wc && \
+  run_error cabri webapi --cdir $TD/wc olf+http://localhost:3000/$TD/olf@wo 2> /dev/null && \
+  run_bg_silent cabri webapi --cdir $TD/wc xolf+http://localhost:3000/$TD/olf@wo && \
+  sleep 1 && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_serve_xobs_obs() {
+  info test_serve_xobs_obs && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  obs=xobs:${TD}/obs && \
+  make_obs $TD/obs $obs $TD/wc && \
+  run_error cabri webapi --cdir $TD/wc obs+http://localhost:3000/$TD/obs@wo 2> /dev/null && \
+  run_bg_silent cabri webapi --cdir $TD/wc xobs+http://localhost:3000/$TD/obs@wo && \
+  sleep 1 && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_basic_sync() {
   test_basic_sync_olf && \
   test_basic_sync_polf && \
   test_basic_sync_xolf && \
@@ -684,12 +749,21 @@ true && \
   test_basic_sync_wobs && \
   test_basic_sync_xwolf && \
   test_basic_sync_xwobs && \
+  test_basic_sync_wfs && \
+  true
+}
+
+test_more_sync() {
   test_advanced_sync_olf && \
   test_advanced_sync_xolf && \
   test_sync_back_and_forth_olf && \
   test_sync_back_and_forth_xolf && \
   test_sync_back_and_forth_xwolf && \
   test_acl_sync_olf && \
+  true
+}
+
+test_unlock() {
   test_basic_unlock_olf && \
   test_basic_unlock_xolf && \
   test_basic_unlock_obs && \
@@ -698,6 +772,10 @@ true && \
   test_basic_unlock_wobs && \
   test_basic_unlock_xwolf && \
   test_basic_unlock_xwobs && \
+  true
+}
+
+test_index() {
   test_index_olf && \
   test_index_polf && \
   test_index_xolf && \
@@ -707,7 +785,32 @@ true && \
   test_index_wobs && \
   test_index_xwolf && \
   test_index_xwobs && \
+  true
+}
+
+test_fixes() {
+  test_serve_olf_xolf && \
+  test_serve_obs_xobs && \
+  test_serve_xolf_olf && \
+  test_serve_xobs_obs && \
+  true
+}
+
+PATH="$base_dir/build:$HOME/go/bin:$PATH"
+OBS_ENV="--obsrg $OVHRG --obsep $OVHEP --obsct $OVHCT --obsak $OVHAK --obssk $OVHSK"
+st=0
+test_cli_fast=
+info "starting"
+true && \
+  run_command cabri version && \
+  test_basic_sync && \
+  test_more_sync && \
+  test_unlock && \
+  test_index && \
+  test_fixes && \
   true || (info failed && exit 1)
 st=$?
 info "ended"
 exit $st
+
+}

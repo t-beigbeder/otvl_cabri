@@ -30,21 +30,22 @@ type WebDssConfig struct {
 }
 
 type webContentWriterHandler struct {
-	header []byte
-	offset int
-	file   *os.File
+	header  []byte
+	offset  int
+	rCloser io.ReadCloser
 }
 
 func (hdler *webContentWriterHandler) Read(p []byte) (n int, err error) {
 	if hdler.offset < len(hdler.header) {
 		n = copy(p, hdler.header[hdler.offset:])
 		hdler.offset += n
+		return
 	}
 	for {
 		if n >= len(p) {
 			break
 		}
-		nf, errf := hdler.file.Read(p[n:])
+		nf, errf := hdler.rCloser.Read(p[n:])
 		if errf != nil {
 			err = errf
 			return
@@ -56,7 +57,7 @@ func (hdler *webContentWriterHandler) Read(p []byte) (n int, err error) {
 }
 
 func (hdler *webContentWriterHandler) Close() error {
-	return hdler.file.Close()
+	return hdler.rCloser.Close()
 }
 
 type webDssImpl struct {
@@ -200,7 +201,7 @@ func (wdi *webDssImpl) webPushContent(size int64, ch string, mbs []byte, emid st
 	if err != nil {
 		return fmt.Errorf("in webPushContent: %w", err)
 	}
-	hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), file: file}
+	hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), rCloser: file}
 	copy(hdler.header, lja)
 	copy(hdler.header[16:], jsonArgs)
 	req, err := http.NewRequest(http.MethodPost, wdi.apc.Url()+"pushContent", nil)

@@ -29,12 +29,6 @@ type WebServerConfig struct {
 	BasicAuthPassword string
 }
 
-type WebDssServerConfig struct {
-	WebServerConfig
-	UserConfig
-	Dss HDss
-}
-
 type WebServer interface {
 	Serve() error
 	Shutdown() error
@@ -306,15 +300,19 @@ func NewServerErr(where string, err error) error {
 }
 
 func NewClientErr(where string, resp *http.Response, err error, bs []byte) error {
+	pfx := ""
+	if where != "" {
+		pfx = fmt.Sprintf("in %s: ", where)
+	}
 	if resp != nil && resp.StatusCode >= http.StatusBadRequest {
 		if bs != nil {
-			return fmt.Errorf("in %s: error status %s %s", where, resp.Status, string(bs))
+			return fmt.Errorf("%serror status %s %s", pfx, resp.Status, string(bs))
 		} else {
-			return fmt.Errorf("in %s: error status %s", where, resp.Status)
+			return fmt.Errorf("%serror status %s", pfx, resp.Status)
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("in %s: %v", where, err)
+		return fmt.Errorf("%s%v", pfx, err)
 	}
 	return nil
 }
@@ -421,6 +419,13 @@ type mErrorer interface {
 }
 
 func (me mError) GetError() string { return me.Error }
+
+func err2mError(err error) *mError {
+	if err == nil {
+		return nil
+	}
+	return &mError{Error: err.Error()}
+}
 
 func (apc *apiClient) DoAsJson(request *http.Request, outBody any) (*http.Response, error) {
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)

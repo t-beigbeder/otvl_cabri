@@ -254,8 +254,10 @@ func NewObsDss(config ObsConfig, slsttime int64, aclusers []string) (HDss, error
 	}
 	if proxy.isRepoEncrypted() != config.Encrypted {
 		if proxy.isRepoEncrypted() {
+			proxy.close()
 			return nil, fmt.Errorf("in NewObsDss: repository is encrypted")
 		} else {
+			proxy.close()
 			return nil, fmt.Errorf("in NewObsDss: repository is not encrypted")
 		}
 	}

@@ -58,6 +58,129 @@ func webApiOut(ctx context.Context, s string) { webApiUow(ctx).UiStrOut(s) }
 
 func webApiErr(ctx context.Context, s string) { webApiUow(ctx).UiStrErr(s) }
 
+func addHdssServerItem(ctx context.Context, args []string, ix int, opts WebApiOptions, vars *WebApiVars, ure UiRunEnv, obsIx *int) (err error) {
+	dssType, addr, localPath, root, isTls, _ := CheckDssUrlMapping(args[ix])
+	if isTls && (opts.TlsCert == "" || opts.TlsKey == "") {
+		err = fmt.Errorf("mapping %s requires certificate and key files", args[ix])
+		return
+	}
+	var dss cabridss.Dss
+	if !opts.IsRest {
+		var params cabridss.CreateNewParams
+		dssSubType := dssType
+		if dssType[0] == 'x' {
+			dssSubType = dssType[1:]
+		}
+		if dssSubType == "obs" || dssSubType == "smf" {
+			params = cabridss.CreateNewParams{DssType: dssSubType, LocalPath: localPath}
+		} else if dssSubType == "olf" {
+			params = cabridss.CreateNewParams{DssType: "olf", Root: localPath}
+		}
+		params.Encrypted = dssType[0] == 'x'
+		params.ConfigPassword = ure.MasterPassword
+		params.ConfigDir = ure.ConfigDir
+		dss, err = cabridss.CreateOrNewDss(params)
+	} else {
+		dss, err = NewHDss[WebApiOptions, *WebApiVars](ctx, nil, NewHDssArgs{DssIx: ix, ObsIx: *obsIx, Lasttime: webApiOpts(ctx).getLastTime(), IsMapping: true})
+	}
+	if err != nil {
+		return
+	}
+	if dss.(cabridss.HDss).GetIndex() == nil || !dss.(cabridss.HDss).GetIndex().IsPersistent() {
+		err = fmt.Errorf("DSS for url %s is not persistent", args[ix])
+		return
+	}
+	config := cabridss.WebDssServerConfig{
+		WebServerConfig: cabridss.WebServerConfig{
+			Addr:              addr,
+			HasLog:            opts.HasLog,
+			IsTls:             isTls,
+			TlsCert:           opts.TlsCert,
+			TlsKey:            opts.TlsKey,
+			TlsNoCheck:        opts.TlsNoCheck,
+			BasicAuthUser:     ure.BasicAuthUser,
+			BasicAuthPassword: ure.BasicAuthPassword,
+		},
+		Dss: dss.(cabridss.HDss),
+	}
+	if opts.IsRest {
+		config.UserConfig = ure.UserConfig
+	}
+	server, ok := vars.servers[addr]
+	if !ok {
+		if opts.IsRest {
+			vars.servers[addr], err = cabridss.NewRestServer(root, config)
+		} else {
+			vars.servers[addr], err = cabridss.NewWebDssServer(root, config)
+		}
+		if err != nil {
+			dss.Close()
+			return
+		}
+	} else {
+		if opts.IsRest {
+			server.ConfigureApi(root, config, func(root string, customConfigs map[string]interface{}) error {
+				return customConfigs[root].(cabridss.WebDssServerConfig).Dss.Close()
+			}, cabridss.RestServerConfigurator)
+		} else {
+			server.ConfigureApi(root, config, func(root string, customConfigs map[string]interface{}) error {
+				return customConfigs[root].(cabridss.WebDssServerConfig).Dss.Close()
+			}, cabridss.WebDssServerConfigurator)
+		}
+	}
+	return
+}
+
+func addFsyServerItem(ctx context.Context, args []string, ix int, opts WebApiOptions, vars *WebApiVars, ure UiRunEnv, obsIx *int) (err error) {
+	dssType, addr, localPath, root, isTls, _ := CheckDssUrlMapping(args[ix])
+	if isTls && (opts.TlsCert == "" || opts.TlsKey == "") {
+		err = fmt.Errorf("mapping %s requires certificate and key files", args[ix])
+		return
+	}
+	var dss cabridss.Dss
+	if dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, localPath); err != nil {
+		return
+	}
+	config := cabridss.WfsDssServerConfig{
+		WebServerConfig: cabridss.WebServerConfig{
+			Addr:              addr,
+			HasLog:            opts.HasLog,
+			IsTls:             isTls,
+			TlsCert:           opts.TlsCert,
+			TlsKey:            opts.TlsKey,
+			TlsNoCheck:        opts.TlsNoCheck,
+			BasicAuthUser:     ure.BasicAuthUser,
+			BasicAuthPassword: ure.BasicAuthPassword,
+		},
+		Dss: dss,
+	}
+	server, ok := vars.servers[addr]
+	if !ok {
+		if opts.IsRest {
+			// vars.servers[addr], err = cabridss.NewRestServer(root, config)
+			err = fmt.Errorf("DSS type %s is not (yet) supported by the REST API", dssType)
+		} else {
+			vars.servers[addr], err = cabridss.NewWfsDssServer(root, config)
+		}
+		if err != nil {
+			dss.Close()
+			return
+		}
+	} else {
+		if opts.IsRest {
+			err = fmt.Errorf("DSS type %s is not (yet) supported by the REST API", dssType)
+			dss.Close()
+			return
+		} else {
+			server.ConfigureApi(root, config, func(root string, customConfigs map[string]interface{}) error {
+				return customConfigs[root].(cabridss.WfsDssServerConfig).Dss.Close()
+			}, cabridss.WfsDssServerConfigurator)
+
+		}
+	}
+	return
+}
+
 func webApi(ctx context.Context, args []string) error {
 	opts := webApiOpts(ctx)
 	vars := webApiVars(ctx)
@@ -65,76 +188,17 @@ func webApi(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	_ = ure
+
 	obsIx := 0
 	for i := 0; i < len(args); i++ {
-		dssType, addr, localPath, root, isTls, _ := CheckDssUrlMapping(args[i])
-		if isTls && (opts.TlsCert == "" || opts.TlsKey == "") {
-			return fmt.Errorf("mapping %s requires certificate and key files", args[i])
-		}
-		var dss cabridss.Dss
-		var err error
-		if !opts.IsRest {
-			var params cabridss.CreateNewParams
-			dssSubType := dssType
-			if dssType[0] == 'x' {
-				dssSubType = dssType[1:]
-			}
-			if dssSubType == "obs" || dssSubType == "smf" {
-				params = cabridss.CreateNewParams{DssType: dssSubType, LocalPath: localPath}
-			} else if dssSubType == "olf" {
-				params = cabridss.CreateNewParams{DssType: "olf", Root: localPath}
-			}
-			params.Encrypted = dssType[0] == 'x'
-			params.ConfigPassword = ure.MasterPassword
-			params.ConfigDir = ure.ConfigDir
-			dss, err = cabridss.CreateOrNewDss(params)
-		} else {
-			dss, err = NewHDss[WebApiOptions, *WebApiVars](ctx, nil, NewHDssArgs{DssIx: i, ObsIx: obsIx, Lasttime: webApiOpts(ctx).getLastTime(), IsMapping: true})
-		}
-		if err != nil {
-			return err
-		}
-		if dss.(cabridss.HDss).GetIndex() == nil || !dss.(cabridss.HDss).GetIndex().IsPersistent() {
-			return fmt.Errorf("DSS for url %s is not persistent", args[i])
-		}
-		config := cabridss.WebDssServerConfig{
-			WebServerConfig: cabridss.WebServerConfig{
-				Addr:              addr,
-				HasLog:            opts.HasLog,
-				IsTls:             isTls,
-				TlsCert:           opts.TlsCert,
-				TlsKey:            opts.TlsKey,
-				TlsNoCheck:        opts.TlsNoCheck,
-				BasicAuthUser:     ure.BasicAuthUser,
-				BasicAuthPassword: ure.BasicAuthPassword,
-			},
-			Dss: dss.(cabridss.HDss),
-		}
-		if opts.IsRest {
-			config.UserConfig = ure.UserConfig
-		}
-		server, ok := vars.servers[addr]
-		if !ok {
-			var err error
-			if opts.IsRest {
-				vars.servers[addr], err = cabridss.NewRestServer(root, config)
-			} else {
-				vars.servers[addr], err = cabridss.NewWebDssServer(root, config)
-			}
-			if err != nil {
-				dss.Close()
+		dssType, _, _, _, _, _ := CheckDssUrlMapping(args[i])
+		if dssType != "fsy" {
+			if err = addHdssServerItem(ctx, args, i, opts, vars, ure, &obsIx); err != nil {
 				return err
 			}
 		} else {
-			if opts.IsRest {
-				server.ConfigureApi(root, config, func(root string, customConfigs map[string]interface{}) error {
-					return customConfigs[root].(cabridss.WebDssServerConfig).Dss.Close()
-				}, cabridss.RestServerConfigurator)
-			} else {
-				server.ConfigureApi(root, config, func(root string, customConfigs map[string]interface{}) error {
-					return customConfigs[root].(cabridss.WebDssServerConfig).Dss.Close()
-				}, cabridss.WebDssServerConfigurator)
+			if err = addFsyServerItem(ctx, args, i, opts, vars, ure, &obsIx); err != nil {
+				return err
 			}
 		}
 	}

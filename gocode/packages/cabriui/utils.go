@@ -362,3 +362,41 @@ func NewXobsDss(opts BaseOptions, setCfgFunc func(bc *cabridss.DssBaseConfig), i
 		lasttime, aclusers)
 	return dss, err
 }
+
+func NewWfsDss[OT BaseOptionsEr, VT baseVarsEr](
+	ctx context.Context, setCfgFunc func(bc *cabridss.DssBaseConfig), nhArgs NewHDssArgs,
+) (cabridss.Dss, error) {
+	uictx := uiCtxFrom[OT, VT](ctx)
+	bo := uictx.opts.getBaseOptions()
+	ucArgs := uictx.args
+	var (
+		dssType, root string
+		err           error
+		isLeft        bool
+	)
+	isLeft = !nhArgs.IsMapping && nhArgs.DssIx < len(ucArgs)-1
+	if nhArgs.IsMapping {
+		dt, _, localPath, _, _, _ := CheckDssUrlMapping(ucArgs[nhArgs.DssIx])
+		pt := dt + ":/" + localPath
+		dssType, root, err = CheckDssSpec(pt)
+	} else {
+		dssType, root, _, err = CheckDssPath(ucArgs[nhArgs.DssIx])
+		if err != nil {
+			dssType, root, err = CheckDssSpec(ucArgs[nhArgs.DssIx])
+		}
+	}
+	ure, err := GetUiRunEnv[OT, VT](ctx, dssType[0] == 'x', isLeft)
+	if err != nil {
+		return nil, err
+	}
+	var dss cabridss.Dss
+	frags := strings.Split(root[2:], "/")
+	wc, err := GetWfsConfig(bo, nhArgs.ObsIx, dssTypes[dssType].isTls, frags[0], frags[1], ure)
+	if err != nil {
+		return nil, err
+	}
+	if dss, err = cabridss.NewWfsDss(wc); err != nil {
+		return nil, err
+	}
+	return dss, nil
+}

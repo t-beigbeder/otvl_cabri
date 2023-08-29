@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+type WebDssServerConfig struct {
+	WebServerConfig
+	UserConfig
+	Dss HDss
+}
+
 func sInitialize(c echo.Context) error {
 	clId := ""
 	if err := echo.PathParamsBinder(c).String("clId", &clId).BindError(); err != nil {
@@ -105,9 +111,6 @@ func sPushContent(c echo.Context) error {
 	}
 	args := mPushContentIn{}
 	err = json.Unmarshal(jsonArgs, &args)
-	if err != nil {
-		return NewServerErr("sPushContent", err)
-	}
 	if err != nil {
 		return NewServerErr("sPushContent", err)
 	}
