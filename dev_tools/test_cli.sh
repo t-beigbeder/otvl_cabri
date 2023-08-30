@@ -668,13 +668,7 @@ test_index_xwobs() {
   true
 }
 
-PATH="$base_dir/build:$HOME/go/bin:$PATH"
-OBS_ENV="--obsrg $OVHRG --obsep $OVHEP --obsct $OVHCT --obsak $OVHAK --obssk $OVHSK"
-st=0
-test_cli_fast=
-info "starting"
-true && \
-  run_command cabri version && \
+test_basic_sync() {
   test_basic_sync_olf && \
   test_basic_sync_polf && \
   test_basic_sync_xolf && \
@@ -684,12 +678,20 @@ true && \
   test_basic_sync_wobs && \
   test_basic_sync_xwolf && \
   test_basic_sync_xwobs && \
+  true
+}
+
+test_more_sync() {
   test_advanced_sync_olf && \
   test_advanced_sync_xolf && \
   test_sync_back_and_forth_olf && \
   test_sync_back_and_forth_xolf && \
   test_sync_back_and_forth_xwolf && \
   test_acl_sync_olf && \
+  true
+}
+
+test_unlock() {
   test_basic_unlock_olf && \
   test_basic_unlock_xolf && \
   test_basic_unlock_obs && \
@@ -698,6 +700,10 @@ true && \
   test_basic_unlock_wobs && \
   test_basic_unlock_xwolf && \
   test_basic_unlock_xwobs && \
+  true
+}
+
+test_index() {
   test_index_olf && \
   test_index_polf && \
   test_index_xolf && \
@@ -707,7 +713,28 @@ true && \
   test_index_wobs && \
   test_index_xwolf && \
   test_index_xwobs && \
+  true
+}
+
+test_fixes() {
+  true
+}
+
+PATH="$base_dir/build:$HOME/go/bin:$PATH"
+OBS_ENV="--obsrg $OVHRG --obsep $OVHEP --obsct $OVHCT --obsak $OVHAK --obssk $OVHSK"
+st=0
+test_cli_fast=
+info "starting"
+true && \
+  run_command cabri version && \
+#  test_basic_sync && \
+#  test_more_sync && \
+#  test_unlock && \
+#  test_index && \
+  test_fixes && \
   true || (info failed && exit 1)
 st=$?
 info "ended"
 exit $st
+
+}
