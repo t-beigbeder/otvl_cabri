@@ -787,10 +787,10 @@ test_cli_fast=
 info "starting"
 true && \
   run_command cabri version && \
-#  test_basic_sync && \
-#  test_more_sync && \
-#  test_unlock && \
-#  test_index && \
+  test_basic_sync && \
+  test_more_sync && \
+  test_unlock && \
+  test_index && \
   test_fixes && \
   true || (info failed && exit 1)
 st=$?
