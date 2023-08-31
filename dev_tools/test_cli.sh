@@ -668,6 +668,62 @@ test_index_xwobs() {
   true
 }
 
+test_serve_olf_xolf() {
+  info test_serve_olf_xolf && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  olf=olf:${TD}/olf && \
+  make_polf $TD/olf $olf $TD/wc && \
+  run_error cabri webapi --cdir $TD/wc xolf+http://localhost:3000/$TD/olf@wo 2> /dev/null && \
+  run_bg_silent cabri webapi --cdir $TD/wc olf+http://localhost:3000/$TD/olf@wo && \
+  sleep 1 && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_serve_obs_xobs() {
+  info test_serve_obs_xobs && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  obs=obs:${TD}/obs && \
+  make_obs $TD/obs $obs $TD/wc && \
+  run_error cabri webapi --cdir $TD/wc xobs+http://localhost:3000/$TD/obs@wo 2> /dev/null && \
+  run_bg_silent cabri webapi --cdir $TD/wc obs+http://localhost:3000/$TD/obs@wo && \
+  sleep 1 && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_serve_xolf_olf() {
+  info test_serve_xolf_olf && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  olf=xolf:${TD}/olf && \
+  make_polf $TD/olf $olf $TD/wc && \
+  run_error cabri webapi --cdir $TD/wc olf+http://localhost:3000/$TD/olf@wo 2> /dev/null && \
+  run_bg_silent cabri webapi --cdir $TD/wc xolf+http://localhost:3000/$TD/olf@wo && \
+  sleep 1 && \
+  run_silent kill $pidc && \
+  true
+}
+
+test_serve_xobs_obs() {
+  info test_serve_xobs_obs && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  obs=xobs:${TD}/obs && \
+  make_obs $TD/obs $obs $TD/wc && \
+  run_error cabri webapi --cdir $TD/wc obs+http://localhost:3000/$TD/obs@wo 2> /dev/null && \
+  run_bg_silent cabri webapi --cdir $TD/wc xobs+http://localhost:3000/$TD/obs@wo && \
+  sleep 1 && \
+  run_silent kill $pidc && \
+  true
+}
+
 test_basic_sync() {
   test_basic_sync_olf && \
   test_basic_sync_polf && \
@@ -717,6 +773,10 @@ test_index() {
 }
 
 test_fixes() {
+  test_serve_olf_xolf && \
+  test_serve_obs_xobs && \
+  test_serve_xolf_olf && \
+  test_serve_xobs_obs && \
   true
 }
 
