@@ -1,5 +1,10 @@
 package cabridss
 
+type wfsDss struct {
+	apc    WebApiClient
+	closed bool
+}
+
 type WfsDssConfig struct {
 	DssBaseConfig
 	NoClientLimit bool
