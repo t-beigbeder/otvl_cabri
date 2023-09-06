@@ -10,6 +10,12 @@ import (
 	"strings"
 )
 
+type WebDssServerConfig struct {
+	WebServerConfig
+	UserConfig
+	Dss HDss
+}
+
 func sInitialize(c echo.Context) error {
 	clId := ""
 	if err := echo.PathParamsBinder(c).String("clId", &clId).BindError(); err != nil {

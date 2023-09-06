@@ -29,12 +29,6 @@ type WebServerConfig struct {
 	BasicAuthPassword string
 }
 
-type WebDssServerConfig struct {
-	WebServerConfig
-	UserConfig
-	Dss HDss
-}
-
 type WebServer interface {
 	Serve() error
 	Shutdown() error
