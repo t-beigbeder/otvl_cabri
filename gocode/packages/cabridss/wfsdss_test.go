@@ -3,6 +3,7 @@ package cabridss
 import (
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
+	"os"
 	"strings"
 	"testing"
 )
@@ -28,7 +29,7 @@ func createWfsDssServer(tfs *testfs.Fs, addr, root string) (WebServer, error) {
 
 func TestNewWfsDssServer(t *testing.T) {
 	optionalSkip(t)
-	tfs, err := testfs.CreateFs("TestNewWebDssServer", tfsStartup)
+	tfs, err := testfs.CreateFs("TestNewWfsDssServer", tfsStartup)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,4 +39,36 @@ func TestNewWfsDssServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	sv.Shutdown()
+}
+
+func TestNewWfsDssTlsServer(t *testing.T) {
+	optionalSkip(t)
+	if os.Getenv("CABRIDSS_KEEP_DEV_TESTS") == "" {
+		t.Skip(fmt.Sprintf("Skipping %s because you didn't set CABRIDSS_KEEP_DEV_TESTS", t.Name()))
+	}
+	tfs, err := testfs.CreateFs("TestNewWfsDssServer", tfsStartup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tfs.Delete()
+	sv, err := createWfsDssServer(tfs, "localhost:3443", tfs.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sv.Shutdown()
+}
+
+func TestNewWfsDssClient(t *testing.T) {
+	tfs, err := testfs.CreateFs("TestNewWfsDssServer", tfsStartup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tfs.Delete()
+	sv, err := createWfsDssServer(tfs, ":3000", tfs.Path())
+	defer sv.Shutdown()
+	dss, err := NewWfsDss(WfsDssConfig{
+		DssBaseConfig: DssBaseConfig{},
+		NoClientLimit: false,
+	})
+	_ = dss
 }
