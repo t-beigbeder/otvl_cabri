@@ -1,7 +1,9 @@
 package cabridss
 
 import (
+	"fmt"
 	"github.com/spf13/afero"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
 )
 
@@ -12,7 +14,8 @@ type WfsDssConfig struct {
 
 type wfsDssImpl struct {
 	// like webDssImpl
-	apc WebApiClient
+	apc     WebApiClient
+	reducer plumber.Reducer
 }
 
 func (wdi *wfsDssImpl) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
@@ -76,8 +79,10 @@ func (wdi *wfsDssImpl) GetAfs() afero.Fs {
 }
 
 func (wdi *wfsDssImpl) Close() error {
-	//TODO implement me
-	panic("implement me")
+	if wdi.reducer != nil {
+		return wdi.reducer.Close()
+	}
+	return nil
 }
 
 func (wdi *wfsDssImpl) SetSu() {
@@ -108,6 +113,11 @@ func NewWfsDss(wdc WfsDssConfig) (Dss, error) {
 	}
 	remoteWdc := wdc
 	wdi.apc, err = NewWebApiClient(wdc.WebProtocol, wdc.WebHost, wdc.WebPort, tlsConfig, wdc.WebRoot, remoteWdc, wdc.WebClientTimeout)
-	_ = err
+	if err != nil {
+		return nil, fmt.Errorf("in NewWfsDss: %w", err)
+	}
+	if wdc.ReducerLimit != 0 {
+		wdi.reducer = plumber.NewReducer(wdc.ReducerLimit, 0)
+	}
 	return wdi, nil
 }

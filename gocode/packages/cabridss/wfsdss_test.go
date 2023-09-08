@@ -9,7 +9,7 @@ import (
 )
 
 func createWfsDssServer(tfs *testfs.Fs, addr, root string) (WebServer, error) {
-	dss, err := NewFsyDss(FsyConfig{}, root)
+	dss, err := NewFsyDss(FsyConfig{}, tfs.Path())
 	if err != nil {
 		return nil, fmt.Errorf("createWfsDssServer failed with error %v", err)
 	}
@@ -34,7 +34,7 @@ func TestNewWfsDssServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tfs.Delete()
-	sv, err := createWfsDssServer(tfs, ":3000", tfs.Path())
+	sv, err := createWfsDssServer(tfs, ":3000", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,24 +51,42 @@ func TestNewWfsDssTlsServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tfs.Delete()
-	sv, err := createWfsDssServer(tfs, "localhost:3443", tfs.Path())
+	sv, err := createWfsDssServer(tfs, "localhost:3443", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	sv.Shutdown()
 }
 
-func TestNewWfsDssClient(t *testing.T) {
-	tfs, err := testfs.CreateFs("TestNewWfsDssServer", tfsStartup)
+func runWfsDssTest(t *testing.T, doIt func(Dss) error) error {
+	optionalSkip(t)
+	tfs, err := testfs.CreateFs(t.Name(), tfsStartup)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer tfs.Delete()
-	sv, err := createWfsDssServer(tfs, ":3000", tfs.Path())
+	sv, err := createWfsDssServer(tfs, ":3000", "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer sv.Shutdown()
 	dss, err := NewWfsDss(WfsDssConfig{
 		DssBaseConfig: DssBaseConfig{},
 		NoClientLimit: false,
 	})
-	_ = dss
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dss.Close()
+	err = doIt(dss)
+	return err
+}
+
+func TestNewWfsDssClient(t *testing.T) {
+	err := runWfsDssTest(t, func(dss Dss) error {
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
