@@ -416,6 +416,13 @@ type mErrorer interface {
 
 func (me mError) GetError() string { return me.Error }
 
+func err2mError(err error) *mError {
+	if err == nil {
+		return nil
+	}
+	return &mError{Error: err.Error()}
+}
+
 func (apc *apiClient) DoAsJson(request *http.Request, outBody any) (*http.Response, error) {
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	resp, err := apc.client.Do(request)

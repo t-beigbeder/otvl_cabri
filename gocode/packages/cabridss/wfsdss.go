@@ -20,8 +20,8 @@ type wfsDssImpl struct {
 }
 
 func (wdi *wfsDssImpl) doMkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	//TODO implement me
-	panic("implement me")
+	_, err := wdi.apc.SimpleDoAsJson(http.MethodPost, wdi.apc.Url()+"wfsMkns", mfsMkupdateNs{Npath: npath, Mtime: mtime, Children: children, ACL: acl}, nil)
+	return err
 }
 
 func (wdi *wfsDssImpl) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
@@ -36,8 +36,7 @@ func (wdi *wfsDssImpl) Mkns(npath string, mtime int64, children []string, acl []
 }
 
 func (wdi *wfsDssImpl) doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	//wdc := wdi.apc.GetConfig().(WfsDssConfig)
-	_, err := wdi.apc.SimpleDoAsJson(http.MethodPost, wdi.apc.Url()+"updatens", mfsUpdateNs{Npath: npath}, nil)
+	_, err := wdi.apc.SimpleDoAsJson(http.MethodPost, wdi.apc.Url()+"wfsUpdatens", mfsMkupdateNs{Npath: npath, Mtime: mtime, Children: children, ACL: acl}, nil)
 	return err
 }
 

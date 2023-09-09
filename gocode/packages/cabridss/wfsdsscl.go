@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-type mfsUpdateNs struct {
+type mfsMkupdateNs struct {
 	Npath    string     `json:"npath"`
 	Mtime    int64      `json:"mtime,string"`
 	Children []string   `json:"children"`
@@ -28,7 +28,7 @@ func cfsUpdatens(apc WebApiClient, npath string, mtime int64, children []string,
 	//wdc := wdi.apc.GetConfig().(WfsDssConfig)
 	var rer mError
 	_, err := apc.SimpleDoAsJson(http.MethodPost, apc.Url()+"wfsUpdatens",
-		mfsUpdateNs{
+		mfsMkupdateNs{
 			Npath:    npath,
 			Mtime:    mtime,
 			Children: children,

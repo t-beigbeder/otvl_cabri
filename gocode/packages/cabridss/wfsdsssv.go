@@ -14,22 +14,29 @@ func sfsInitialize(c echo.Context) error {
 	return c.JSON(http.StatusOK, nil)
 }
 
-func sfsUpdatens(c echo.Context) error {
+func sfsMkns(c echo.Context) error {
 	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
-	var un mfsUpdateNs
+	var un mfsMkupdateNs
 	if err := c.Bind(&un); err != nil {
 		return NewServerErr("sfsUpdatens", err)
 	}
-	if err := dss.Updatens(un.Npath, un.Mtime, un.Children, un.ACL); err != nil {
+	return c.JSON(http.StatusOK, err2mError(dss.Mkns(un.Npath, un.Mtime, un.Children, un.ACL)))
+}
+
+func sfsUpdatens(c echo.Context) error {
+	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
+	var un mfsMkupdateNs
+	if err := c.Bind(&un); err != nil {
 		return NewServerErr("sfsUpdatens", err)
 	}
-	return nil
+	return c.JSON(http.StatusOK, err2mError(dss.Updatens(un.Npath, un.Mtime, un.Children, un.ACL)))
 }
 
 func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {
 	dss := configs[root].(WfsDssServerConfig).Dss
 	_ = dss
 	e.GET(root+"wfsInitialize", sfsInitialize)
+	e.POST(root+"wfsMkns", sfsMkns)
 	e.POST(root+"wfsUpdatens", sfsUpdatens)
 	return nil
 }
