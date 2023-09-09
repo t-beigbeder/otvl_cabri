@@ -5,20 +5,33 @@ import (
 	"net/http"
 )
 
-type wfsDssClientConfig struct {
-	DssBaseConfig
-	NoClientLimit bool
+type mfsUpdateNs struct {
+	Npath    string     `json:"npath"`
+	Mtime    int64      `json:"mtime,string"`
+	Children []string   `json:"children"`
+	ACL      []ACLEntry `json:"acl"`
 }
 
-func cfsInitialize(apc WebApiClient) (*mError, error) {
-	//wdc := apc.GetConfig().(wfsDssClientConfig)
+func cfsInitialize(apc WebApiClient) error {
 	var out mError
 	_, err := apc.SimpleDoAsJson(http.MethodGet, apc.Url()+"wfsInitialize", nil, &out)
 	if err != nil {
-		return nil, fmt.Errorf("in cfsInitialize: %v", err)
+		return fmt.Errorf("in cfsInitialize: %v", err)
 	}
 	if out.Error != "" {
-		return nil, fmt.Errorf("in cfsInitialize: %s", out.Error)
+		return fmt.Errorf("in cfsInitialize: %s", out.Error)
 	}
-	return &out, nil
+	return nil
+}
+
+func cfsUpdatens(apc WebApiClient, npath string, mtime int64, children []string, acl []ACLEntry) error {
+	//wdc := wdi.apc.GetConfig().(WfsDssConfig)
+	_, err := apc.SimpleDoAsJson(http.MethodPost, apc.Url()+"wfsUpdatens",
+		mfsUpdateNs{
+			Npath:    npath,
+			Mtime:    mtime,
+			Children: children,
+			ACL:      acl,
+		}, nil)
+	return err
 }

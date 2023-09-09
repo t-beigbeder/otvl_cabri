@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
+	"net/http"
 )
 
 type WfsDssConfig struct {
@@ -18,14 +19,37 @@ type wfsDssImpl struct {
 	reducer plumber.Reducer
 }
 
-func (wdi *wfsDssImpl) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
+func (wdi *wfsDssImpl) doMkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
 	//TODO implement me
 	panic("implement me")
 }
 
+func (wdi *wfsDssImpl) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
+	if wdi.reducer == nil {
+		return wdi.doMkns(npath, mtime, children, acl)
+	}
+	return wdi.reducer.Launch(
+		fmt.Sprintf("Mkns %s", npath),
+		func() error {
+			return wdi.doMkns(npath, mtime, children, acl)
+		})
+}
+
+func (wdi *wfsDssImpl) doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
+	//wdc := wdi.apc.GetConfig().(WfsDssConfig)
+	_, err := wdi.apc.SimpleDoAsJson(http.MethodPost, wdi.apc.Url()+"updatens", mfsUpdateNs{Npath: npath}, nil)
+	return err
+}
+
 func (wdi *wfsDssImpl) Updatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	//TODO implement me
-	panic("implement me")
+	if wdi.reducer == nil {
+		return cfsUpdatens(wdi.apc, npath, mtime, children, acl)
+	}
+	return wdi.reducer.Launch(
+		fmt.Sprintf("Updatens %s", npath),
+		func() error {
+			return cfsUpdatens(wdi.apc, npath, mtime, children, acl)
+		})
 }
 
 func (wdi *wfsDssImpl) Lsns(npath string) (children []string, err error) {
@@ -95,7 +119,7 @@ func (wdi *wfsDssImpl) SuEnableWrite(npath string) error {
 	panic("implement me")
 }
 
-// NewWfsDss opens a web client for a remote "fsy" DSS (data storage system)
+// NewWfsDss opens a web client for a remote "wdi" DSS (data storage system)
 // wdc provides the web client configuration
 // returns a pointer to the ready to use DSS or an error if any occur
 func NewWfsDss(wdc WfsDssConfig) (Dss, error) {
@@ -113,6 +137,10 @@ func NewWfsDss(wdc WfsDssConfig) (Dss, error) {
 	}
 	remoteWdc := wdc
 	wdi.apc, err = NewWebApiClient(wdc.WebProtocol, wdc.WebHost, wdc.WebPort, tlsConfig, wdc.WebRoot, remoteWdc, wdc.WebClientTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("in NewWfsDss: %w", err)
+	}
+	err = cfsInitialize(wdi.apc)
 	if err != nil {
 		return nil, fmt.Errorf("in NewWfsDss: %w", err)
 	}

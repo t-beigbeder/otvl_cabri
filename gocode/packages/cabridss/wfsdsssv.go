@@ -10,23 +10,27 @@ type WfsDssServerConfig struct {
 	Dss Dss
 }
 
-func afsInitialize(dss Dss) error {
-	return nil
+func sfsInitialize(c echo.Context) error {
+	return c.JSON(http.StatusOK, nil)
 }
 
-func sfsInitialize(c echo.Context) error {
+func sfsUpdatens(c echo.Context) error {
 	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
-	err := afsInitialize(dss)
-	if err != nil {
-		return NewServerErr("sfsInitialize", err)
+	var un mfsUpdateNs
+	if err := c.Bind(&un); err != nil {
+		return NewServerErr("sfsUpdatens", err)
 	}
-	return c.JSON(http.StatusOK, nil)
+	if err := dss.Updatens(un.Npath, un.Mtime, un.Children, un.ACL); err != nil {
+		return NewServerErr("sfsUpdatens", err)
+	}
+	return nil
 }
 
 func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {
 	dss := configs[root].(WfsDssServerConfig).Dss
 	_ = dss
 	e.GET(root+"wfsInitialize", sfsInitialize)
+	e.POST(root+"wfsUpdatens", sfsUpdatens)
 	return nil
 }
 

@@ -72,7 +72,7 @@ func runWfsDssTest(t *testing.T, doIt func(Dss) error) error {
 	}
 	defer sv.Shutdown()
 	dss, err := NewWfsDss(WfsDssConfig{
-		DssBaseConfig: DssBaseConfig{},
+		DssBaseConfig: DssBaseConfig{WebPort: "3000"},
 		NoClientLimit: false,
 	})
 	if err != nil {
