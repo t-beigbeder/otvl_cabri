@@ -24,10 +24,14 @@ func cfsInitialize(apc WebApiClient) error {
 	return nil
 }
 
-func cfsUpdatens(apc WebApiClient, npath string, mtime int64, children []string, acl []ACLEntry) error {
+func cfsMkupdateNs(apc WebApiClient, isUpd bool, npath string, mtime int64, children []string, acl []ACLEntry) error {
 	//wdc := wdi.apc.GetConfig().(WfsDssConfig)
 	var rer mError
-	_, err := apc.SimpleDoAsJson(http.MethodPost, apc.Url()+"wfsUpdatens",
+	urlPath := "wfsMkns"
+	if isUpd {
+		urlPath = "wfsUpdatens"
+	}
+	_, err := apc.SimpleDoAsJson(http.MethodPost, apc.Url()+urlPath,
 		mfsMkupdateNs{
 			Npath:    npath,
 			Mtime:    mtime,
@@ -35,10 +39,22 @@ func cfsUpdatens(apc WebApiClient, npath string, mtime int64, children []string,
 			ACL:      acl,
 		}, &rer)
 	if err != nil {
-		return fmt.Errorf("in cfsUpdatens: %w", err)
+		return fmt.Errorf("in cfsMkns: %w", err)
 	}
 	if rer.Error != "" {
-		return fmt.Errorf("in cfsUpdatens: %s", rer.Error)
+		return fmt.Errorf("in cfsMkns: %s", rer.Error)
 	}
 	return nil
+}
+
+func cfsMkns(apc WebApiClient, npath string, mtime int64, children []string, acl []ACLEntry) error {
+	return cfsMkupdateNs(apc, false, npath, mtime, children, acl)
+}
+
+func cfsUpdatens(apc WebApiClient, npath string, mtime int64, children []string, acl []ACLEntry) error {
+	return cfsMkupdateNs(apc, true, npath, mtime, children, acl)
+}
+
+func cfsLsns(apc WebApiClient, npath string) (children []string, err error) {
+	return nil, nil
 }

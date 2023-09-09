@@ -130,3 +130,41 @@ func TestNewWfsDssBase(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestWfsDssLsnsBase(t *testing.T) {
+	err := runWfsDssTest(t, func(dss Dss) error {
+		err := dss.Mkns("", time.Now().Unix(), []string{"d2/"}, nil)
+		if err == nil {
+			t.Fatalf("TestWfsDssLsnsBase should fail Mkns cannot be used non empty dir")
+		}
+		err = dss.Updatens("", time.Now().Unix(), []string{"d2/"}, nil)
+		if err != nil {
+			t.Fatalf("TestWfsDssLsnsBase failed with error %v", err)
+		}
+		err = dss.Mkns("d2", time.Now().Unix(), []string{"d3/", "f4"}, nil)
+		if err != nil {
+			t.Fatalf("TestWfsDssLsnsBase failed with error %v", err)
+		}
+		err = dss.Mkns("d2/d3", time.Now().Unix(), []string{"d4a/", "f5", "d4b"}, nil)
+		if err != nil {
+			t.Fatalf("TestWfsDssLsnsBase failed with error %v", err)
+		}
+		children0, err := dss.Lsns("")
+		if err != nil || len(children0) != 1 || children0[0] != "d2/" {
+			t.Fatalf("TestWfsDssLsnsBase failed with error %v or children %v", err, children0)
+		}
+		children2, err := dss.Lsns("d2")
+		if err != nil || len(children2) != 2 {
+			t.Fatalf("TestWfsDssLsnsBase failed with error %v or children %v", err, children2)
+		}
+		children3, err := dss.Lsns("d2/d3")
+		if err != nil || len(children3) != 3 {
+			t.Fatalf("TestWfsDssLsnsBase failed with error %v or children %v", err, children3)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+}

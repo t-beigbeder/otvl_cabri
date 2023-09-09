@@ -5,7 +5,6 @@ import (
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
-	"net/http"
 )
 
 type WfsDssConfig struct {
@@ -19,25 +18,15 @@ type wfsDssImpl struct {
 	reducer plumber.Reducer
 }
 
-func (wdi *wfsDssImpl) doMkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	_, err := wdi.apc.SimpleDoAsJson(http.MethodPost, wdi.apc.Url()+"wfsMkns", mfsMkupdateNs{Npath: npath, Mtime: mtime, Children: children, ACL: acl}, nil)
-	return err
-}
-
 func (wdi *wfsDssImpl) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
 	if wdi.reducer == nil {
-		return wdi.doMkns(npath, mtime, children, acl)
+		return cfsMkns(wdi.apc, npath, mtime, children, acl)
 	}
 	return wdi.reducer.Launch(
 		fmt.Sprintf("Mkns %s", npath),
 		func() error {
-			return wdi.doMkns(npath, mtime, children, acl)
+			return cfsMkns(wdi.apc, npath, mtime, children, acl)
 		})
-}
-
-func (wdi *wfsDssImpl) doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	_, err := wdi.apc.SimpleDoAsJson(http.MethodPost, wdi.apc.Url()+"wfsUpdatens", mfsMkupdateNs{Npath: npath, Mtime: mtime, Children: children, ACL: acl}, nil)
-	return err
 }
 
 func (wdi *wfsDssImpl) Updatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
@@ -52,8 +41,21 @@ func (wdi *wfsDssImpl) Updatens(npath string, mtime int64, children []string, ac
 }
 
 func (wdi *wfsDssImpl) Lsns(npath string) (children []string, err error) {
-	//TODO implement me
-	panic("implement me")
+	if wdi.reducer == nil {
+		return cfsLsns(wdi.apc, npath)
+	}
+	if err = wdi.reducer.Launch(
+		fmt.Sprintf("Lsns %s", npath),
+		func() error {
+			var iErr error
+			if children, iErr = cfsLsns(wdi.apc, npath); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
 }
 
 func (wdi *wfsDssImpl) IsDuplicate(ch string) (bool, error) {
