@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func createWfsDssServer(tfs *testfs.Fs, addr, root string) (WebServer, error) {
@@ -84,6 +85,45 @@ func runWfsDssTest(t *testing.T, doIt func(Dss) error) error {
 
 func TestNewWfsDssClient(t *testing.T) {
 	err := runWfsDssTest(t, func(dss Dss) error {
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = runWfsDssTest(t, func(dss Dss) error {
+		return fmt.Errorf("bad")
+	})
+	if err == nil {
+		t.Fatal("should fail with error")
+	}
+}
+
+func TestNewWfsDssBase(t *testing.T) {
+	err := runWfsDssTest(t, func(dss Dss) error {
+		err := dss.Updatens("", time.Now().Unix(), []string{"d"}, nil)
+		if err == nil {
+			return fmt.Errorf("Mkns should fail with error mkdir file exists")
+		}
+		err = dss.Updatens("/d", time.Now().Unix(), []string{"d2"}, nil)
+		if err == nil {
+			return fmt.Errorf("Mkns should fail with error namespace / (leading)")
+		}
+		err = dss.Updatens("d/", time.Now().Unix(), []string{"d2"}, nil)
+		if err == nil {
+			return fmt.Errorf("Mkns should fail with error namespace / (trailing)")
+		}
+		err = dss.Updatens("", time.Now().Unix(), []string{"/d2/", "d2\n/f.txt", "", "f1", "f2", "f3", "f1", "f3"}, nil)
+		if err == nil || !strings.Contains(err.Error(), "name(s) [/d2/ d2\n/f.txt  f1 f3] should") {
+			return fmt.Errorf("Mkns should fail with name check errors")
+		}
+		err = dss.Updatens("", time.Now().Unix(), []string{"d2/"}, nil)
+		if err != nil {
+			return fmt.Errorf("TestNewFsyDssBase failed with error %v", err)
+		}
+		err = dss.Mkns("d2", time.Now().Unix(), []string{"d3/", "f4"}, nil)
+		if err != nil {
+			return fmt.Errorf("TestNewFsyDssBase failed with error %v", err)
+		}
 		return nil
 	})
 	if err != nil {
