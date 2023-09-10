@@ -1,6 +1,7 @@
 package cabridss
 
 import (
+	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"net/url"
@@ -61,6 +62,14 @@ func sfsLsnsRoot(c echo.Context) error {
 	return sfsLsnsWhatever(c, "")
 }
 
+func sfsGetContentWriter(c echo.Context) error {
+	var in mfsGetContentWriterIn
+	if err := c.Bind(&in); err != nil {
+		return NewServerErr("sfsGetContentWriter", err)
+	}
+	return NewServerErr("sfsGetContentWriter", fmt.Errorf("to be implemented"))
+}
+
 func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {
 	dss := configs[root].(WfsDssServerConfig).Dss
 	_ = dss
@@ -69,6 +78,7 @@ func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	e.POST(root+"wfsUpdatens", sfsUpdatens)
 	e.GET(root+"wfsLsns/:npath", sfsLsns)
 	e.GET(root+"wfsLsns/", sfsLsnsRoot)
+	e.POST(root+"wfsGetContentWriter", sfsGetContentWriter)
 	return nil
 }
 

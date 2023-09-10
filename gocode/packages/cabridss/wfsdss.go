@@ -63,9 +63,22 @@ func (wdi *wfsDssImpl) IsDuplicate(ch string) (bool, error) {
 	panic("implement me")
 }
 
-func (wdi *wfsDssImpl) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error) {
-	//TODO implement me
-	panic("implement me")
+func (wdi *wfsDssImpl) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (wc io.WriteCloser, err error) {
+	if wdi.reducer == nil {
+		return cfsGetContentWriter(wdi.apc, npath, mtime, acl, cb)
+	}
+	if err = wdi.reducer.Launch(
+		fmt.Sprintf("GetContentWriter %s", npath),
+		func() error {
+			var iErr error
+			if wc, iErr = cfsGetContentWriter(wdi.apc, npath, mtime, acl, cb); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
 }
 
 func (wdi *wfsDssImpl) GetContentReader(npath string) (io.ReadCloser, error) {

@@ -1,7 +1,9 @@
 package cabridss
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -16,6 +18,12 @@ type mfsMkupdateNs struct {
 type mfsLsnsOut struct {
 	mError
 	Children []string `json:"children"`
+}
+
+type mfsGetContentWriterIn struct {
+	Npath string     `json:"npath"`
+	Mtime int64      `json:"mtime,string"`
+	ACL   []ACLEntry `json:"acl"`
 }
 
 func cfsInitialize(apc WebApiClient) error {
@@ -73,5 +81,40 @@ func cfsLsns(apc WebApiClient, npath string) (children []string, err error) {
 		err = fmt.Errorf("in cfsLsns: %s", lo.mError.Error)
 	}
 	children = lo.Children
+	return
+}
+
+func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (wc io.WriteCloser, err error) {
+	jsonArgs, err := json.Marshal(mfsGetContentWriterIn{Npath: npath, Mtime: mtime, ACL: acl})
+	_ = jsonArgs
+	err = fmt.Errorf("in cfsGetContentWriter: to be implemented")
+	//if err != nil {
+	//	return fmt.Errorf("in cfsGetContentWriter: %w", err)
+	//}
+	//lja := internal.Int64ToStr16(int64(len(jsonArgs)))
+	//file, err := os.Open(cf.Name())
+	//if err != nil {
+	//	return fmt.Errorf("in webPushContent: %w", err)
+	//}
+	//hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), file: file}
+	//copy(hdler.header, lja)
+	//copy(hdler.header[16:], jsonArgs)
+	//req, err := http.NewRequest(http.MethodPost, wdi.apc.Url()+"pushContent", nil)
+	//req.Body = &hdler
+	//req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
+	//resp, err := wdi.apc.(*apiClient).client.Do(req)
+	//if err = NewClientErr("webPushContent", resp, err, nil); err != nil {
+	//	return err
+	//}
+	//bs, err := io.ReadAll(resp.Body)
+	//var pco mError
+	//if err = json.Unmarshal(bs, &pco); err != nil {
+	//	return fmt.Errorf("in webPushContent: %v", err)
+	//}
+	//if pco.Error != "" {
+	//	return fmt.Errorf("in webPushContent: %s", pco.Error)
+	//}
+	//return nil
+
 	return
 }

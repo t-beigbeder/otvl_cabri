@@ -3,6 +3,8 @@ package cabridss
 import (
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -59,7 +61,7 @@ func TestNewWfsDssTlsServer(t *testing.T) {
 	sv.Shutdown()
 }
 
-func runWfsDssTestWithReducer(t *testing.T, doIt func(Dss) error, redLimit int) error {
+func runWfsDssTestWithReducer(t *testing.T, doIt func(*testfs.Fs, Dss) error, redLimit int) error {
 	optionalSkip(t)
 	tfs, err := testfs.CreateFs(fmt.Sprintf("%s-%d", t.Name(), redLimit), tfsStartup)
 	if err != nil {
@@ -79,11 +81,11 @@ func runWfsDssTestWithReducer(t *testing.T, doIt func(Dss) error, redLimit int) 
 		t.Fatal(err)
 	}
 	defer dss.Close()
-	err = doIt(dss)
+	err = doIt(tfs, dss)
 	return err
 }
 
-func runWfsDssTest(t *testing.T, doIt func(Dss) error) error {
+func runWfsDssTest(t *testing.T, doIt func(*testfs.Fs, Dss) error) error {
 	if err := runWfsDssTestWithReducer(t, doIt, 0); err != nil {
 		return err
 	}
@@ -91,13 +93,13 @@ func runWfsDssTest(t *testing.T, doIt func(Dss) error) error {
 }
 
 func TestNewWfsDssClient(t *testing.T) {
-	err := runWfsDssTest(t, func(dss Dss) error {
+	err := runWfsDssTest(t, func(_ *testfs.Fs, dss Dss) error {
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = runWfsDssTest(t, func(dss Dss) error {
+	err = runWfsDssTest(t, func(_ *testfs.Fs, dss Dss) error {
 		return fmt.Errorf("bad")
 	})
 	if err == nil {
@@ -106,7 +108,7 @@ func TestNewWfsDssClient(t *testing.T) {
 }
 
 func TestNewWfsDssBase(t *testing.T) {
-	err := runWfsDssTest(t, func(dss Dss) error {
+	err := runWfsDssTest(t, func(_ *testfs.Fs, dss Dss) error {
 		err := dss.Updatens("", time.Now().Unix(), []string{"d"}, nil)
 		if err == nil {
 			return fmt.Errorf("Mkns should fail with error mkdir file exists")
@@ -139,34 +141,34 @@ func TestNewWfsDssBase(t *testing.T) {
 }
 
 func TestWfsDssLsnsBase(t *testing.T) {
-	err := runWfsDssTest(t, func(dss Dss) error {
+	err := runWfsDssTest(t, func(_ *testfs.Fs, dss Dss) error {
 		err := dss.Mkns("", time.Now().Unix(), []string{"d2/"}, nil)
 		if err == nil {
-			t.Fatalf("TestWfsDssLsnsBase should fail Mkns cannot be used non empty dir")
+			return fmt.Errorf("TestWfsDssLsnsBase should fail Mkns cannot be used non empty dir")
 		}
 		err = dss.Updatens("", time.Now().Unix(), []string{"d2/"}, nil)
 		if err != nil {
-			t.Fatalf("TestWfsDssLsnsBase failed with error %v", err)
+			return fmt.Errorf("TestWfsDssLsnsBase failed with error %v", err)
 		}
 		err = dss.Mkns("d2", time.Now().Unix(), []string{"d3/", "f4"}, nil)
 		if err != nil {
-			t.Fatalf("TestWfsDssLsnsBase failed with error %v", err)
+			return fmt.Errorf("TestWfsDssLsnsBase failed with error %v", err)
 		}
 		err = dss.Mkns("d2/d3", time.Now().Unix(), []string{"d4a/", "f5", "d4b"}, nil)
 		if err != nil {
-			t.Fatalf("TestWfsDssLsnsBase failed with error %v", err)
+			return fmt.Errorf("TestWfsDssLsnsBase failed with error %v", err)
 		}
 		children0, err := dss.Lsns("")
 		if err != nil || len(children0) != 1 || children0[0] != "d2/" {
-			t.Fatalf("TestWfsDssLsnsBase failed with error %v or children %v", err, children0)
+			return fmt.Errorf("TestWfsDssLsnsBase failed with error %v or children %v", err, children0)
 		}
 		children2, err := dss.Lsns("d2")
 		if err != nil || len(children2) != 2 {
-			t.Fatalf("TestWfsDssLsnsBase failed with error %v or children %v", err, children2)
+			return fmt.Errorf("TestWfsDssLsnsBase failed with error %v or children %v", err, children2)
 		}
 		children3, err := dss.Lsns("d2/d3")
 		if err != nil || len(children3) != 3 {
-			t.Fatalf("TestWfsDssLsnsBase failed with error %v or children %v", err, children3)
+			return fmt.Errorf("TestWfsDssLsnsBase failed with error %v or children %v", err, children3)
 		}
 		return nil
 	})
@@ -174,4 +176,45 @@ func TestWfsDssLsnsBase(t *testing.T) {
 		t.Fatal(err)
 	}
 
+}
+
+func TestWfsDssGetContentWriterBase(t *testing.T) {
+	err := runWfsDssTest(t, func(tfs *testfs.Fs, dss Dss) error {
+		fi, err := os.Open(ufpath.Join(tfs.Path(), "a.txt"))
+		if err != nil {
+			return fmt.Errorf(err.Error())
+		}
+		defer fi.Close()
+		var iErr error
+		fo, err := dss.GetContentWriter("a-copy.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
+			if err != nil {
+				iErr = fmt.Errorf(err.Error())
+			}
+			if size != 241 {
+				iErr = fmt.Errorf("TestFsyDssGetContentWriterBase size %d != 241", size)
+			}
+			if ch != "484f617a695613aac4b346237aa01548" {
+				iErr = fmt.Errorf("TestFsyDssGetContentWriterBase hash %s != %s", ch, "484f617a695613aac4b346237aa01548")
+			}
+		})
+		if err != nil {
+			return fmt.Errorf(err.Error())
+		}
+		defer fo.Close()
+		if iErr != nil {
+			return fmt.Errorf(iErr.Error())
+		}
+		io.Copy(fo, fi)
+		_, err = dss.GetContentWriter("/no", time.Now().Unix(), nil, nil)
+		if err == nil {
+			return fmt.Errorf("TestFsyDssGetContentWriterBase should fail with err args")
+		}
+		if isDup, err := dss.IsDuplicate("484f617a695613aac4b346237aa01548"); isDup || err != nil {
+			return fmt.Errorf("TestFsyDssGetContentWriterBase IsDuplicate failed %v %v", isDup, err)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 }
