@@ -3,6 +3,7 @@ package cabridss
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"io"
 	"net/http"
 	"net/url"
@@ -85,12 +86,22 @@ func cfsLsns(apc WebApiClient, npath string) (children []string, err error) {
 }
 
 func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (wc io.WriteCloser, err error) {
+	defer func() {
+		if err != nil && cb != nil {
+			cb(err, 0, "")
+		}
+		if err != nil {
+			err = fmt.Errorf("in cfsGetContentWriter: %w", err)
+		}
+	}()
 	jsonArgs, err := json.Marshal(mfsGetContentWriterIn{Npath: npath, Mtime: mtime, ACL: acl})
-	_ = jsonArgs
+	if err != nil {
+		return
+	}
+	lja := internal.Int64ToStr16(int64(len(jsonArgs)))
+	_ = lja
 	err = fmt.Errorf("in cfsGetContentWriter: to be implemented")
-	//if err != nil {
-	//	return fmt.Errorf("in cfsGetContentWriter: %w", err)
-	//}
+	//file, err := os.Open(cf.Name())
 	//lja := internal.Int64ToStr16(int64(len(jsonArgs)))
 	//file, err := os.Open(cf.Name())
 	//if err != nil {
