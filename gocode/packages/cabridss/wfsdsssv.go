@@ -3,6 +3,7 @@ package cabridss
 import (
 	"github.com/labstack/echo/v4"
 	"net/http"
+	"net/url"
 )
 
 type WfsDssServerConfig struct {
@@ -32,12 +33,42 @@ func sfsUpdatens(c echo.Context) error {
 	return c.JSON(http.StatusOK, err2mError(dss.Updatens(un.Npath, un.Mtime, un.Children, un.ACL)))
 }
 
+func sfsLsnsWhatever(c echo.Context, npath string) error {
+	npath, err := url.PathUnescape(npath)
+	var lo mfsLsnsOut
+	if err != nil {
+		lo.Error = err.Error()
+		return c.JSON(http.StatusOK, &lo)
+	}
+	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
+	children, err := dss.Lsns(npath)
+	lo.Children = children
+	if err != nil {
+		lo.Error = err.Error()
+	}
+	return c.JSON(http.StatusOK, &lo)
+}
+
+func sfsLsns(c echo.Context) error {
+	npath := ""
+	if err := echo.PathParamsBinder(c).String("npath", &npath).BindError(); err != nil {
+		return NewServerErr("sfsLsns", err)
+	}
+	return sfsLsnsWhatever(c, npath)
+}
+
+func sfsLsnsRoot(c echo.Context) error {
+	return sfsLsnsWhatever(c, "")
+}
+
 func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {
 	dss := configs[root].(WfsDssServerConfig).Dss
 	_ = dss
 	e.GET(root+"wfsInitialize", sfsInitialize)
 	e.POST(root+"wfsMkns", sfsMkns)
 	e.POST(root+"wfsUpdatens", sfsUpdatens)
+	e.GET(root+"wfsLsns/:npath", sfsLsns)
+	e.GET(root+"wfsLsns/", sfsLsnsRoot)
 	return nil
 }
 

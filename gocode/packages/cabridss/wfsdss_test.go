@@ -59,9 +59,9 @@ func TestNewWfsDssTlsServer(t *testing.T) {
 	sv.Shutdown()
 }
 
-func runWfsDssTest(t *testing.T, doIt func(Dss) error) error {
+func runWfsDssTestWithReducer(t *testing.T, doIt func(Dss) error, redLimit int) error {
 	optionalSkip(t)
-	tfs, err := testfs.CreateFs(t.Name(), tfsStartup)
+	tfs, err := testfs.CreateFs(fmt.Sprintf("%s-%d", t.Name(), redLimit), tfsStartup)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func runWfsDssTest(t *testing.T, doIt func(Dss) error) error {
 	}
 	defer sv.Shutdown()
 	dss, err := NewWfsDss(WfsDssConfig{
-		DssBaseConfig: DssBaseConfig{WebPort: "3000"},
+		DssBaseConfig: DssBaseConfig{WebPort: "3000", ReducerLimit: redLimit},
 		NoClientLimit: false,
 	})
 	if err != nil {
@@ -81,6 +81,13 @@ func runWfsDssTest(t *testing.T, doIt func(Dss) error) error {
 	defer dss.Close()
 	err = doIt(dss)
 	return err
+}
+
+func runWfsDssTest(t *testing.T, doIt func(Dss) error) error {
+	if err := runWfsDssTestWithReducer(t, doIt, 0); err != nil {
+		return err
+	}
+	return runWfsDssTestWithReducer(t, doIt, 2)
 }
 
 func TestNewWfsDssClient(t *testing.T) {

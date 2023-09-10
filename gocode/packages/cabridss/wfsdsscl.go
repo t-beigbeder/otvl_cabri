@@ -3,6 +3,7 @@ package cabridss
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 type mfsMkupdateNs struct {
@@ -10,6 +11,11 @@ type mfsMkupdateNs struct {
 	Mtime    int64      `json:"mtime,string"`
 	Children []string   `json:"children"`
 	ACL      []ACLEntry `json:"acl"`
+}
+
+type mfsLsnsOut struct {
+	mError
+	Children []string `json:"children"`
 }
 
 func cfsInitialize(apc WebApiClient) error {
@@ -56,5 +62,16 @@ func cfsUpdatens(apc WebApiClient, npath string, mtime int64, children []string,
 }
 
 func cfsLsns(apc WebApiClient, npath string) (children []string, err error) {
-	return nil, nil
+	var lo *mfsLsnsOut
+	epath := url.PathEscape(npath)
+	_, err = apc.SimpleDoAsJson(http.MethodGet, apc.Url()+"wfsLsns/"+epath, nil, &lo)
+	if err != nil {
+		err = fmt.Errorf("in cfsLsns: %w", err)
+		return
+	}
+	if lo.mError.Error != "" {
+		err = fmt.Errorf("in cfsLsns: %s", lo.mError.Error)
+	}
+	children = lo.Children
+	return
 }
