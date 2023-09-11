@@ -2,7 +2,9 @@ package cabridss
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/labstack/echo/v4"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"io"
 	"net/http"
@@ -101,31 +103,27 @@ func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLE
 	lja := internal.Int64ToStr16(int64(len(jsonArgs)))
 	_ = lja
 	err = fmt.Errorf("in cfsGetContentWriter: to be implemented")
-	//file, err := os.Open(cf.Name())
-	//lja := internal.Int64ToStr16(int64(len(jsonArgs)))
-	//file, err := os.Open(cf.Name())
-	//if err != nil {
-	//	return fmt.Errorf("in webPushContent: %w", err)
-	//}
-	//hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), file: file}
-	//copy(hdler.header, lja)
-	//copy(hdler.header[16:], jsonArgs)
-	//req, err := http.NewRequest(http.MethodPost, wdi.apc.Url()+"pushContent", nil)
-	//req.Body = &hdler
-	//req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
-	//resp, err := wdi.apc.(*apiClient).client.Do(req)
-	//if err = NewClientErr("webPushContent", resp, err, nil); err != nil {
-	//	return err
-	//}
-	//bs, err := io.ReadAll(resp.Body)
-	//var pco mError
-	//if err = json.Unmarshal(bs, &pco); err != nil {
-	//	return fmt.Errorf("in webPushContent: %v", err)
-	//}
-	//if pco.Error != "" {
-	//	return fmt.Errorf("in webPushContent: %s", pco.Error)
-	//}
-	//return nil
-
+	pr, wc := io.Pipe()
+	hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), rCloser: pr}
+	copy(hdler.header, lja)
+	copy(hdler.header[16:], jsonArgs)
+	req, err := http.NewRequest(http.MethodPost, apc.Url()+"wfsGetContentWriter", nil)
+	req.Body = &hdler
+	req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
+	go func() {
+		resp, err := apc.(*apiClient).client.Do(req)
+		if err = NewClientErr("cfsGetContentWriter", resp, err, nil); err != nil {
+			return
+		}
+		bs, err := io.ReadAll(resp.Body)
+		var pco mError
+		if err = json.Unmarshal(bs, &pco); err != nil {
+			return
+		}
+		if pco.Error != "" {
+			err = errors.New(pco.Error)
+			return
+		}
+	}()
 	return
 }

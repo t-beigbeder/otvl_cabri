@@ -1,8 +1,10 @@
 package cabridss
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"net/http"
 	"net/url"
 )
@@ -63,10 +65,28 @@ func sfsLsnsRoot(c echo.Context) error {
 }
 
 func sfsGetContentWriter(c echo.Context) error {
-	var in mfsGetContentWriterIn
-	if err := c.Bind(&in); err != nil {
+	req := c.Request()
+	slja := make([]byte, 16)
+	if n, err := req.Body.Read(slja); n != 16 || err != nil {
+		return NewServerErr("sfsGetContentWriter", fmt.Errorf("%d %v", n, err))
+	}
+	lja, err := internal.Str16ToInt64(string(slja))
+	if err != nil {
 		return NewServerErr("sfsGetContentWriter", err)
 	}
+	jsonArgs := make([]byte, lja)
+	if n, err := req.Body.Read(jsonArgs); n != len(jsonArgs) || err != nil {
+		return NewServerErr("sfsGetContentWriter", fmt.Errorf("%d %v", n, err))
+	}
+	args := mfsGetContentWriterIn{}
+	err = json.Unmarshal(jsonArgs, &args)
+	if err != nil {
+		return NewServerErr("sfsGetContentWriter", err)
+	}
+	if err != nil {
+		return NewServerErr("sfsGetContentWriter", err)
+	}
+	//dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
 	return NewServerErr("sfsGetContentWriter", fmt.Errorf("to be implemented"))
 }
 
