@@ -191,26 +191,34 @@ func TestWfsDssGetContentWriterBase(t *testing.T) {
 				iErr = fmt.Errorf(err.Error())
 			}
 			if size != 241 {
-				iErr = fmt.Errorf("TestFsyDssGetContentWriterBase size %d != 241", size)
+				iErr = fmt.Errorf("TestWfsDssGetContentWriterBase size %d != 241", size)
 			}
 			if ch != "484f617a695613aac4b346237aa01548" {
-				iErr = fmt.Errorf("TestFsyDssGetContentWriterBase hash %s != %s", ch, "484f617a695613aac4b346237aa01548")
+				iErr = fmt.Errorf("TestWfsDssGetContentWriterBase hash %s != %s", ch, "484f617a695613aac4b346237aa01548")
 			}
 		})
 		if err != nil {
 			return fmt.Errorf(err.Error())
 		}
-		defer fo.Close()
+		l, err := io.Copy(fo, fi)
+		if err != nil {
+			fo.Close()
+			return fmt.Errorf("TestWfsDssGetContentWriterBase Copy error %v", err)
+		}
+		err = fo.Close()
+		if err != nil {
+			return fmt.Errorf("TestWfsDssGetContentWriterBase Close error %v", err)
+		}
 		if iErr != nil {
 			return fmt.Errorf(iErr.Error())
 		}
-		io.Copy(fo, fi)
+		_ = l
 		_, err = dss.GetContentWriter("/no", time.Now().Unix(), nil, nil)
 		if err == nil {
-			return fmt.Errorf("TestFsyDssGetContentWriterBase should fail with err args")
+			return fmt.Errorf("TestWfsDssGetContentWriterBase should fail with err args")
 		}
 		if isDup, err := dss.IsDuplicate("484f617a695613aac4b346237aa01548"); isDup || err != nil {
-			return fmt.Errorf("TestFsyDssGetContentWriterBase IsDuplicate failed %v %v", isDup, err)
+			return fmt.Errorf("TestWfsDssGetContentWriterBase IsDuplicate failed %v %v", isDup, err)
 		}
 		return nil
 	})
