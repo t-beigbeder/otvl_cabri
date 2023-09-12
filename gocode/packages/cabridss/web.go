@@ -300,15 +300,19 @@ func NewServerErr(where string, err error) error {
 }
 
 func NewClientErr(where string, resp *http.Response, err error, bs []byte) error {
+	pfx := ""
+	if where != "" {
+		pfx = fmt.Sprintf("in %s: ", where)
+	}
 	if resp != nil && resp.StatusCode >= http.StatusBadRequest {
 		if bs != nil {
-			return fmt.Errorf("in %s: error status %s %s", where, resp.Status, string(bs))
+			return fmt.Errorf("%serror status %s %s", pfx, resp.Status, string(bs))
 		} else {
-			return fmt.Errorf("in %s: error status %s", where, resp.Status)
+			return fmt.Errorf("%serror status %s", pfx, resp.Status)
 		}
 	}
 	if err != nil {
-		return fmt.Errorf("in %s: %v", where, err)
+		return fmt.Errorf("%s%v", pfx, err)
 	}
 	return nil
 }

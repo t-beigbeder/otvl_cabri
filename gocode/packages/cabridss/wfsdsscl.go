@@ -88,31 +88,39 @@ func cfsLsns(apc WebApiClient, npath string) (children []string, err error) {
 }
 
 func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (wc io.WriteCloser, err error) {
-	defer func() {
-		if err != nil && cb != nil {
-			cb(err, 0, "")
-		}
-		if err != nil {
-			err = fmt.Errorf("in cfsGetContentWriter: %w", err)
-		}
-	}()
 	jsonArgs, err := json.Marshal(mfsGetContentWriterIn{Npath: npath, Mtime: mtime, ACL: acl})
 	if err != nil {
 		return
 	}
 	lja := internal.Int64ToStr16(int64(len(jsonArgs)))
 	_ = lja
-	err = fmt.Errorf("in cfsGetContentWriter: to be implemented")
 	pr, wc := io.Pipe()
-	hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), rCloser: pr}
+	hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), rCloser: pr, hasHash: true}
 	copy(hdler.header, lja)
 	copy(hdler.header[16:], jsonArgs)
-	req, err := http.NewRequest(http.MethodPost, apc.Url()+"wfsGetContentWriter", nil)
-	req.Body = &hdler
-	req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
 	go func() {
+		var err error
+		defer func() {
+			if cb != nil {
+				if err != nil {
+					cb(err, 0, "")
+				} else {
+					cb(nil, hdler.written, internal.Sha256ToStr32(hdler.h.Sum(nil)))
+				}
+			}
+			if err != nil && cb != nil {
+				cb(err, 0, "")
+			}
+			if err != nil {
+				err = fmt.Errorf("in cfsGetContentWriter cb: %w", err)
+			}
+		}()
+		err = errors.New("go func to be tested")
+		req, err := http.NewRequest(http.MethodPost, apc.Url()+"wfsGetContentWriter", nil)
+		req.Body = &hdler
+		req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
 		resp, err := apc.(*apiClient).client.Do(req)
-		if err = NewClientErr("cfsGetContentWriter", resp, err, nil); err != nil {
+		if err = NewClientErr("", resp, err, nil); err != nil {
 			return
 		}
 		bs, err := io.ReadAll(resp.Body)
