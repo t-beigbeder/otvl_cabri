@@ -1,14 +1,12 @@
 package cabridss
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
-	"hash"
 	"io"
 	"net/http"
 	"os"
@@ -35,16 +33,10 @@ type webContentWriterHandler struct {
 	header  []byte
 	offset  int
 	rCloser io.ReadCloser
-	hasHash bool
-	h       hash.Hash
-	written int64
 }
 
 func (hdler *webContentWriterHandler) Read(p []byte) (n int, err error) {
 	if hdler.offset < len(hdler.header) {
-		if hdler.hasHash {
-			hdler.h = sha256.New()
-		}
 		n = copy(p, hdler.header[hdler.offset:])
 		hdler.offset += n
 	}
