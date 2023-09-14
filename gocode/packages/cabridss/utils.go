@@ -214,3 +214,16 @@ func (sti StorageInfo) loadStoredInMemory() (metas map[string]map[int64][]byte) 
 	}
 	return
 }
+
+type PipeWithCb struct {
+	pr     *io.PipeReader
+	pw     *io.PipeWriter
+	rcs    chan struct{}
+	cb     func(interface{})
+	cbInfo interface{}
+}
+
+func NewPipeWithCb(cb func(interface{})) *PipeWithCb {
+	pr, pw := io.Pipe()
+	return &PipeWithCb{pr: pr, pw: pw, cb: cb}
+}

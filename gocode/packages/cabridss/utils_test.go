@@ -191,6 +191,10 @@ func TestNewReadCloserWithCb(t *testing.T) {
 	}
 }
 
+func TestNewPipeWithCb(t *testing.T) {
+	NewPipeWithCb(nil)
+}
+
 func optionalSkip(t *testing.T) {
 	if os.Getenv("CABRIDSS_SKIP_DEV_TESTS") != "" {
 		if t.Name() == "InTheBeginning" ||
