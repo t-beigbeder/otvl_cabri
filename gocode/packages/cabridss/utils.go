@@ -216,14 +216,47 @@ func (sti StorageInfo) loadStoredInMemory() (metas map[string]map[int64][]byte) 
 }
 
 type PipeWithCb struct {
-	pr     *io.PipeReader
-	pw     *io.PipeWriter
-	rcs    chan struct{}
-	cb     func(interface{})
-	cbInfo interface{}
+	rcs  chan struct{}
+	size int
+	cb   func(err error, size int64, ch string)
 }
 
-func NewPipeWithCb(cb func(interface{})) *PipeWithCb {
+type PipeReaderWithCb struct {
+	pr   *io.PipeReader
+	pwcb *PipeWithCb
+}
+
+func (pr *PipeReaderWithCb) Read(data []byte) (n int, err error) {
+	return pr.pr.Read(data)
+}
+
+func (pr *PipeReaderWithCb) Close() error {
+	return pr.CloseWithError(nil)
+}
+
+func (pr *PipeReaderWithCb) CloseWithError(err error) error {
+	close(pr.pwcb.rcs)
+	return pr.pr.CloseWithError(err)
+}
+
+type PipeWriterWithCb struct {
+	pw   *io.PipeWriter
+	pwcb *PipeWithCb
+}
+
+func (pw *PipeWriterWithCb) Write(data []byte) (n int, err error) {
+	n, err = pw.pw.Write(data)
+	pw.pwcb.size += n
+	return
+}
+
+func (pw PipeWriterWithCb) Close() error {
+	<-pw.pwcb.rcs
+	return pw.pw.Close()
+}
+
+func NewPipeWithCb(cb func(err error, size int64, ch string)) (*PipeReaderWithCb, *PipeWriterWithCb) {
 	pr, pw := io.Pipe()
-	return &PipeWithCb{pr: pr, pw: pw, cb: cb}
+	pwcb := &PipeWithCb{cb: cb, rcs: make(chan struct{})}
+	return &PipeReaderWithCb{pr: pr, pwcb: pwcb}, &PipeWriterWithCb{pw: pw, pwcb: pwcb}
 }

@@ -7,7 +7,9 @@ import (
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/mockfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
+	"io"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -192,7 +194,29 @@ func TestNewReadCloserWithCb(t *testing.T) {
 }
 
 func TestNewPipeWithCb(t *testing.T) {
-	NewPipeWithCb(nil)
+	pr, pw := NewPipeWithCb(nil)
+	go func() {
+		read, err := io.Copy(io.Discard, pr)
+		if err != nil {
+			_ = pr.CloseWithError(fmt.Errorf("in TestNewPipeWithCb.goRead: Copy: %w", err))
+		} else {
+			err = pr.Close()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "in TestNewPipeWithCb.goRead: Close: %v", err)
+			}
+		}
+		_ = read
+	}()
+	bf := bytes.Buffer{}
+	bf.Write([]byte(strings.Repeat("TestNewPipeWithCb", 100000)))
+	written, err := io.Copy(pw, &bf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = pw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = written, pr
 }
 
 func optionalSkip(t *testing.T) {
