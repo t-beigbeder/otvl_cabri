@@ -216,9 +216,11 @@ func (sti StorageInfo) loadStoredInMemory() (metas map[string]map[int64][]byte) 
 }
 
 type PipeWithCb struct {
-	rcs  chan struct{}
-	size int
-	cb   func(err error, size int64, ch string)
+	rcs   chan struct{}
+	size  int
+	cb    func(err error, size int64, ch string, data interface{})
+	hasCh bool
+	h     hash.Hash
 }
 
 type PipeReaderWithCb struct {
@@ -227,7 +229,8 @@ type PipeReaderWithCb struct {
 }
 
 func (pr *PipeReaderWithCb) Read(data []byte) (n int, err error) {
-	return pr.pr.Read(data)
+	n, err = pr.pr.Read(data)
+	return n, err
 }
 
 func (pr *PipeReaderWithCb) Close() error {
@@ -240,23 +243,40 @@ func (pr *PipeReaderWithCb) CloseWithError(err error) error {
 }
 
 type PipeWriterWithCb struct {
-	pw   *io.PipeWriter
-	pwcb *PipeWithCb
+	pw     *io.PipeWriter
+	pwcb   *PipeWithCb
+	cbData interface{}
 }
 
 func (pw *PipeWriterWithCb) Write(data []byte) (n int, err error) {
 	n, err = pw.pw.Write(data)
-	pw.pwcb.size += n
+	if pw.pwcb.cb != nil {
+		pw.pwcb.size += n
+		if pw.pwcb.hasCh {
+			pw.pwcb.h.Write(data[0:n])
+		}
+	}
+	return
+}
+func (pw *PipeWriterWithCb) SetCbData(data interface{}) {
+	pw.cbData = data
+}
+
+func (pw *PipeWriterWithCb) Close() (err error) {
+	err = pw.pw.Close()
+	<-pw.pwcb.rcs
+	if pw.pwcb.cb != nil {
+		ch := ""
+		if pw.pwcb.hasCh {
+			ch = internal.Sha256ToStr32(pw.pwcb.h.Sum(nil))
+		}
+		pw.pwcb.cb(err, int64(pw.pwcb.size), ch, pw.cbData)
+	}
 	return
 }
 
-func (pw PipeWriterWithCb) Close() error {
-	<-pw.pwcb.rcs
-	return pw.pw.Close()
-}
-
-func NewPipeWithCb(cb func(err error, size int64, ch string)) (*PipeReaderWithCb, *PipeWriterWithCb) {
+func NewPipeWithCb(cb func(err error, size int64, ch string, data interface{}), hasCh bool) (*PipeReaderWithCb, *PipeWriterWithCb) {
 	pr, pw := io.Pipe()
-	pwcb := &PipeWithCb{cb: cb, rcs: make(chan struct{})}
+	pwcb := &PipeWithCb{cb: cb, hasCh: hasCh, h: sha256.New(), rcs: make(chan struct{})}
 	return &PipeReaderWithCb{pr: pr, pwcb: pwcb}, &PipeWriterWithCb{pw: pw, pwcb: pwcb}
 }

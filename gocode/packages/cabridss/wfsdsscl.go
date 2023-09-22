@@ -93,7 +93,9 @@ func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLE
 	}
 	lja := internal.Int64ToStr16(int64(len(jsonArgs)))
 	_ = lja
-	pcr, pcw := io.Pipe()
+	pcr, pcw := NewPipeWithCb(func(err error, size int64, ch string, data interface{}) {
+
+	}, true)
 	//psr, psw := io.Pipe()
 	go func() {
 		var (
