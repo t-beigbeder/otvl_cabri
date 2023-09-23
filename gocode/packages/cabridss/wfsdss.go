@@ -59,8 +59,7 @@ func (wdi *wfsDssImpl) Lsns(npath string) (children []string, err error) {
 }
 
 func (wdi *wfsDssImpl) IsDuplicate(ch string) (bool, error) {
-	//TODO implement me
-	panic("implement me")
+	return false, nil
 }
 
 func (wdi *wfsDssImpl) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (wc io.WriteCloser, err error) {
@@ -133,7 +132,7 @@ func (wdi *wfsDssImpl) SuEnableWrite(npath string) error {
 	panic("implement me")
 }
 
-// NewWfsDss opens a web client for a remote "wdi" DSS (data storage system)
+// NewWfsDss opens a web client for a remote "fsy" DSS (data storage system)
 // wdc provides the web client configuration
 // returns a pointer to the ready to use DSS or an error if any occur
 func NewWfsDss(wdc WfsDssConfig) (Dss, error) {
