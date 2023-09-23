@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -75,7 +76,7 @@ func sfsGetContentWriter(c echo.Context) error {
 		return NewServerErr("sfsGetContentWriter", err)
 	}
 	jsonArgs := make([]byte, lja)
-	if n, err := req.Body.Read(jsonArgs); n != len(jsonArgs) || err != nil {
+	if n, err := req.Body.Read(jsonArgs); n != len(jsonArgs) || (err != nil && err != io.EOF) {
 		return NewServerErr("sfsGetContentWriter", fmt.Errorf("%d %v", n, err))
 	}
 	args := mfsGetContentWriterIn{}
@@ -83,11 +84,19 @@ func sfsGetContentWriter(c echo.Context) error {
 	if err != nil {
 		return NewServerErr("sfsGetContentWriter", err)
 	}
+	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
+	wc, err := dss.GetContentWriter(args.Npath, args.Mtime, args.ACL, func(err error, size int64, ch string) {
+
+	})
+	if err != nil {
+		return c.JSON(http.StatusOK, &mError{Error: err.Error()})
+	}
+	defer wc.Close()
+	_, err = io.Copy(wc, req.Body)
 	if err != nil {
 		return NewServerErr("sfsGetContentWriter", err)
 	}
-	//dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
-	return NewServerErr("sfsGetContentWriter", fmt.Errorf("to be implemented"))
+	return c.JSON(http.StatusOK, &mError{})
 }
 
 func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {

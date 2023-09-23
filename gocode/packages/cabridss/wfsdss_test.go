@@ -213,7 +213,20 @@ func TestWfsDssGetContentWriterBase(t *testing.T) {
 			return fmt.Errorf(iErr.Error())
 		}
 		_ = l
-		_, err = dss.GetContentWriter("/no", time.Now().Unix(), nil, nil)
+		fi2, err := os.Open(ufpath.Join(tfs.Path(), "a.txt"))
+		if err != nil {
+			return fmt.Errorf(err.Error())
+		}
+		defer fi2.Close()
+		fo, err = dss.GetContentWriter("/no", time.Now().Unix(), nil, nil)
+		if err != nil {
+			return fmt.Errorf(err.Error())
+		}
+		l, err = io.Copy(fo, fi2)
+		if err != nil {
+			return fmt.Errorf(err.Error())
+		}
+		err = fo.Close()
 		if err == nil {
 			return fmt.Errorf("TestWfsDssGetContentWriterBase should fail with err args")
 		}

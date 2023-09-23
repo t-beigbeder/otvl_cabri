@@ -114,9 +114,6 @@ func sPushContent(c echo.Context) error {
 	if err != nil {
 		return NewServerErr("sPushContent", err)
 	}
-	if err != nil {
-		return NewServerErr("sPushContent", err)
-	}
 	oDss := GetCustomConfig(c).(WebDssServerConfig).Dss.(*ODss)
 	wter, err := oDss.proxy.spGetContentWriter(contentWriterCbs{
 		getMetaBytes: func(iErr error, size int64, ch string) (mbs []byte, emid string, oErr error) {

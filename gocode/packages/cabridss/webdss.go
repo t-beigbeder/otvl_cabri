@@ -36,11 +36,16 @@ type webContentWriterHandler struct {
 }
 
 func (hdler *webContentWriterHandler) Read(p []byte) (n int, err error) {
+	println("webContentWriterHandler.Read")
 	if hdler.offset < len(hdler.header) {
+		println("webContentWriterHandler.Read header")
 		n = copy(p, hdler.header[hdler.offset:])
 		hdler.offset += n
+		println("webContentWriterHandler.Read header " + fmt.Sprintf("%d", n))
+		return
 	}
 	for {
+		println("webContentWriterHandler.Read loop " + fmt.Sprintf("%d", n))
 		if n >= len(p) {
 			break
 		}

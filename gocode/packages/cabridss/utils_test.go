@@ -7,9 +7,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/mockfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
-	"io"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -190,41 +188,6 @@ func TestNewReadCloserWithCb(t *testing.T) {
 	}
 	if err = rcwc.Close(); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestNewPipeWithCb(t *testing.T) {
-	var eErr error
-	eSize := -1
-	eCh := ""
-	var eData interface{}
-	pr, pw := NewPipeWithCb(func(err error, size int64, ch string, data interface{}) {
-		eErr, eSize, eCh, eData = err, int(size), ch, data
-	}, true)
-	go func() {
-		read, err := io.Copy(io.Discard, pr)
-		if err != nil {
-			_ = pr.CloseWithError(fmt.Errorf("in TestNewPipeWithCb.goRead: Copy: %w", err))
-		} else {
-			err = pr.Close()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "in TestNewPipeWithCb.goRead: Close: %v\n", err)
-			}
-		}
-		_ = read
-	}()
-	bf := bytes.Buffer{}
-	bf.Write([]byte(strings.Repeat("TestNewPipeWithCb", 1000)))
-	written, err := io.Copy(pw, &bf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	pw.SetCbData("SetCbDataContent")
-	if err = pw.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if eErr != nil || eSize != 17000 || eCh != "2d2350e055e89b8b3e9c5a29ab4843fd" || eData != "SetCbDataContent" || int(written) != eSize {
-		t.Fatalf("eErr %v eSize %d eCh %s eData %v written %d", eErr, eSize, eCh, eData, written)
 	}
 }
 

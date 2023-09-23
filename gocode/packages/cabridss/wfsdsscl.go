@@ -1,9 +1,10 @@
 package cabridss
 
 import (
-	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/labstack/echo/v4"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"io"
 	"net/http"
@@ -86,72 +87,130 @@ func cfsLsns(apc WebApiClient, npath string) (children []string, err error) {
 	return
 }
 
+type cfsClientWriter struct {
+	wwsc       chan struct{}
+	buffer     []byte
+	xBuf       int
+	wrsc       chan struct{}
+	readerErr  error
+	readerDone bool
+}
+
+func newCfsClientWriter() *cfsClientWriter {
+	return &cfsClientWriter{wwsc: make(chan struct{}), wrsc: make(chan struct{})}
+}
+
+func (ccw *cfsClientWriter) Write(p []byte) (n int, err error) {
+	<-ccw.wrsc
+	ccw.buffer = make([]byte, len(p))
+	ccw.xBuf = 0
+	copy(ccw.buffer, p)
+	ccw.wwsc <- struct{}{}
+	return len(p), nil
+}
+
+func (ccw *cfsClientWriter) Close() error {
+	ccw.buffer = nil
+	ccw.xBuf = 0
+	close(ccw.wwsc)
+	for !ccw.readerDone {
+		<-ccw.wrsc
+	}
+	return ccw.readerErr
+}
+
+type cfsClientWriterReader struct {
+	ccw    *cfsClientWriter
+	header []byte
+	offset int
+}
+
+func (ccwr *cfsClientWriterReader) Read(p []byte) (n int, err error) {
+	if ccwr.offset < len(ccwr.header) {
+		l := len(ccwr.header) - ccwr.offset
+		if l > len(p) {
+			l = len(p)
+		}
+		copy(p, ccwr.header[ccwr.offset:ccwr.offset+l])
+		ccwr.offset += l
+		n += l
+	}
+	if n == len(p) {
+		return
+	}
+	<-ccwr.ccw.wwsc
+	l := len(ccwr.ccw.buffer) - ccwr.ccw.xBuf
+	if n+l > len(p) {
+		l = len(p) - n
+	}
+	if l == 0 {
+		err = io.EOF
+		return
+	}
+	copy(p[n:n+l], ccwr.ccw.buffer[ccwr.ccw.xBuf:ccwr.ccw.xBuf+l])
+	ccwr.ccw.xBuf += l
+	n += l
+	ccwr.offset += l
+	if ccwr.ccw.xBuf == len(ccwr.ccw.buffer) && len(ccwr.ccw.buffer) > 0 {
+		ccwr.ccw.wrsc <- struct{}{}
+	}
+	return
+}
+
+func (ccwr *cfsClientWriterReader) Close() error {
+	return nil
+}
+
+func (ccwr *cfsClientWriterReader) Done(err error) {
+	ccwr.ccw.readerErr = err
+	ccwr.ccw.readerDone = true
+	close(ccwr.ccw.wrsc)
+}
+
+func newCfsClientWriterReader(ccw *cfsClientWriter, header []byte) *cfsClientWriterReader {
+	ccwr := &cfsClientWriterReader{ccw: ccw, header: header}
+	ccwr.ccw.wrsc <- struct{}{}
+	return ccwr
+}
+
 func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (pcw io.WriteCloser, err error) {
 	jsonArgs, err := json.Marshal(mfsGetContentWriterIn{Npath: npath, Mtime: mtime, ACL: acl})
 	if err != nil {
 		return
 	}
-	lja := internal.Int64ToStr16(int64(len(jsonArgs)))
-	_ = lja
-	pcr, pcw := NewPipeWithCb(func(err error, size int64, ch string, data interface{}) {
-
-	}, true)
-	//psr, psw := io.Pipe()
+	ccw := newCfsClientWriter()
 	go func() {
 		var (
 			err  error
-			size int64
+			req  *http.Request
+			resp *http.Response
+			bs   []byte
 		)
-		h := sha256.New()
-		data := make([]byte, 2048)
+		req, err = http.NewRequest(http.MethodPost, apc.Url()+"wfsGetContentWriter", nil)
+		lja := internal.Int64ToStr16(int64(len(jsonArgs)))
+		header := make([]byte, 16+len(jsonArgs))
+		copy(header, lja)
+		copy(header[16:], jsonArgs)
+		ccwr := newCfsClientWriterReader(ccw, header)
 		defer func() {
-			if cb != nil {
-				if err != nil {
-					cb(err, 0, "")
-				} else {
-					cb(nil, size, internal.Sha256ToStr32(h.Sum(nil)))
-				}
-			}
-			if err != nil && cb != nil {
-				cb(err, 0, "")
-			}
-			if err != nil {
-				err = fmt.Errorf("in cfsGetContentWriter cb: %w", err)
-			}
-			pcr.Close()
+			ccwr.Done(err)
 		}()
-		for {
-			n, iErr := pcr.Read(data)
-			if iErr != nil || n == 0 {
-				if iErr != io.EOF {
-					err = iErr
-				}
-				return
-			}
+		req.Body = ccwr
+		req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
+		resp, err = apc.(*apiClient).client.Do(req)
+		if err = NewClientErr("", resp, err, nil); err != nil {
+			return
 		}
-		//hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), rCloser: pr, hasHash: true}
-		//copy(hdler.header, lja)
-		//copy(hdler.header[16:], jsonArgs)
-		//var err error
-		//defer func() {
-		//}()
-		//err = errors.New("go func to be tested")
-		//req, err := http.NewRequest(http.MethodPost, apc.Url()+"wfsGetContentWriter", nil)
-		//req.Body = &hdler
-		//req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
-		//resp, err := apc.(*apiClient).client.Do(req)
-		//if err = NewClientErr("", resp, err, nil); err != nil {
-		//	return
-		//}
-		//bs, err := io.ReadAll(resp.Body)
-		//var pco mError
-		//if err = json.Unmarshal(bs, &pco); err != nil {
-		//	return
-		//}
-		//if pco.Error != "" {
-		//	err = errors.New(pco.Error)
-		//	return
-		//}
+		bs, err = io.ReadAll(resp.Body)
+		var pco mError
+		if err = json.Unmarshal(bs, &pco); err != nil {
+			return
+		}
+		if pco.Error != "" {
+			err = errors.New(pco.Error)
+			return
+		}
+		return
 	}()
-	return
+	return ccw, nil
 }
