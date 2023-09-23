@@ -239,3 +239,77 @@ func TestWfsDssGetContentWriterBase(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestWfsDssMtime(t *testing.T) {
+	err := runWfsDssTest(t, func(tfs *testfs.Fs, dss Dss) error {
+		fi, err := os.Open(ufpath.Join(tfs.Path(), "a.txt"))
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		defer fi.Close()
+		tt := time.Date(2022, time.January, 8, 18, 52, 0, 0, time.UTC).Unix()
+		if err = dss.Updatens("d", tt, []string{"a-copy.txt"}, nil); err != nil {
+			t.Fatalf(err.Error())
+		}
+		dfi, err := os.Stat(ufpath.Join(tfs.Path(), "d"))
+		if dfi.ModTime().Unix() != tt {
+			t.Fatalf("TestFsyDssMtime mtime 'd' %d != %d", dfi.ModTime().Unix(), tt)
+		}
+		fo, err := dss.GetContentWriter("d/a-copy.txt", tt, nil, func(err error, size int64, ch string) {
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+		})
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		io.Copy(fo, fi)
+		fo.Close()
+		ffi, err := os.Stat(ufpath.Join(tfs.Path(), "d", "a-copy.txt"))
+		if ffi.ModTime().Unix() != tt {
+			t.Fatalf("TestFsyDssMtime mtime 'd/a-copy.txt' %d != %d", ffi.ModTime().Unix(), tt)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWfsDssGetContentReaderBase(t *testing.T) {
+	err := runWfsDssTest(t, func(tfs *testfs.Fs, dss Dss) error {
+		fi, err := os.Open(ufpath.Join(tfs.Path(), "a.txt"))
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		defer fi.Close()
+		fo, err := dss.GetContentWriter("a-copy.txt", time.Now().Unix(), nil, nil)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		io.Copy(fo, fi)
+		fo.Close()
+		fi2, err := dss.GetContentReader("a-copy.txt")
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+		defer fi2.Close()
+		fo2, err := dss.GetContentWriter("a-copy-copy.txt", time.Now().Unix(), nil, func(err error, size int64, ch string) {
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+			if size != 241 {
+				t.Fatalf("TestFsyDssGetContentReaderBase size %d != 241", size)
+			}
+			if ch != "484f617a695613aac4b346237aa01548" {
+				t.Fatalf("TestFsyDssGetContentReaderBase hash %s != %s", ch, "484f617a695613aac4b346237aa01548")
+			}
+		})
+		io.Copy(fo2, fi2)
+		fo2.Close()
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

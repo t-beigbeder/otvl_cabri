@@ -80,9 +80,23 @@ func (wdi *wfsDssImpl) GetContentWriter(npath string, mtime int64, acl []ACLEntr
 	return
 }
 
-func (wdi *wfsDssImpl) GetContentReader(npath string) (io.ReadCloser, error) {
-	//TODO implement me
-	panic("implement me")
+func (wdi *wfsDssImpl) GetContentReader(npath string) (rc io.ReadCloser, err error) {
+	if wdi.reducer == nil {
+		return cfsGetContentReader(wdi.apc, npath)
+	}
+	if err = wdi.reducer.Launch(
+		fmt.Sprintf("GetContentWriter %s", npath),
+		func() error {
+			var iErr error
+			if rc, iErr = cfsGetContentReader(wdi.apc, npath); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
+
 }
 
 func (wdi *wfsDssImpl) Remove(npath string) error {
@@ -96,22 +110,18 @@ func (wdi *wfsDssImpl) GetMeta(npath string, getCh bool) (IMeta, error) {
 }
 
 func (wdi *wfsDssImpl) SetCurrentTime(time int64) {
-	//TODO implement me
 	panic("implement me")
 }
 
 func (wdi *wfsDssImpl) SetMetaMockCbs(cbs *MetaMockCbs) {
-	//TODO implement me
 	panic("implement me")
 }
 
 func (wdi *wfsDssImpl) SetAfs(tfs afero.Fs) {
-	//TODO implement me
 	panic("implement me")
 }
 
 func (wdi *wfsDssImpl) GetAfs() afero.Fs {
-	//TODO implement me
 	panic("implement me")
 }
 

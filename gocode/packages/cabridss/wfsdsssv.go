@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type WfsDssServerConfig struct {
@@ -85,9 +86,7 @@ func sfsGetContentWriter(c echo.Context) error {
 		return NewServerErr("sfsGetContentWriter", err)
 	}
 	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
-	wc, err := dss.GetContentWriter(args.Npath, args.Mtime, args.ACL, func(err error, size int64, ch string) {
-
-	})
+	wc, err := dss.GetContentWriter(args.Npath, args.Mtime, args.ACL, nil)
 	if err != nil {
 		return c.JSON(http.StatusOK, &mError{Error: err.Error()})
 	}
@@ -99,6 +98,29 @@ func sfsGetContentWriter(c echo.Context) error {
 	return c.JSON(http.StatusOK, &mError{})
 }
 
+func sfsGetContentReader(c echo.Context) error {
+	npath := ""
+	if err := echo.PathParamsBinder(c).String("npath", &npath).BindError(); err != nil {
+		return NewServerErr("sfsGetContentReader", err)
+	}
+	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
+	resp := c.Response()
+	resp.Writer.Header().Set(echo.HeaderContentType, echo.MIMEOctetStream)
+	rc, err := dss.GetContentReader(npath)
+	if err != nil {
+		resp.WriteHeader(http.StatusOK)
+		sErr := err.Error()
+		io.Copy(resp.Writer, strings.NewReader(internal.Int64ToStr16(int64(len(sErr)))))
+		io.Copy(resp.Writer, strings.NewReader(sErr))
+		return nil
+	}
+	defer rc.Close()
+	resp.WriteHeader(http.StatusOK)
+	io.Copy(resp.Writer, strings.NewReader(internal.Int64ToStr16(int64(0))))
+	io.Copy(resp.Writer, rc)
+	return nil
+}
+
 func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {
 	dss := configs[root].(WfsDssServerConfig).Dss
 	_ = dss
@@ -108,6 +130,7 @@ func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	e.GET(root+"wfsLsns/:npath", sfsLsns)
 	e.GET(root+"wfsLsns/", sfsLsnsRoot)
 	e.POST(root+"wfsGetContentWriter", sfsGetContentWriter)
+	e.GET(root+"wfsGetContentReader/:npath", sfsGetContentReader)
 	return nil
 }
 

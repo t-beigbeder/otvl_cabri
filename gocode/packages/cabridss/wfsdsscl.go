@@ -214,3 +214,36 @@ func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLE
 	}()
 	return ccw, nil
 }
+
+func cfsGetContentReader(apc WebApiClient, npath string) (io.ReadCloser, error) {
+	epath := url.PathEscape(npath)
+	req, err := http.NewRequest(http.MethodGet, apc.Url()+"wfsGetContentReader/"+epath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
+	}
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	resp, err := apc.(*apiClient).client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
+	}
+	if resp != nil && resp.StatusCode >= http.StatusBadRequest {
+		bs, err := io.ReadAll(resp.Body)
+		return nil, NewClientErr("cfsGetContentReader", resp, err, bs)
+	}
+	slj := make([]byte, 16)
+	if n, err := resp.Body.Read(slj); n != 16 || err != nil {
+		return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
+	}
+	lj, err := internal.Str16ToInt64(string(slj))
+	if err != nil {
+		return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
+	}
+	if lj != 0 {
+		sErr := make([]byte, lj)
+		if n, err := resp.Body.Read(sErr); n != int(lj) || (err != nil && err != io.EOF) {
+			return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
+		}
+		return nil, fmt.Errorf("in cfsGetContentReader: %s", sErr)
+	}
+	return resp.Body, nil
+}
