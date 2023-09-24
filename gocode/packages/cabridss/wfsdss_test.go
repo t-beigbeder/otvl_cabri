@@ -2,6 +2,7 @@ package cabridss
 
 import (
 	"fmt"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrifsu"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"io"
@@ -429,7 +430,37 @@ func TestWfsGetMetaBase(t *testing.T) {
 }
 
 func TestWfsSetSuBase(t *testing.T) {
-	err := runWfsDssTest(t, func(tfs *testfs.Fs, dss Dss) error {
+	err := runWfsDssTest(t, func(tfs *testfs.Fs, dss Dss) (err error) {
+		if err = cabrifsu.DisableWrite(dss.GetAfs(), ufpath.Join(tfs.Path(), "a.txt"), false); err != nil {
+			return err
+		}
+		var m IMeta
+		if m, err = dss.GetMeta("a.txt", true); err != nil || m.GetAcl()[0].Rights.Write {
+			return fmt.Errorf("GetMeta %v %v", m, err)
+		}
+		if err = dss.SuEnableWrite("a.txt"); err == nil {
+			return fmt.Errorf("SuEnableWrite should fail with not in su mode")
+		}
+		dss.SetSu()
+		if err = dss.SuEnableWrite("a.txt"); err == nil {
+			return err
+		}
+		if m, err = dss.GetMeta("a.txt", true); err != nil || !m.GetAcl()[0].Rights.Write {
+			return fmt.Errorf("GetMeta %v %v", m, err)
+		}
+		if err = os.MkdirAll(ufpath.Join(tfs.Path(), "e", "se"), 0755); err != nil {
+			return err
+		}
+		if err = tfs.RandTextFile("e/se/c2éà.txt", 1); err != nil {
+			return err
+		}
+		if err = dss.SuEnableWrite("e/se/c2éà.txt"); err == nil {
+			return err
+		}
+		if m, err = dss.GetMeta("e/se/c2éà.txt", true); err != nil || !m.GetAcl()[0].Rights.Write {
+			return fmt.Errorf("GetMeta %v %v", m, err)
+		}
+		_ = m
 		return nil
 	})
 	if err != nil {

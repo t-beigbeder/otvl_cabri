@@ -282,3 +282,16 @@ func cfsGetMeta(apc WebApiClient, npath string, getCh bool) (meta IMeta, err err
 	meta = gmo.MetaOut
 	return
 }
+
+func cfsSuEnableWrite(apc WebApiClient, npath string) (err error) {
+	var rer mError
+	epath := url.PathEscape(npath)
+	_, err = apc.SimpleDoAsJson(http.MethodPut, apc.Url()+"wfsSuEnableWrite/"+epath, nil, &rer)
+	if err != nil {
+		return fmt.Errorf("in cfsSuEnableWrite: %w", err)
+	}
+	if rer.Error != "" {
+		return fmt.Errorf("in cfsSuEnableWrite: %s", rer.Error)
+	}
+	return
+}

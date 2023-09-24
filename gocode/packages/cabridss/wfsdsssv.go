@@ -168,6 +168,20 @@ func sfsGetMetaRoot(c echo.Context) error {
 	return sfsGetMetaWhatever(c, "")
 }
 
+func sfsSuEnableWrite(c echo.Context) error {
+	var (
+		err   error
+		npath string
+	)
+	if err = echo.PathParamsBinder(c).String("npath", &npath).BindError(); err != nil {
+		return NewServerErr("sfsSuEnableWrite", err)
+	}
+	npath, err = url.PathUnescape(npath)
+	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
+	dss.SetSu() // FIXME: only if enabled by server
+	return c.JSON(http.StatusOK, err2mError(dss.SuEnableWrite(npath)))
+}
+
 func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {
 	dss := configs[root].(WfsDssServerConfig).Dss
 	_ = dss
@@ -181,6 +195,7 @@ func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	e.DELETE(root+"wfsRemove/:npath", sfsRemove)
 	e.GET(root+"wfsGetMeta/:npath", sfsGetMeta)
 	e.GET(root+"wfsGetMeta/", sfsGetMetaRoot)
+	e.PUT(root+"wfsSuEnableWrite/:npath", sfsSuEnableWrite)
 	return nil
 }
 

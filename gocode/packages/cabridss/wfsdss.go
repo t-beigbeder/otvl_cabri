@@ -16,6 +16,7 @@ type wfsDssImpl struct {
 	// like webDssImpl
 	apc     WebApiClient
 	reducer plumber.Reducer
+	su      bool
 }
 
 func (wdi *wfsDssImpl) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
@@ -136,19 +137,19 @@ func (wdi *wfsDssImpl) GetMeta(npath string, getCh bool) (meta IMeta, err error)
 }
 
 func (wdi *wfsDssImpl) SetCurrentTime(time int64) {
-	panic("implement me")
+	panic("not (yet) implemented")
 }
 
 func (wdi *wfsDssImpl) SetMetaMockCbs(cbs *MetaMockCbs) {
-	panic("implement me")
+	panic("not (yet) implemented")
 }
 
 func (wdi *wfsDssImpl) SetAfs(tfs afero.Fs) {
-	panic("implement me")
+	panic("not (yet) implemented")
 }
 
 func (wdi *wfsDssImpl) GetAfs() afero.Fs {
-	panic("implement me")
+	return appFs
 }
 
 func (wdi *wfsDssImpl) Close() error {
@@ -158,14 +159,27 @@ func (wdi *wfsDssImpl) Close() error {
 	return nil
 }
 
-func (wdi *wfsDssImpl) SetSu() {
-	//TODO implement me
-	panic("implement me")
-}
+func (wdi *wfsDssImpl) SetSu() { wdi.su = true }
 
-func (wdi *wfsDssImpl) SuEnableWrite(npath string) error {
-	//TODO implement me
-	panic("implement me")
+func (wdi *wfsDssImpl) SuEnableWrite(npath string) (err error) {
+	if !wdi.su {
+		return fmt.Errorf("in SuEnableWrite: not in su mode")
+	}
+	if wdi.reducer == nil {
+		return cfsSuEnableWrite(wdi.apc, npath)
+	}
+	if err = wdi.reducer.Launch(
+		fmt.Sprintf("SuEnableWrite %s", npath),
+		func() error {
+			var iErr error
+			if iErr = cfsSuEnableWrite(wdi.apc, npath); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
 }
 
 // NewWfsDss opens a web client for a remote "fsy" DSS (data storage system)
