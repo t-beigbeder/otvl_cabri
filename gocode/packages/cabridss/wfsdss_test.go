@@ -170,6 +170,10 @@ func TestWfsDssLsnsBase(t *testing.T) {
 		if err != nil || len(children3) != 3 {
 			return fmt.Errorf("TestWfsDssLsnsBase failed with error %v or children %v", err, children3)
 		}
+		_, err = dss.Lsns("d2/d3/nok")
+		if err == nil {
+			return fmt.Errorf("TestWfsDssLsnsBase should fail with error no such ns")
+		}
 		return nil
 	})
 	if err != nil {

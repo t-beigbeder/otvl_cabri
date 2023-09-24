@@ -85,7 +85,7 @@ func (wdi *wfsDssImpl) GetContentReader(npath string) (rc io.ReadCloser, err err
 		return cfsGetContentReader(wdi.apc, npath)
 	}
 	if err = wdi.reducer.Launch(
-		fmt.Sprintf("GetContentWriter %s", npath),
+		fmt.Sprintf("GetContentReader %s", npath),
 		func() error {
 			var iErr error
 			if rc, iErr = cfsGetContentReader(wdi.apc, npath); iErr != nil {
@@ -99,14 +99,40 @@ func (wdi *wfsDssImpl) GetContentReader(npath string) (rc io.ReadCloser, err err
 
 }
 
-func (wdi *wfsDssImpl) Remove(npath string) error {
-	//TODO implement me
-	panic("implement me")
+func (wdi *wfsDssImpl) Remove(npath string) (err error) {
+	if wdi.reducer == nil {
+		return cfsRemove(wdi.apc, npath)
+	}
+	if err = wdi.reducer.Launch(
+		fmt.Sprintf("Lsns %s", npath),
+		func() error {
+			var iErr error
+			if iErr = cfsRemove(wdi.apc, npath); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
 }
 
-func (wdi *wfsDssImpl) GetMeta(npath string, getCh bool) (IMeta, error) {
-	//TODO implement me
-	panic("implement me")
+func (wdi *wfsDssImpl) GetMeta(npath string, getCh bool) (meta IMeta, err error) {
+	if wdi.reducer == nil {
+		return cfsGetMeta(wdi.apc, npath, getCh)
+	}
+	if err = wdi.reducer.Launch(
+		fmt.Sprintf("GetMeta %s", npath),
+		func() error {
+			var iErr error
+			if meta, iErr = cfsGetMeta(wdi.apc, npath, getCh); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
 }
 
 func (wdi *wfsDssImpl) SetCurrentTime(time int64) {

@@ -121,6 +121,51 @@ func sfsGetContentReader(c echo.Context) error {
 	return nil
 }
 
+func sfsRemove(c echo.Context) error {
+	var (
+		err   error
+		npath string
+	)
+	if err = echo.PathParamsBinder(c).String("npath", &npath).BindError(); err != nil {
+		return NewServerErr("sfsRemove", err)
+	}
+	npath, err = url.PathUnescape(npath)
+	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
+	return c.JSON(http.StatusOK, err2mError(dss.Remove(npath)))
+}
+
+func sfsGetMetaWhatever(c echo.Context, npath string) error {
+	npath, err := url.PathUnescape(npath)
+	var getCh bool
+	if err = echo.QueryParamsBinder(c).Bool("getCh", &getCh).BindError(); err != nil {
+		return NewServerErr("sfsGetMetaWhatever", err)
+	}
+	var gm mfsGetMetaOut
+	if err != nil {
+		gm.Error = err.Error()
+		return c.JSON(http.StatusOK, &gm)
+	}
+	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
+	mo, err := dss.GetMeta(npath, getCh)
+	gm.MetaOut = mo.(Meta)
+	if err != nil {
+		gm.Error = err.Error()
+	}
+	return c.JSON(http.StatusOK, &gm)
+}
+
+func sfsGetMeta(c echo.Context) error {
+	npath := ""
+	if err := echo.PathParamsBinder(c).String("npath", &npath).BindError(); err != nil {
+		return NewServerErr("sfsGetMeta", err)
+	}
+	return sfsGetMetaWhatever(c, npath)
+}
+
+func sfsGetMetaRoot(c echo.Context) error {
+	return sfsGetMetaWhatever(c, "")
+}
+
 func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]interface{}) error {
 	dss := configs[root].(WfsDssServerConfig).Dss
 	_ = dss
@@ -131,6 +176,9 @@ func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	e.GET(root+"wfsLsns/", sfsLsnsRoot)
 	e.POST(root+"wfsGetContentWriter", sfsGetContentWriter)
 	e.GET(root+"wfsGetContentReader/:npath", sfsGetContentReader)
+	e.DELETE(root+"cfsRemove/:npath", sfsRemove)
+	e.GET(root+"wfsGetMeta/:npath", sfsGetMeta)
+	e.GET(root+"wfsGetMeta/", sfsGetMetaRoot)
 	return nil
 }
 

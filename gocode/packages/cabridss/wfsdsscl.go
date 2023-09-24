@@ -29,6 +29,11 @@ type mfsGetContentWriterIn struct {
 	ACL   []ACLEntry `json:"acl"`
 }
 
+type mfsGetMetaOut struct {
+	mError
+	MetaOut Meta `json:"meta"`
+}
+
 func cfsInitialize(apc WebApiClient) error {
 	var out mError
 	_, err := apc.SimpleDoAsJson(http.MethodGet, apc.Url()+"wfsInitialize", nil, &out)
@@ -246,4 +251,33 @@ func cfsGetContentReader(apc WebApiClient, npath string) (io.ReadCloser, error) 
 		return nil, fmt.Errorf("in cfsGetContentReader: %s", sErr)
 	}
 	return resp.Body, nil
+}
+
+func cfsRemove(apc WebApiClient, npath string) (err error) {
+	var rer mError
+	epath := url.PathEscape(npath)
+	_, err = apc.SimpleDoAsJson(http.MethodDelete, apc.Url()+"wfsRemove/"+epath, nil, &rer)
+	if err != nil {
+		return fmt.Errorf("in cfsRemove: %w", err)
+	}
+	if rer.Error != "" {
+		return fmt.Errorf("in cfsRemove: %s", rer.Error)
+	}
+	return
+}
+
+func cfsGetMeta(apc WebApiClient, npath string, getCh bool) (meta IMeta, err error) {
+	var rer mError
+	uPath := fmt.Sprintf("wfsGetMeta/%s", url.PathEscape(npath))
+	if getCh {
+		uPath += "&getCh"
+	}
+	_, err = apc.SimpleDoAsJson(http.MethodGet, apc.Url()+uPath, nil, &rer)
+	if err != nil {
+		return nil, fmt.Errorf("in cfsGetMeta: %w", err)
+	}
+	if rer.Error != "" {
+		return nil, fmt.Errorf("in cfsGetMeta: %s", rer.Error)
+	}
+	return
 }
