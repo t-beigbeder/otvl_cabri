@@ -103,6 +103,7 @@ func sfsGetContentReader(c echo.Context) error {
 	if err := echo.PathParamsBinder(c).String("npath", &npath).BindError(); err != nil {
 		return NewServerErr("sfsGetContentReader", err)
 	}
+	npath, err := url.PathUnescape(npath)
 	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
 	resp := c.Response()
 	resp.Writer.Header().Set(echo.HeaderContentType, echo.MIMEOctetStream)

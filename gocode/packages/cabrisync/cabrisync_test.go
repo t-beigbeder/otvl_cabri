@@ -551,6 +551,53 @@ func TestSynchronizeBasicFsyWebOlf(t *testing.T) {
 	runTestSynchronizeBasic(t, tfsl, dssl, dssr, true, false)
 }
 
+func TestSynchronizeBasicFsyWebFsy(t *testing.T) {
+	optionalSkip(t)
+	tfsl, err := testfs.CreateFs("TestSynchronizeBasicFsyWebFsyLeft", basicTfsStartup)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfsl.Delete()
+	dssl, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, tfsl.Path())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	cbs := mockfs.MockCbs{}
+	dssl.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
+
+	tfsr, err := testfs.CreateFs("TestSynchronizeBasicFsyWebFsyRight", nil)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfsr.Delete()
+
+	rdssr, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, tfsr.Path())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	sv, err := createWfsDssServer(":3000", "", rdssr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sv.Shutdown()
+
+	dssr, err := cabridss.NewWfsDss(cabridss.WfsDssConfig{
+		DssBaseConfig: cabridss.DssBaseConfig{WebPort: "3000"},
+		NoClientLimit: false,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	//dssr, err := cabridss.CreateOlfDss(cabridss.OlfConfig{DssBaseConfig: cabridss.DssBaseConfig{LocalPath: tfsr.Path()}, Root: tfsr.Path(), Size: "s"})
+	//if err != nil {
+	//	t.Fatal(err.Error())
+	//}
+	//dssr.SetAfs(mockfs.New(afero.NewOsFs(), &cbs))
+
+	runTestSynchronizeBasic(t, tfsl, dssl, dssr, true, false)
+}
+
 func runTestSynchronizeWith(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb func(*testfs.Fs) (cabridss.HDss, error)) error {
 	optionalSkip(t)
 	tfsl, err := testfs.CreateFs(fmt.Sprintf("%sLeft", t.Name()), basicTfsStartup)

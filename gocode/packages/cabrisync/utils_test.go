@@ -23,6 +23,14 @@ func createWebDssServer(addr, root string, params cabridss.CreateNewParams) (cab
 	return s, err
 }
 
+func createWfsDssServer(addr, root string, dss cabridss.Dss) (cabridss.WebServer, error) {
+	httpConfig := cabridss.WebServerConfig{Addr: addr, HasLog: false}
+	return cabridss.NewWfsDssServer(root, cabridss.WfsDssServerConfig{
+		WebServerConfig: httpConfig,
+		Dss:             dss,
+	})
+}
+
 func optionalSleep(t *testing.T) {
 	if os.Getenv("CABRISYNC_FAST_TESTS") == "" {
 		//fmt.Println("Sleeping 1.1s to check mtimes correctness")
@@ -41,13 +49,14 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestSynchronizeBasicFsyObs" ||
 			t.Name() == "TestSynchronizeBasicFsyObsACL" ||
 			t.Name() == "TestSynchronizeBasicFsyWebOlf" ||
+			t.Name() == "TestSynchronizeBasicFsyWebFsy1" ||
 			t.Name() == "TestSynchronizeBasicFsyEDssApiOlf" ||
 			t.Name() == "TestSynchronizeBasicFsyEDssWebOlf" ||
 			t.Name() == "TestSynchronizeBasicFsyEDssApiObs" ||
 			t.Name() == "TestSynchroInconsistentChildren" ||
 			t.Name() == "TestLoopSynchroInconsistentChildren" ||
-			t.Name() == "TestMappedAcl1" ||
-			t.Name() == "TestMappedEncryptedAcl1" ||
+			t.Name() == "TestMappedAcl" ||
+			t.Name() == "TestMappedEncryptedAcl" ||
 			t.Name() == "TestSynchronizeArboTiny" ||
 			t.Name() == "TestSynchronizeArboSmfPix" ||
 			t.Name() == "TestSynchronizeArboObsPix" ||
