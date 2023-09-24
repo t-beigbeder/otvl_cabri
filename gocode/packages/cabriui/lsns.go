@@ -7,6 +7,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -78,6 +79,11 @@ func lsns(ctx context.Context, dssPath string) error {
 				DssBaseConfig: cabridss.DssBaseConfig{ReducerLimit: lsnsOpts(ctx).RedLimit},
 			},
 			vars.root); err != nil {
+			return err
+		}
+	} else if strings.HasPrefix(vars.dssType, "wfsapi+") {
+		if vars.dss, err = NewWfsDss[LsnsOptions, *LsnsVars](ctx, nil,
+			NewHDssArgs{Lasttime: lsnsOpts(ctx).getLastTime()}); err != nil {
 			return err
 		}
 	} else if vars.dss, err = NewHDss[LsnsOptions, *LsnsVars](ctx, nil,

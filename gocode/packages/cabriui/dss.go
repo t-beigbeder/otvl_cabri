@@ -6,6 +6,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
+	"strings"
 	"time"
 )
 
@@ -147,6 +148,10 @@ func dssMknsRun(ctx context.Context) error {
 	}
 	if dssType == "fsy" {
 		if dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, root); err != nil {
+			return err
+		}
+	} else if strings.HasPrefix(dssType, "wfsapi+") {
+		if dss, err = NewWfsDss[DSSMknsOptions, *DSSMknsVars](ctx, nil, NewHDssArgs{}); err != nil {
 			return err
 		}
 	} else if dss, err = NewHDss[DSSMknsOptions, *DSSMknsVars](ctx, nil, NewHDssArgs{}); err != nil {

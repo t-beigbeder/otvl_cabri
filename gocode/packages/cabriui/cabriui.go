@@ -134,6 +134,8 @@ var dssTypes = map[string]dssTypeCap{
 	"webapi+https":  {client: true, webApi: true, isTls: true},
 	"xwebapi+http":  {client: true, webApi: true, encrypted: true},
 	"xwebapi+https": {client: true, webApi: true, isTls: true, encrypted: true},
+	"wfsapi+http":   {client: false, webApi: true},
+	"wfsapi+https":  {client: false, webApi: true, isTls: true},
 }
 
 func CheckDssPath(dssPath string) (dssType, root, npath string, err error) {
@@ -176,8 +178,8 @@ func CheckDssUrlMapping(dum string) (dssType, addr, localPath, root string, isTl
 		return
 	}
 	dssType = frags[0][:strings.LastIndex(frags[0], "+http")]
-	dtc, ok := dssTypes[dssType]
-	if !ok || !dtc.client {
+	_, ok := dssTypes[dssType]
+	if !ok {
 		err = fmt.Errorf("DSS type %s is not (yet) supported", dssType)
 	}
 	rFrags := strings.Split(frags[1], "/")
@@ -315,6 +317,30 @@ func GetWebConfig(opts BaseOptions, index int, isTls bool, addr, root string, ur
 	bc.WebPort = port
 	bc.WebRoot = root
 	return cabridss.WebDssConfig{DssBaseConfig: bc}, nil
+}
+
+func GetWfsConfig(opts BaseOptions, index int, isTls bool, addr, root string, ure UiRunEnv) (cabridss.WfsDssConfig, error) {
+	bc, err := GetBaseConfig(opts, index, "", "", ure.MasterPassword)
+	if err != nil {
+		return cabridss.WfsDssConfig{}, err
+	}
+	var port string
+	frags := strings.Split(addr, ":")
+	host := frags[0]
+	if len(frags) > 1 {
+		port = frags[1]
+	}
+	if isTls {
+		bc.WebProtocol = "https"
+		bc.TlsCert = opts.TlsCert
+		bc.TlsNoCheck = opts.TlsNoCheck
+		bc.BasicAuthUser = ure.BasicAuthUser
+		bc.BasicAuthPassword = ure.BasicAuthPassword
+	}
+	bc.WebHost = host
+	bc.WebPort = port
+	bc.WebRoot = root
+	return cabridss.WfsDssConfig{DssBaseConfig: bc}, nil
 }
 
 func MutualExcludeFlags(names []string, flags ...bool) error {

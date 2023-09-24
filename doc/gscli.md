@@ -230,6 +230,20 @@ And another user will retrieve it:
 You will generally want to control access to data when using DSS in multi-user mode.
 ACL (Access Control List) can be used for such a purpose and their basic use is explained on a dedicated [page](acl.md).
 
+It may sometimes be useful to access a remote native filesystem ("fsy" DSS)
+using cabri.
+The webapi is different for "fsy" DSS and for object or object-like DSS.
+The server will take care of it because it has the information,
+for instance as in:
+
+    $ cabri webapi fsy+http://localhost:3000/home/guest/simple_directory@simple_demo &
+
+but on the client-side, the usual `webapi+` type cannot be used
+because it is intended to access a remote object or object-like DSS;
+use the `wfsapi+` type prefix instead, as in:
+
+    $ cabri cli lsns wfsapi+http://localhost:3000/simple_demo@
+
 ## Encrypting your data for secure storage on unsafe media
 
 If your data is confidential, and you have to store it on unsafe media

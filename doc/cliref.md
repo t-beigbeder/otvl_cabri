@@ -33,6 +33,9 @@ metadata and data files are stored.
 - webapi+http, webapi+https: remote access to object or object-like DSS,
 in which case `<location>` takes the form `://<host>:<port>/<url-path>`
   - example: `webapi+http://localhost:3000/demo`
+- wfsapi+http, wfsapi+https: remote access to native filesystem DSS,
+  in which case `<location>` takes the form `://<host>:<port>/<url-path>`
+  - example: `webapi+http://localhost:3000/demo`
 - xolf, xobs and xsmf stand for encrypted DSS of the corresponding type
 - xwebapi+http, xwebapi+https must be used as well if the remote DSS is encrypted
 
