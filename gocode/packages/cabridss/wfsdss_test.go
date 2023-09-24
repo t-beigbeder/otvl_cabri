@@ -317,3 +317,122 @@ func TestWfsDssGetContentReaderBase(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestWfsDssRemoveBase(t *testing.T) {
+	err := runWfsDssTest(t, func(tfs *testfs.Fs, dss Dss) (err error) {
+		if err = dss.Remove("/z"); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with params error")
+		}
+		if err = dss.Remove("//"); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with params error")
+		}
+		if err = dss.Remove("/"); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with params error")
+		}
+		if err = dss.Remove("nosuchdir/"); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with params error")
+		}
+		if err = dss.Remove("nosuchfile"); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with params error")
+		}
+		if err = dss.Remove("e/se"); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with is a dir error")
+		}
+		if err = dss.Remove("e/se/c1.txt/"); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with is a file error")
+		}
+		if err = os.MkdirAll(ufpath.Join(tfs.Path(), "e", "se"), 0755); err != nil {
+			return err
+		}
+		if err = tfs.RandTextFile("e/se/c2.txt", 1); err != nil {
+			return err
+		}
+		if err = dss.Remove("e/se/c2.txt"); err != nil {
+			t.Fatalf("TestWfsDssRemoveBase %v", err)
+		}
+		if _, err = os.Stat(ufpath.Join(tfs.Path(), "e/se/c2.txt")); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with no such file e/se/c2.txt")
+		}
+		if err = tfs.RandTextFile("e/se/c2éà.txt", 1); err != nil {
+			return err
+		}
+		if err = dss.Remove("e/se/c2éà.txt"); err != nil {
+			t.Fatalf("TestWfsDssRemoveBase %v", err)
+		}
+		if err = dss.Remove("e/"); err != nil {
+			t.Fatalf("TestWfsDssRemoveBase %v", err)
+		}
+		if _, err = os.Stat(ufpath.Join(tfs.Path(), "e/se/c1.txt")); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with no such file e/se/c2.txt")
+		}
+		if _, err = os.Stat(ufpath.Join(tfs.Path(), "e/se/")); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with no such dir e/se/")
+		}
+		if _, err = os.Stat(ufpath.Join(tfs.Path(), "e/")); err == nil {
+			t.Fatalf("TestWfsDssRemoveBase should fail with no such dir e/")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWfsGetMetaBase(t *testing.T) {
+	err := runWfsDssTest(t, func(tfs *testfs.Fs, dss Dss) (err error) {
+		if _, err = dss.GetMeta("/z", true); err == nil {
+			t.Fatalf("TestWfsGetMetaBase should fail with params error")
+		}
+		if _, err = dss.GetMeta("//", true); err == nil {
+			t.Fatalf("TestWfsGetMetaBase should fail with params error")
+		}
+		if _, err = dss.GetMeta("nosuchdir/", true); err == nil {
+			t.Fatalf("TestWfsGetMetaBase should fail with params error")
+		}
+		if _, err = dss.GetMeta("nosuchfile", true); err == nil {
+			t.Fatalf("TestWfsGetMetaBase should fail with params error")
+		}
+		if _, err = dss.GetMeta("e/se", true); err == nil {
+			t.Fatalf("TestWfsGetMetaBase should fail with is a dir error")
+		}
+		if _, err = dss.GetMeta("e/se/c1.txt/", true); err == nil {
+			t.Fatalf("TestWfsGetMetaBase should fail with is a file error")
+		}
+		var m IMeta
+		if m, err = dss.GetMeta("d/", true); err != nil {
+			return err
+		}
+		if m, err = dss.GetMeta("d/b.txt", true); err != nil {
+			return err
+		}
+		if m, err = dss.GetMeta("d/b.txt", false); err != nil {
+			return err
+		}
+		if m, err = dss.GetMeta("", false); err != nil {
+			return err
+		}
+		if err = os.MkdirAll(ufpath.Join(tfs.Path(), "e", "se"), 0755); err != nil {
+			return err
+		}
+		if err = tfs.RandTextFile("e/se/c2éà.txt", 1); err != nil {
+			return err
+		}
+		if m, err = dss.GetMeta("e/se/c2éà.txt", false); err != nil {
+			return err
+		}
+		_ = m
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWfsSetSuBase(t *testing.T) {
+	err := runWfsDssTest(t, func(tfs *testfs.Fs, dss Dss) error {
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}

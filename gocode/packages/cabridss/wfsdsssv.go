@@ -147,7 +147,9 @@ func sfsGetMetaWhatever(c echo.Context, npath string) error {
 	}
 	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
 	mo, err := dss.GetMeta(npath, getCh)
-	gm.MetaOut = mo.(Meta)
+	if mo != nil {
+		gm.MetaOut = mo.(Meta)
+	}
 	if err != nil {
 		gm.Error = err.Error()
 	}
@@ -176,7 +178,7 @@ func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	e.GET(root+"wfsLsns/", sfsLsnsRoot)
 	e.POST(root+"wfsGetContentWriter", sfsGetContentWriter)
 	e.GET(root+"wfsGetContentReader/:npath", sfsGetContentReader)
-	e.DELETE(root+"cfsRemove/:npath", sfsRemove)
+	e.DELETE(root+"wfsRemove/:npath", sfsRemove)
 	e.GET(root+"wfsGetMeta/:npath", sfsGetMeta)
 	e.GET(root+"wfsGetMeta/", sfsGetMetaRoot)
 	return nil

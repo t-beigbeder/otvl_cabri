@@ -267,17 +267,18 @@ func cfsRemove(apc WebApiClient, npath string) (err error) {
 }
 
 func cfsGetMeta(apc WebApiClient, npath string, getCh bool) (meta IMeta, err error) {
-	var rer mError
+	var gmo *mfsGetMetaOut
 	uPath := fmt.Sprintf("wfsGetMeta/%s", url.PathEscape(npath))
 	if getCh {
-		uPath += "&getCh"
+		uPath += "?getCh=true"
 	}
-	_, err = apc.SimpleDoAsJson(http.MethodGet, apc.Url()+uPath, nil, &rer)
+	_, err = apc.SimpleDoAsJson(http.MethodGet, apc.Url()+uPath, nil, &gmo)
 	if err != nil {
 		return nil, fmt.Errorf("in cfsGetMeta: %w", err)
 	}
-	if rer.Error != "" {
-		return nil, fmt.Errorf("in cfsGetMeta: %s", rer.Error)
+	if gmo.Error != "" {
+		return nil, fmt.Errorf("in cfsGetMeta: %s", gmo.Error)
 	}
+	meta = gmo.MetaOut
 	return
 }
