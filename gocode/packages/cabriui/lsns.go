@@ -83,7 +83,7 @@ func lsns(ctx context.Context, dssPath string) error {
 		}
 	} else if strings.HasPrefix(vars.dssType, "wfsapi+") {
 		if vars.dss, err = NewWfsDss[LsnsOptions, *LsnsVars](ctx, nil,
-			NewHDssArgs{Lasttime: lsnsOpts(ctx).getLastTime()}); err != nil {
+			NewHDssArgs{}); err != nil {
 			return err
 		}
 	} else if vars.dss, err = NewHDss[LsnsOptions, *LsnsVars](ctx, nil,
