@@ -98,6 +98,15 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (cab
 			return nil, "", ure, err
 		}
 		ure.DefaultSyncUser = fmt.Sprintf("x-uid:%d", os.Getuid())
+	} else if strings.HasPrefix(dssType, "wfsapi+") {
+		dx := 0
+		if isRight {
+			dx = 1
+		}
+		if dss, err = NewWfsDss[SyncOptions, *SyncVars](ctx, nil,
+			NewHDssArgs{DssIx: dx}); err != nil {
+			return nil, "", ure, err
+		}
 	} else {
 		dx := 0
 		if isRight {
