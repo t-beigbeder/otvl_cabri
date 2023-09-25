@@ -107,6 +107,7 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (cab
 			NewHDssArgs{DssIx: dx}); err != nil {
 			return nil, "", ure, err
 		}
+		ure.DefaultSyncUser = fmt.Sprintf("x-uid:%d", os.Getuid())
 	} else {
 		dx := 0
 		if isRight {
