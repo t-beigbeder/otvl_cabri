@@ -442,7 +442,7 @@ func TestWfsSetSuBase(t *testing.T) {
 			return fmt.Errorf("SuEnableWrite should fail with not in su mode")
 		}
 		dss.SetSu()
-		if err = dss.SuEnableWrite("a.txt"); err == nil {
+		if err = dss.SuEnableWrite("a.txt"); err != nil {
 			return err
 		}
 		if m, err = dss.GetMeta("a.txt", true); err != nil || !m.GetAcl()[0].Rights.Write {
@@ -451,17 +451,26 @@ func TestWfsSetSuBase(t *testing.T) {
 		if err = os.MkdirAll(ufpath.Join(tfs.Path(), "e", "se"), 0755); err != nil {
 			return err
 		}
+		if err = dss.SuEnableWrite("e/se/"); err != nil {
+			return err
+		}
+		if err = dss.SuEnableWrite(""); err != nil {
+			return err
+		}
 		if err = tfs.RandTextFile("e/se/c2éà.txt", 1); err != nil {
 			return err
 		}
-		if err = dss.SuEnableWrite("e/se/c2éà.txt"); err == nil {
+		if err = dss.SuEnableWrite("e/se/c2éà.txt"); err != nil {
 			return err
 		}
 		if m, err = dss.GetMeta("e/se/c2éà.txt", true); err != nil || !m.GetAcl()[0].Rights.Write {
 			return fmt.Errorf("GetMeta %v %v", m, err)
 		}
+		if err = dss.SuEnableWrite(""); err != nil {
+			return err
+		}
 		_ = m
-		return nil
+		return err
 	})
 	if err != nil {
 		t.Fatal(err)

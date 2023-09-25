@@ -326,6 +326,21 @@ test_basic_sync_xwobs() {
   true
 }
 
+test_basic_sync_wfs() {
+  info test_basic_sync_wfs && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  wfs=xobs:${TD}/wfs && \
+  mkdir $TD/wfs $TD/wc && \
+  run_bg_silent cabri webapi --cdir $TD/wc fsy+http://localhost:3000/$TD/wfs@wfs && \
+  sleep 1 && \
+  wfs=wfsapi+http://localhost:3000/wfs && \
+  run_basic_sync $fsy $wfs && \
+  run_silent kill $pidc && \
+  true
+}
+
 test_advanced_sync_olf() {
   info test_advanced_sync_olf && \
   setup_test && \
@@ -734,6 +749,7 @@ test_basic_sync() {
   test_basic_sync_wobs && \
   test_basic_sync_xwolf && \
   test_basic_sync_xwobs && \
+  test_basic_sync_wfs && \
   true
 }
 

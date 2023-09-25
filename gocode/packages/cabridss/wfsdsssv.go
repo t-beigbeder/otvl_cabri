@@ -196,6 +196,7 @@ func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	e.DELETE(root+"wfsRemove/:npath", sfsRemove)
 	e.GET(root+"wfsGetMeta/:npath", sfsGetMeta)
 	e.GET(root+"wfsGetMeta/", sfsGetMetaRoot)
+	e.PUT(root+"wfsSuEnableWrite/", sfsSuEnableWrite)
 	e.PUT(root+"wfsSuEnableWrite/:npath", sfsSuEnableWrite)
 	return nil
 }
