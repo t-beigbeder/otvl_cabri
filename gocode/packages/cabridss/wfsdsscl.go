@@ -108,7 +108,6 @@ func newCfsClientWriter() *cfsClientWriter {
 func (ccw *cfsClientWriter) Write(p []byte) (n int, err error) {
 	<-ccw.wrsc
 	ccw.buffer = make([]byte, len(p))
-	fmt.Printf("cfsClientWriter.Write %p/%d/%d\n", p, len(p), cap(p))
 	ccw.xBuf = 0
 	copy(ccw.buffer, p)
 	ccw.wwsc <- struct{}{}
@@ -116,12 +115,12 @@ func (ccw *cfsClientWriter) Write(p []byte) (n int, err error) {
 }
 
 func (ccw *cfsClientWriter) Close() error {
-	ccw.buffer = nil
-	ccw.xBuf = 0
 	close(ccw.wwsc)
 	for !ccw.readerDone {
 		<-ccw.wrsc
 	}
+	ccw.buffer = nil
+	ccw.xBuf = 0
 	return ccw.readerErr
 }
 
@@ -144,10 +143,11 @@ func (ccwr *cfsClientWriterReader) Read(p []byte) (n int, err error) {
 	if n == len(p) {
 		return
 	}
-	<-ccwr.ccw.wwsc
+	if ccwr.ccw.xBuf == 0 {
+		<-ccwr.ccw.wwsc
+	}
 	l := len(ccwr.ccw.buffer) - ccwr.ccw.xBuf
-	l0 := l
-	c0 := cap(p)
+
 	if n+l > len(p) {
 		l = len(p) - n
 	}
@@ -155,15 +155,13 @@ func (ccwr *cfsClientWriterReader) Read(p []byte) (n int, err error) {
 		err = io.EOF
 		return
 	}
-	l1 := len(ccwr.ccw.buffer)
-	c1 := cap(ccwr.ccw.buffer)
-	p1 := ccwr.ccw.buffer
-	fmt.Printf("cfsClientWriterReader read lp %p/%d/%d n %d l %d xb %d l0 %d/%d l1 %p/%d/%d\n", p, len(p), cap(p), n, l, ccwr.ccw.xBuf, l0, c0, p1, l1, c1)
 	copy(p[n:n+l], ccwr.ccw.buffer[ccwr.ccw.xBuf:ccwr.ccw.xBuf+l])
 	ccwr.ccw.xBuf += l
 	n += l
 	ccwr.offset += l
 	if ccwr.ccw.xBuf == len(ccwr.ccw.buffer) && len(ccwr.ccw.buffer) > 0 {
+		ccwr.ccw.buffer = nil
+		ccwr.ccw.xBuf = 0
 		ccwr.ccw.wrsc <- struct{}{}
 	}
 	return
