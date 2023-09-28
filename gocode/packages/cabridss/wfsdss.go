@@ -206,7 +206,6 @@ func NewWfsDss(wdc WfsDssConfig) (Dss, error) {
 	if wdc.NoClientLimit {
 		wdi.apc.SetNoLimit()
 	}
-	wdi.apc.SetNoLimit() // FIXME: remove after test
 	err = cfsInitialize(wdi.apc)
 	if err != nil {
 		return nil, fmt.Errorf("in NewWfsDss: %w", err)
