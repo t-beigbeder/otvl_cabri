@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewFsyDssOk(t *testing.T) {
+	optionalSkip(t)
 	_, err := NewFsyDss(FsyConfig{}, "/tmp")
 	if err != nil {
 		t.Fatalf("NewFsyDss failed for /tmp with error %v", err)
@@ -21,6 +22,7 @@ func TestNewFsyDssOk(t *testing.T) {
 }
 
 func TestNewFsyDssErr(t *testing.T) {
+	optionalSkip(t)
 	_, err := NewFsyDss(FsyConfig{}, "/NoSuchFileOrDirectory")
 	if err == nil {
 		t.Fatalf("NewFsyDss failed for /NoSuchFileOrDirectory")
@@ -848,7 +850,7 @@ func TestFsyDssUpdateNsBasic(t *testing.T) {
 }
 
 func TestIrregular(t *testing.T) {
-
+	optionalSkip(t)
 	startup := func(tfs *testfs.Fs) error {
 		if err := tfs.RandTextFile("a.txt", 41); err != nil {
 			return err
@@ -881,6 +883,7 @@ func TestIrregular(t *testing.T) {
 }
 
 func TestFsyStat(t *testing.T) {
+	optionalSkip(t)
 	startup := func(tfs *testfs.Fs) error {
 		if err := tfs.RandTextFile("a.txt", 41); err != nil {
 			return err

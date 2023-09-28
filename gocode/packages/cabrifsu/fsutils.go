@@ -7,6 +7,24 @@ import (
 	"os"
 )
 
+func hasFileWriteAccessNotUx(pathOrFi any) (bool, bool, error) {
+	var (
+		path string
+		fi   os.FileInfo
+		ok   bool
+		err  error
+	)
+	fi, ok = pathOrFi.(os.FileInfo)
+	if !ok {
+		path = pathOrFi.(string)
+		fi, err = os.Stat(path)
+		if err != nil {
+			return false, false, err
+		}
+	}
+	return true, fi.Mode()&(1<<7) != 0, nil
+}
+
 func doEnableWrite(afs afero.Fs, path string, fi os.FileInfo, recursive bool) error {
 	uio, rw, err := HasFileWriteAccess(fi)
 	if err != nil {

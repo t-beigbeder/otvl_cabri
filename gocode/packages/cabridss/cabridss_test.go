@@ -9,6 +9,7 @@ import (
 )
 
 func TestMetaBasic(t *testing.T) {
+	optionalSkip(t)
 	tfs, err := testfs.CreateFs("TestMetaBasic", tfsStartup)
 	if err != nil {
 		t.Error(err.Error())

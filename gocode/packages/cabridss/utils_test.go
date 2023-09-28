@@ -8,6 +8,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/mockfs"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/testfs"
 	"os"
+	"runtime"
 	"testing"
 )
 
@@ -157,7 +158,7 @@ func TestNewWriteCloserWithCb(t *testing.T) {
 	if err = wcwc.Close(); err == nil {
 		t.Fatal("should fail with error")
 	}
-	wcwc, err = NewTempFileWriteCloserWithCb(appFs, "/tmp", "ntfwcwc", func(err error, size int64, ch string, me *WriteCloserWithCb) error {
+	wcwc, err = NewTempFileWriteCloserWithCb(appFs, os.TempDir(), "ntfwcwc", func(err error, size int64, ch string, me *WriteCloserWithCb) error {
 		if err != nil || size != 24 || ch != "6b33a33017f120c522a983001abf6967" {
 			return fmt.Errorf("in TestNewWriteCloserWithCb cb: %v %d, %s", err, size, ch)
 		}
@@ -192,6 +193,17 @@ func TestNewReadCloserWithCb(t *testing.T) {
 }
 
 func optionalSkip(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		if t.Name() == "InTheBeginning" ||
+			t.Name() == "TestMetaBasic" ||
+			t.Name() == "TestNewFsyDssOk" ||
+			t.Name() == "TestNewFsyDssErr" ||
+			t.Name() == "TestIrregular" ||
+			t.Name() == "TestFsyStat" ||
+			t.Name() == "TheEnd" {
+			t.Skip(fmt.Sprintf("Skipping %s because it won't work on windows", t.Name()))
+		}
+	}
 	if os.Getenv("CABRIDSS_SKIP_DEV_TESTS") != "" {
 		if t.Name() == "InTheBeginning" ||
 			t.Name() == "TestNewObsDssBase" ||

@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"os"
+	"runtime"
 	"testing"
 )
 
@@ -75,6 +76,9 @@ func TestEnableWrite(t *testing.T) {
 }
 
 func TestSetGid(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip(fmt.Sprintf("Skipping %s because this is windows", t.Name()))
+	}
 	dir, err := os.MkdirTemp("", "TestSetgid")
 	if err != nil {
 		t.Fatal(err)
@@ -158,5 +162,43 @@ func TestSetGid(t *testing.T) {
 	}
 	if err = checkFile("dr2", false, true, true); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestSimuWin(t *testing.T) {
+	dir, err := os.MkdirTemp("", "TestSimuWin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err = os.RemoveAll(dir); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	afs := afero.NewOsFs()
+	defer EnableWrite(afs, dir, true)
+	if err = os.WriteFile(ufpath.Join(dir, "f1.txt"), []byte("content 1\n"), 0o666); err != nil {
+		t.Fatal(err)
+	}
+	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "f1.txt")); io != true || wa != true || le != nil {
+		t.Fatal(io, wa, err)
+	}
+	if err = DisableWrite(afs, ufpath.Join(dir, "f1.txt"), false); err != nil {
+		t.Fatal(err)
+	}
+	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "f1.txt")); io != true || wa != false || le != nil {
+		t.Fatal(io, wa, err)
+	}
+	if err := os.Mkdir(ufpath.Join(dir, "d1"), 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "d1")); io != true || wa != true || le != nil {
+		t.Fatal(io, wa, err)
+	}
+	if err = DisableWrite(afs, ufpath.Join(dir, "d1"), false); err != nil {
+		t.Fatal(err)
+	}
+	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "d1")); io != true || wa != false || le != nil {
+		t.Fatal(io, wa, err)
 	}
 }

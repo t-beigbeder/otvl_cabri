@@ -23,9 +23,9 @@ run_command() {
 }
 
 backup_error() {
-  btd=/tmp/betc.${test_count}.$PID
+  btd=/tmp/betc-${test_count}-$PID
   mkdir $btd
-  cp -a $TD/. $btd/
+  cp -a $BTD/. $btd/
   info "find current status here: $btd"
   return 0
 }
