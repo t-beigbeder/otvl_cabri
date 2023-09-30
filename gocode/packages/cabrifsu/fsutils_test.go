@@ -173,7 +173,7 @@ func TestSimuWin(t *testing.T) {
 	}()
 	afs := afero.NewOsFs()
 	defer EnableWrite(afs, dir, true)
-	if err = os.WriteFile(ufpath.Join(dir, "f1.txt"), []byte("content 1\n"), 0); err != nil {
+	if err = os.WriteFile(ufpath.Join(dir, "f1.txt"), []byte("content 1\n"), 0o666); err != nil {
 		t.Fatal(err)
 	}
 	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "f1.txt")); io != true || wa != true || le != nil {
@@ -185,7 +185,7 @@ func TestSimuWin(t *testing.T) {
 	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "f1.txt")); io != true || wa != false || le != nil {
 		t.Fatal(io, wa, err)
 	}
-	if err := os.Mkdir(ufpath.Join(dir, "d1"), 0); err != nil {
+	if err := os.Mkdir(ufpath.Join(dir, "d1"), 0o777); err != nil {
 		t.Fatal(err)
 	}
 	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "d1")); io != true || wa != true || le != nil {
