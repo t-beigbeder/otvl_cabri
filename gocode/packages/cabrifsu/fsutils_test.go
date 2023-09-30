@@ -160,3 +160,41 @@ func TestSetGid(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSimuWin(t *testing.T) {
+	dir, err := os.MkdirTemp("", "TestSimuWin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err = os.RemoveAll(dir); err != nil {
+			t.Fatal(err)
+		}
+	}()
+	afs := afero.NewOsFs()
+	defer EnableWrite(afs, dir, true)
+	if err = os.WriteFile(ufpath.Join(dir, "f1.txt"), []byte("content 1\n"), 0); err != nil {
+		t.Fatal(err)
+	}
+	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "f1.txt")); io != true || wa != true || le != nil {
+		t.Fatal(io, wa, err)
+	}
+	if err = DisableWrite(afs, ufpath.Join(dir, "f1.txt"), false); err != nil {
+		t.Fatal(err)
+	}
+	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "f1.txt")); io != true || wa != false || le != nil {
+		t.Fatal(io, wa, err)
+	}
+	if err := os.Mkdir(ufpath.Join(dir, "d1"), 0); err != nil {
+		t.Fatal(err)
+	}
+	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "d1")); io != true || wa != true || le != nil {
+		t.Fatal(io, wa, err)
+	}
+	if err = DisableWrite(afs, ufpath.Join(dir, "d1"), false); err != nil {
+		t.Fatal(err)
+	}
+	if io, wa, le := hasFileWriteAccessNotUx(ufpath.Join(dir, "d1")); io != true || wa != false || le != nil {
+		t.Fatal(io, wa, err)
+	}
+}

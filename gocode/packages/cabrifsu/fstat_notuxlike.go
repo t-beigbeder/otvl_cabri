@@ -3,5 +3,5 @@
 package cabrifsu
 
 func HasFileWriteAccess(pathOrFi any) (bool, bool, error) {
-	return true, true, nil
+	return hasFileWriteAccessNotUx(pathOrFi)
 }
