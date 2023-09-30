@@ -230,6 +230,8 @@ And another user will retrieve it:
 You will generally want to control access to data when using DSS in multi-user mode.
 ACL (Access Control List) can be used for such a purpose and their basic use is explained on a dedicated [page](acl.md).
 
+## Remote HTTP server for native filesystem DSS
+
 It may sometimes be useful to access a remote native filesystem ("fsy" DSS)
 using cabri.
 The webapi is different for "fsy" DSS and for object or object-like DSS.
