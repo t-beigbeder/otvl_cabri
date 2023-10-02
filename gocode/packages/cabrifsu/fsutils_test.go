@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"os"
+	"runtime"
 	"testing"
 )
 
@@ -75,6 +76,9 @@ func TestEnableWrite(t *testing.T) {
 }
 
 func TestSetGid(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip(fmt.Sprintf("Skipping %s because this is windows", t.Name()))
+	}
 	dir, err := os.MkdirTemp("", "TestSetgid")
 	if err != nil {
 		t.Fatal(err)

@@ -22,9 +22,6 @@ func hasFileWriteAccessNotUx(pathOrFi any) (bool, bool, error) {
 			return false, false, err
 		}
 	}
-	mode := fi.Mode()
-	_ = mode
-	fmt.Printf("%o %O\n", mode, mode)
 	return true, fi.Mode()&(1<<7) != 0, nil
 }
 
