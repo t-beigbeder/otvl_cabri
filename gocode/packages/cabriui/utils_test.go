@@ -20,6 +20,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestSynchronizeArboNoFear" ||
 			t.Name() == "TestSynchronizeArboBiDir" ||
 			t.Name() == "TestSynchronizeToObs" ||
+			t.Name() == "TestCheckUiAclMap" ||
 			t.Name() == "theEnd" {
 			t.Skip(fmt.Sprintf("Skipping %s because you set CABRIUI_SKIP_DEV_TESTS", t.Name()))
 		}

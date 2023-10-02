@@ -520,6 +520,7 @@ func TestSynchronizeToObs(t *testing.T) {
 }
 
 func TestCheckUiAclMap(t *testing.T) {
+	optionalSkip(t)
 	lm, rm, err := uiSplitMapEntry("x-uid:1000:")
 	if err != nil {
 		t.Fatal(err)
