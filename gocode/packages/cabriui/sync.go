@@ -123,17 +123,49 @@ func str2dss(ctx context.Context, dssPath string, isRight bool, obsIx *int) (cab
 	return dss, path, ure, nil
 }
 
+func uiSplitMapEntry(uim string) (lu, ru string, err error) {
+	err = fmt.Errorf("ACL user mapping %s has not the form <left-user:right-user>", uim)
+	uimes := strings.Split(uim, ":")
+	if strings.HasPrefix(uim, "x-uid") || strings.HasPrefix(uim, "x-gid") {
+		if strings.Contains(uim, ":x-uid") || strings.Contains(uim, ":x-gid") {
+			if len(uimes) == 4 {
+				return uimes[0] + ":" + uimes[1], uimes[2] + ":" + uimes[3], nil
+			} else {
+				return "", "", err
+			}
+		} else {
+			if len(uimes) == 3 {
+				return uimes[0] + ":" + uimes[1], uimes[2], nil
+			} else {
+				return "", "", err
+			}
+		}
+	} else {
+		if strings.Contains(uim, ":x-uid") || strings.Contains(uim, ":x-gid") {
+			if len(uimes) == 3 {
+				return uimes[0], uimes[1] + ":" + uimes[2], nil
+			} else {
+				return "", "", err
+			}
+		} else {
+			if len(uimes) == 2 {
+				return uimes[0], uimes[1], nil
+			}
+		}
+	}
+	return "", "", err
+}
+
 func uiMapACL(opts SyncOptions, lure, rure UiRunEnv) (lmacl, rmacl map[string][]cabridss.ACLEntry, err error) {
 	lmacl = map[string][]cabridss.ACLEntry{}
 	rmacl = map[string][]cabridss.ACLEntry{}
-	err = nil
+	var (
+		lu, ru string
+	)
 	for _, uim := range opts.MapACL {
-		uimes := strings.Split(uim, ":")
-		if len(uimes) != 2 {
-			err = fmt.Errorf("ACL user mapping %s has not the form <left-user:right-user>", uim)
+		if lu, ru, err = uiSplitMapEntry(uim); err != nil {
 			return
 		}
-		lu, ru := uimes[0], uimes[1]
 		if lu == "" {
 			lu = lure.DefaultSyncUser
 		}

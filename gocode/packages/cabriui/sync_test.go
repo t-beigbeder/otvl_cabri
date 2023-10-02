@@ -518,3 +518,38 @@ func runTestSynchronizeToObs(t *testing.T) error {
 func TestSynchronizeToObs(t *testing.T) {
 	internal.Retry(t, runTestSynchronizeToObs)
 }
+
+func TestCheckUiAclMap(t *testing.T) {
+	lm, rm, err := uiSplitMapEntry("x-uid:1000:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lm, rm, err = uiSplitMapEntry(":x-uid:-1"); err != nil {
+		t.Fatal(err)
+	}
+	if lm, rm, err = uiSplitMapEntry("x-gid:1000:"); err != nil {
+		t.Fatal(err)
+	}
+	if lm, rm, err = uiSplitMapEntry(":x-gid:-1"); err != nil {
+		t.Fatal(err)
+	}
+	if lm, rm, err = uiSplitMapEntry("x-other:"); err != nil {
+		t.Fatal(err)
+	}
+	if lm, rm, err = uiSplitMapEntry(":x-other"); err != nil {
+		t.Fatal(err)
+	}
+	if lm, rm, err = uiSplitMapEntry("x-uid:1000:x-uid:-1"); err != nil {
+		t.Fatal(err)
+	}
+	if lm, rm, err = uiSplitMapEntry("x-uid:1000:x-gid:-1"); err != nil {
+		t.Fatal(err)
+	}
+	if lm, rm, err = uiSplitMapEntry("x-uid:1000:x-other"); err != nil {
+		t.Fatal(err)
+	}
+	if lm, rm, err = uiSplitMapEntry("a:b"); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = lm, rm
+}
