@@ -8,13 +8,16 @@ fi
 root_dir="`echo $cmd_dir | sed -e s=/dev_tools==`"
 PATH="$root_dir/gocode/build:$PATH"
 test_count=0
-
+tmp_dir=/tmp
+if [ "$WBTEMP" ]; then
+  tmp_dir=$WBTEMP # windows bash eg /Users/ziggy/AppData/Local/Temp
+fi
 setup_test() {
   PID=$$
   test_count=`expr $test_count + 1`
-  TD=/tmp/tc.${test_count}.$PID
+  TD=${tmp_dir}/tc-${test_count}-$PID
   export TD PID
-  trap "chmod -R +w /tmp/tc.*.$PID; rm -rf /tmp/tc.*.$PID" 1 2 3 15 EXIT
+  trap "chmod -R +w ${tmp_dir}/tc-*-$PID; echo rm -rf ${tmp_dir}/tc-*-$PID" 1 2 3 15 EXIT
   mkdir -p $TD && \
     mkdir $TD/tmp && \
     cd $TD && \
