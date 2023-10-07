@@ -102,6 +102,30 @@ func MasterPassword(uow joule.UnitOfWork, opts BaseOptions, askNumber int) (stri
 	return "", nil
 }
 
+var hPassword string
+
+func HPassword(uow joule.UnitOfWork, opts BaseOptions) (string, error) {
+	if opts.HPFile != "" {
+		bs, err := os.ReadFile(opts.HPFile)
+		if err != nil {
+			return "", err
+		}
+		if len(bs) > 0 && bs[len(bs)-1] == '\n' {
+			bs = bs[:len(bs)-1]
+		}
+		return string(bs), nil
+	}
+	if opts.HPassword {
+		if hPassword != "" {
+			return hPassword, nil
+		}
+		passwd := uow.UiSecret("please enter the http client password: ")
+		hPassword = passwd
+		return hPassword, nil
+	}
+	return "", nil
+}
+
 func ConfigDir(opts BaseOptions) (string, error) {
 	cd := opts.ConfigDir
 	var err error
@@ -155,11 +179,18 @@ func GetUiRunEnv[OT BaseOptionsEr, VT baseVarsEr](ctx context.Context, encrypted
 	if _, err = ure.ACLOrDefault(); err != nil {
 		return
 	}
-	for _, idc := range ure.UserConfig.Identities {
-		if idc.Alias == "WebBasicAuth" {
-			ure.BasicAuthUser = idc.PKey
-			ure.BasicAuthPassword = idc.Secret
-			break
+	if bo.hasHOptions() {
+		ure.BasicAuthUser = bo.HUser
+		if ure.BasicAuthPassword, err = HPassword(uow, bo); err != nil {
+			return
+		}
+	} else {
+		for _, idc := range ure.UserConfig.Identities {
+			if idc.Alias == "WebBasicAuth" {
+				ure.BasicAuthUser = idc.PKey
+				ure.BasicAuthPassword = idc.Secret
+				break
+			}
 		}
 	}
 	return

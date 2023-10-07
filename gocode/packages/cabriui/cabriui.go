@@ -29,6 +29,9 @@ type BaseOptions struct {
 	ObsSecretKeys []string
 	TlsCert       string // certificate file on https server or untrusted CA on https client
 	TlsNoCheck    bool   // no check of certificate by https client
+	HUser         string // https client basic auth user
+	HPassword     bool   // https client basic auth password
+	HPFile        string // https client basic auth password
 	// Left entities located here in case of sync CLI for convenience
 	LeftUsers []string
 	LeftACL   []string
@@ -36,6 +39,10 @@ type BaseOptions struct {
 
 func (bos BaseOptions) getBaseOptions() BaseOptions {
 	return bos
+}
+
+func (bos BaseOptions) hasHOptions() bool {
+	return bos.HUser != "" || bos.HPassword || bos.HPFile != ""
 }
 
 type BaseOptionsEr interface {
