@@ -32,10 +32,13 @@ type oDssBaseProxy interface {
 	getRepoId() string
 	isEncrypted() bool
 	auditIndex() (map[string][]AuditIndexInfo, error)
-	scanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector)
+	scanStorage(checksum, purge, purgeHidden bool) (StorageInfo, *ErrorCollector)
 	getHistoryChunks(resolution string) ([]HistoryChunk, error)
 	reindex() (StorageInfo, *ErrorCollector)
 	setSu()
+	setReducer(plumber.Reducer)
+	getReducer() plumber.Reducer
+
 	// other
 	doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error
 	setIndex(config DssBaseConfig, localPath string) error // to be called by oDssSpecificProxy.initialize
@@ -46,9 +49,10 @@ type oDssBaseProxy interface {
 	doGetMetaAt(npath string, time int64) (Meta, error)
 	storeAndIndexMeta(npath string, time int64, bs []byte) error
 	spUpdateClient(cix Index, data UpdatedData, isFull bool) error
-	spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector)
+	spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector)
 	spAuditIndexFromRemote(sti StorageInfo, mai map[string][]AuditIndexInfo) error
 	spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error)
+	spReindex() (StorageInfo, *ErrorCollector)
 }
 
 type contentWriterCbs struct {
@@ -71,7 +75,8 @@ type oDssSpecificProxy interface {
 	removeContent(ch string) error
 	spClose() error
 	dumpIndex() string
-	scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector)
+	scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector)
+
 	// internal functions directly mapped from Dss interface ones
 	setAfs(tfs afero.Fs)
 	getAfs() afero.Fs
@@ -83,16 +88,15 @@ type oDssProxy interface {
 }
 
 type ODss struct {
-	proxy   oDssProxy
-	reducer plumber.Reducer
-	closed  bool
+	proxy  oDssProxy
+	closed bool
 }
 
 func (ods *ODss) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		return ods.proxy.mkns(npath, mtime, children, acl)
 	}
-	return ods.reducer.Launch(
+	return ods.proxy.getReducer().Launch(
 		fmt.Sprintf("Mkns %s", npath),
 		func() error {
 			return ods.proxy.mkns(npath, mtime, children, acl)
@@ -100,10 +104,10 @@ func (ods *ODss) Mkns(npath string, mtime int64, children []string, acl []ACLEnt
 }
 
 func (ods *ODss) Updatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		return ods.proxy.updatens(npath, mtime, children, acl)
 	}
-	return ods.reducer.Launch(
+	return ods.proxy.getReducer().Launch(
 		fmt.Sprintf("Updatens %s", npath),
 		func() error {
 			return ods.proxy.updatens(npath, mtime, children, acl)
@@ -111,11 +115,11 @@ func (ods *ODss) Updatens(npath string, mtime int64, children []string, acl []AC
 }
 
 func (ods *ODss) Lsns(npath string) (children []string, err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		children, err = ods.proxy.lsns(npath)
 		return
 	}
-	if err = ods.reducer.Launch(
+	if err = ods.proxy.getReducer().Launch(
 		fmt.Sprintf("Lsns %s", npath),
 		func() error {
 			var iErr error
@@ -134,11 +138,11 @@ func (ods *ODss) IsDuplicate(ch string) (bool, error) {
 }
 
 func (ods *ODss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (wc io.WriteCloser, err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		wc, err = ods.proxy.getContentWriter(npath, mtime, acl, cb)
 		return
 	}
-	if err = ods.reducer.Launch(
+	if err = ods.proxy.getReducer().Launch(
 		fmt.Sprintf("GetContentWriter %s", npath),
 		func() error {
 			var iErr error
@@ -154,11 +158,11 @@ func (ods *ODss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb 
 }
 
 func (ods *ODss) GetContentReader(npath string) (rc io.ReadCloser, err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		rc, err = ods.proxy.getContentReader(npath)
 		return
 	}
-	if err = ods.reducer.Launch(
+	if err = ods.proxy.getReducer().Launch(
 		fmt.Sprintf("GetContentReader %s", npath),
 		func() error {
 			var iErr error
@@ -173,10 +177,10 @@ func (ods *ODss) GetContentReader(npath string) (rc io.ReadCloser, err error) {
 }
 
 func (ods *ODss) Remove(npath string) (err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		return ods.proxy.remove(npath)
 	}
-	return ods.reducer.Launch(
+	return ods.proxy.getReducer().Launch(
 		fmt.Sprintf("Remove %s", npath),
 		func() error {
 			return ods.proxy.remove(npath)
@@ -184,11 +188,11 @@ func (ods *ODss) Remove(npath string) (err error) {
 }
 
 func (ods *ODss) GetMeta(npath string, getCh bool) (meta IMeta, err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		meta, err = ods.proxy.getMeta(npath, getCh)
 		return
 	}
-	if err = ods.reducer.Launch(
+	if err = ods.proxy.getReducer().Launch(
 		fmt.Sprintf("GetMeta %s", npath),
 		func() error {
 			var iErr error
@@ -231,8 +235,8 @@ func (ods *ODss) Close() error {
 		return nil
 	}
 	ods.closed = true
-	if ods.reducer != nil {
-		if err := ods.reducer.Close(); err != nil {
+	if ods.proxy.getReducer() != nil {
+		if err := ods.proxy.getReducer().Close(); err != nil {
 			ods.proxy.close()
 			return err
 		}
@@ -252,8 +256,8 @@ func (ods *ODss) IsRepoEncrypted() bool { return ods.proxy.isRepoEncrypted() }
 
 func (ods *ODss) AuditIndex() (map[string][]AuditIndexInfo, error) { return ods.proxy.auditIndex() }
 
-func (ods *ODss) ScanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
-	return ods.proxy.scanStorage(purge, purgeHidden)
+func (ods *ODss) ScanStorage(checksum, purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
+	return ods.proxy.scanStorage(checksum, purge, purgeHidden)
 }
 
 func (ods *ODss) GetHistoryChunks(resolution string) ([]HistoryChunk, error) {
@@ -268,14 +272,15 @@ func (ods *ODss) SuEnableWrite(string) error { return nil }
 
 type oDssBaseImpl struct {
 	me            oDssProxy
-	lsttime       int64        // if not zero is the upper time of entries retrieved in it
-	aclusers      []string     // if not nil List of ACL users to check access
-	isSu          bool         // superuser access to enable synchro
-	mockct        int64        // if not zero mock current time
-	metamockcbs   *MetaMockCbs // if not nil callbacks for json marshal/unmarshal
-	index         Index        // the DSS index, possibly nIndex which is a noop index
-	repoId        string       // the DSS repoId or ""
-	repoEncrypted bool         // repository is encrypted
+	lsttime       int64           // if not zero is the upper time of entries retrieved in it
+	aclusers      []string        // if not nil List of ACL users to check access
+	isSu          bool            // superuser access to enable synchro
+	mockct        int64           // if not zero mock current time
+	metamockcbs   *MetaMockCbs    // if not nil callbacks for json marshal/unmarshal
+	index         Index           // the DSS index, possibly nIndex which is a noop index
+	repoId        string          // the DSS repoId or ""
+	repoEncrypted bool            // repository is encrypted
+	reducer       plumber.Reducer // a reducer
 }
 
 func (odbi *oDssBaseImpl) metaTimesFor(npath string, allTimes bool) ([]int64, error) {
@@ -859,16 +864,24 @@ func (odbi *oDssBaseImpl) doAuditIndexFromStorage(sti StorageInfo, mai map[strin
 		}
 		mai[k] = append(mai[k], aii)
 	}
-	for path, bs := range sti.Path2Meta {
+	for path, tcbs := range sti.Path2Meta {
 		dst := ufpath.Ext(path)
 		if len(dst) == 0 {
-			appMai(path, AuditIndexInfo{"Inconsistent", fmt.Errorf("bad file extension"), MIN_TIME, bs})
+			appMai(path, AuditIndexInfo{"Inconsistent", fmt.Errorf("bad file extension"), MIN_TIME, tcbs})
 			continue
 		}
 		t, err := internal.Str16ToInt64(dst[1:])
 		if err != nil {
-			appMai(path, AuditIndexInfo{"Inconsistent", fmt.Errorf("bad file extension %v", err), MIN_TIME, bs})
+			appMai(path, AuditIndexInfo{"Inconsistent", fmt.Errorf("bad file extension %v", err), MIN_TIME, tcbs})
 			continue
+		}
+		bs := tcbs
+		if odbi.repoEncrypted {
+			cbs, ok := sti.Path2CMeta[path]
+			if !ok {
+				continue
+			}
+			bs = cbs
 		}
 		var meta Meta
 		if err := json.Unmarshal(bs, &meta); err != nil {
@@ -910,11 +923,11 @@ func (odbi *oDssBaseImpl) doAuditIndexFromIndex(sti StorageInfo, mai map[string]
 	}
 
 	_, metas, _, err := odbi.getIndex().(*pIndex).loadInMemory()
-	smetas := sti.loadStoredInMemory()
 	if err != nil {
 		return fmt.Errorf("in doAuditIndexFromIndex: %v", err)
 	}
 
+	smetas := sti.loadStoredInMemory(odbi.repoEncrypted)
 	for k, mm := range metas {
 		for t, m := range mm {
 			var meta Meta
@@ -959,7 +972,7 @@ func (odbi *oDssBaseImpl) auditIndex() (map[string][]AuditIndexInfo, error) {
 	if len(mai) > 0 {
 		return mai, nil
 	}
-	sti, errs := odbi.scanStorage(false, false)
+	sti, errs := odbi.scanStorage(false, false, false)
 	if errs != nil {
 		return nil, fmt.Errorf("in doAuditIndexFromStorage: %v", errs)
 	}
@@ -1016,19 +1029,10 @@ func (odbi *oDssBaseImpl) purgeContent(sti StorageInfo, errs *ErrorCollector) {
 	}
 }
 
-func (odbi *oDssBaseImpl) scanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
-	sti := StorageInfo{
-		Path2Meta:     map[string][]byte{},
-		Path2Content:  map[string]string{},
-		Path2CContent: map[string]string{},
-		ExistingCs:    map[string]bool{},
-		ExistingEcs:   map[string]bool{},
-		Path2Error:    map[string]error{},
-		XLMetas:       map[string]map[int64][]byte{},
-		XRMetas:       map[string]map[int64][]byte{},
-	}
+func (odbi *oDssBaseImpl) scanStorage(checksum, purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
+	sti := getInitStorageInfo()
 	errs := &ErrorCollector{}
-	odbi.me.scanPhysicalStorage(sti, errs)
+	odbi.me.scanPhysicalStorage(checksum, sti, errs)
 	pathErr := func(path string, err error) {
 		sti.Path2Error[path] = err
 		errs.Collect(err)
@@ -1066,8 +1070,11 @@ func (odbi *oDssBaseImpl) scanStorage(purge, purgeHidden bool) (StorageInfo, *Er
 			pathErr(path, err)
 			continue
 		}
-		ch := internal.ShaFrom(cr)
-		cr.Close()
+		defer cr.Close()
+		ch, err := internal.ShaFrom(cr)
+		if err != nil {
+			pathErr(path, err)
+		}
 		if ch != meta.Ch {
 			pathErr(path, fmt.Errorf("%s (meta %s) cs %s loaded %s", path, ipath, meta.Ch, ch))
 			continue
@@ -1155,40 +1162,14 @@ func (odbi *oDssBaseImpl) getHistoryChunks(resolution string) ([]HistoryChunk, e
 }
 
 func (odbi *oDssBaseImpl) reindex() (StorageInfo, *ErrorCollector) {
-	sti := StorageInfo{
-		Path2Meta:     map[string][]byte{},
-		Path2Content:  map[string]string{},
-		Path2CContent: map[string]string{},
-		ExistingCs:    map[string]bool{},
-		ExistingEcs:   map[string]bool{},
-		Path2Error:    map[string]error{},
-	}
-	errs := &ErrorCollector{}
-	pi, ok := odbi.index.(*pIndex)
-	if !ok {
-		errs.Collect(fmt.Errorf("in reindex: index is not persistent"))
-	}
-	odbi.me.scanPhysicalStorage(sti, errs)
-	if len(*errs) > 0 {
-		return StorageInfo{}, errs
-	}
-	metas := sti.loadStoredInMemory()
-	metaTimes := map[string]map[int64]bool{}
-	for k, mm := range metas {
-		for t, _ := range mm {
-			if _, ok := metaTimes[k]; !ok {
-				metaTimes[k] = map[int64]bool{}
-			}
-			metaTimes[k][t] = true
-		}
-	}
-	if err := reindexPIndex(pi.path, metaTimes, metas); err != nil {
-		errs.Collect(fmt.Errorf("in reindex: %w", err))
-	}
-	return sti, nil
+	return odbi.me.spReindex()
 }
 
 func (odbi *oDssBaseImpl) setSu() { odbi.isSu = true }
+
+func (odbi *oDssBaseImpl) setReducer(red plumber.Reducer) { odbi.reducer = red }
+
+func (odbi *oDssBaseImpl) getReducer() plumber.Reducer { return odbi.reducer }
 
 func (odbi *oDssBaseImpl) isRepoEncrypted() bool { return odbi.repoEncrypted }
 
@@ -1276,7 +1257,7 @@ func (odbi *oDssBaseImpl) spUpdateClient(cix Index, data UpdatedData, isFull boo
 	return cix.updateData(data, isFull)
 }
 
-func (odbi *oDssBaseImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+func (odbi *oDssBaseImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	panic("inconsistent")
 }
 
@@ -1286,4 +1267,45 @@ func (odbi *oDssBaseImpl) spAuditIndexFromRemote(sti StorageInfo, mai map[string
 
 func (odbi *oDssBaseImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error) {
 	return map[string]map[int64][]byte{}, nil
+}
+
+func (odbi *oDssBaseImpl) spReindex() (StorageInfo, *ErrorCollector) {
+	sti := getInitStorageInfo()
+	errs := &ErrorCollector{}
+	pi, ok := odbi.index.(*pIndex)
+	if !ok {
+		errs.Collect(fmt.Errorf("in reindex: index is not persistent"))
+	}
+	odbi.me.scanPhysicalStorage(false, sti, errs)
+	if len(*errs) > 0 {
+		return StorageInfo{}, errs
+	}
+
+	metas := map[string]map[int64][]byte{}
+
+	if !odbi.repoEncrypted {
+		metas = sti.loadStoredInMemory(odbi.repoEncrypted)
+	} else {
+		for mp, bs := range sti.Path2Meta {
+			hi := sti.Path2HnIt[mp]
+			if _, ok := metas[hi.Hn]; !ok {
+				metas[hi.Hn] = map[int64][]byte{}
+			}
+			metas[hi.Hn][hi.It] = bs
+		}
+	}
+	metaTimes := map[string]map[int64]bool{}
+	for k, mm := range metas {
+		for t, _ := range mm {
+			if _, ok := metaTimes[k]; !ok {
+				metaTimes[k] = map[int64]bool{}
+			}
+			metaTimes[k][t] = true
+		}
+	}
+
+	if err := reindexPIndex(pi.path, metaTimes, metas); err != nil {
+		errs.Collect(fmt.Errorf("in reindex: %w", err))
+	}
+	return sti, nil
 }

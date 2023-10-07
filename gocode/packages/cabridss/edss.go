@@ -9,6 +9,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
 	"sort"
+	"sync"
 )
 
 type EDssConfig struct {
@@ -269,20 +270,21 @@ func (edi *eDssImpl) spUpdateClient(cix Index, eud UpdatedData, isFull bool) err
 	return cix.updateData(udd, isFull)
 }
 
-func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+func (edi *eDssImpl) decryptScannedStorage(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	pathErr := func(path string, err error) {
 		sti.Path2Error[path] = err
 		errs.Collect(err)
 	}
 
 	eSti := sts.Sti
+	mc2scan := map[string]Meta{}
 	for epath, ebs := range eSti.Path2Meta {
 		smbs, err := DecryptMsg(ebs, edi.secrets(edi.aclusers)...)
 		if err != nil {
 			pathErr(epath, err)
 			continue
 		}
-		sti.Path2Meta[epath] = []byte(smbs)
+		sti.Path2CMeta[epath] = []byte(smbs)
 		var meta Meta
 		if err := json.Unmarshal([]byte(smbs), &meta); err != nil {
 			pathErr(epath, err)
@@ -293,26 +295,65 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 		}
 		sti.ExistingCs[meta.Ch] = true
 		sti.ExistingEcs[meta.ECh] = true
-		cr, err := edi.me.doGetContentReader(meta.Path, meta)
+		mc2scan[epath] = meta
+	}
+	if !checksum {
+		return
+	}
+	mx := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	lockPathErr := func(mn string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		pathErr(mn, err)
+	}
+	lockPath2CContent := func(pep, ch string) {
+		mx.Lock()
+		defer mx.Unlock()
+		sti.Path2CContent[pep] = ch
+	}
+	doDecryptContent := func(pep string, pMeta Meta) {
+		cr, err := edi.me.doGetContentReader(pMeta.Path, pMeta)
 		if err != nil {
-			pathErr(epath, err)
-			continue
+			lockPathErr(pep, err)
+			return
 		}
-		ch := internal.ShaFrom(cr)
-		cr.Close()
-		sti.Path2CContent[epath] = ch
-		if ch != meta.Ch {
-			pathErr(epath, fmt.Errorf("%s (meta %s) cs %s loaded %s", epath, meta.Path, meta.Ch, ch))
-			continue
+		defer cr.Close()
+		ch, err := internal.ShaFrom(cr)
+		if err != nil {
+			lockPathErr(pep, err)
+		}
+		lockPath2CContent(pep, ch)
+		if ch != pMeta.Ch {
+			lockPathErr(pep, fmt.Errorf("%s (meta %s) cs %s loaded %s", pep, pMeta.Path, pMeta.Ch, ch))
+			return
 		}
 	}
+	for epath, meta := range mc2scan {
+		wg.Add(1)
+		go func(pep string, pMeta Meta) {
+			defer wg.Done()
+			if edi.reducer == nil {
+				doDecryptContent(pep, pMeta)
+			} else {
+				edi.reducer.Launch(fmt.Sprintf("doDecryptContent-%s", pep), func() error {
+					doDecryptContent(pep, pMeta)
+					return nil
+				})
+			}
+		}(epath, meta)
+	}
+	wg.Wait()
 }
 
-func (edi *eDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
-	copyMap(sti.Path2Error, sts.Sti.Path2Error)
+func (edi *eDssImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+	copyMap(sti.Path2Meta, sts.Sti.Path2Meta)
+	copyMap(sti.Path2HnIt, sts.Sti.Path2HnIt)
 	copyMap(sti.Path2Content, sts.Sti.Path2Content)
+	copyMap(sti.Path2Error, sts.Sti.Path2Error)
+
 	errs = &sts.Errs
-	edi.decryptScannedStorage(sts, sti, errs)
+	edi.decryptScannedStorage(checksum, sts, sti, errs)
 }
 
 func (edi *eDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error) {
@@ -351,6 +392,22 @@ func (edi *eDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[str
 		}
 	}
 	return cmetas, nil
+}
+
+func (edi *eDssImpl) spReindex() (StorageInfo, *ErrorCollector) {
+	sti := getInitStorageInfo()
+	errs := &ErrorCollector{}
+	if !edi.libApi {
+		errs.Collect(fmt.Errorf("in reindex: cannot reindex remotely"))
+		return sti, errs
+	}
+	wdc := edi.apc.GetConfig().(webDssClientConfig)
+	sti, errs = wdc.libDss.Reindex()
+	return sti, nil
+}
+
+func (edi *eDssImpl) decodeMetaPath(mp string) (hn string, itime int64) {
+	panic("inconsistent")
 }
 
 func (edi *eDssImpl) openSession(aclusers []string) error {
@@ -396,5 +453,6 @@ func NewEDss(config EDssConfig, slsttime int64, aclusers []string) (HDss, error)
 	if config.ReducerLimit != 0 {
 		red = plumber.NewReducer(config.ReducerLimit, 0)
 	}
-	return &ODss{proxy: proxy, reducer: red}, nil
+	proxy.setReducer(red)
+	return &ODss{proxy: proxy}, nil
 }

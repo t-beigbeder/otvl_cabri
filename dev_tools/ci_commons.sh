@@ -34,6 +34,9 @@ run_silent() {
   if [ "$LCMD" ]; then
     echo $* > $LCMD
   fi
+  if [ "$ALLCMD" ]; then
+    echo $* >> $ALLCMD
+  fi
   "$@" > $OUT 2> $ERR || (error "while running command \"$*\"" && cat $OUT $ERR && backup_error && return 1)
 }
 
@@ -44,6 +47,9 @@ run_error() {
 
 run_bg_cmd() {
   info "run background command \"$*\""
+  if [ "$ALLCMD" ]; then
+    echo $* >> $ALLCMD
+  fi
   "$@" &
   pidc=$!
   if [ $? -ne 0 ] ; then
@@ -55,6 +61,9 @@ run_bg_cmd() {
 }
 
 run_bg_silent() {
+  if [ "$ALLCMD" ]; then
+    echo $* >> $ALLCMD
+  fi
   "$@" &
   pidc=$!
   if [ $? -ne 0 ] ; then

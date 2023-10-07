@@ -9,6 +9,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"io"
 	"os"
+	"sync"
 )
 
 type ObsConfig struct {
@@ -188,35 +189,71 @@ func (odoi *oDssObjImpl) setAfs(tfs afero.Fs) { panic("inconsistent") }
 func (odoi *oDssObjImpl) getAfs() afero.Fs { return appFs }
 
 func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
-	pathErr := func(path string, err error) {
-		sti.Path2Error[path] = err
+	mx := sync.Mutex{}
+	doScanMetaObj := func(mn string) ([]byte, error) {
+		suffix := ufpath.Ext(mn)
+		if len(suffix) == 0 {
+			return nil, fmt.Errorf("no suffix")
+		}
+		t, err := internal.Str16ToInt64(suffix[1:])
+		if err != nil {
+			return nil, err
+		}
+		_ = t
+		return odoi.is3.Get(mn)
+	}
+	pathErr := func(mn string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		sti.Path2Error[mn] = err
 		errs.Collect(err)
+	}
+	pathOk := func(mn string, bs []byte) {
+		mx.Lock()
+		defer mx.Unlock()
+		sti.Path2Meta[mn] = bs
+		hn := mn[len("meta-"):]
+		suffix := ufpath.Ext(mn)
+		t, _ := internal.Str16ToInt64(suffix[1:])
+		sti.Path2HnIt[mn] = SIHnIt{
+			Hn: hn,
+			It: t,
+		}
 	}
 	mns, err := odoi.is3.List("meta-")
 	if err != nil {
 		pathErr("meta-", err)
 		return
 	}
+	wg := sync.WaitGroup{}
 	for _, mn := range mns {
-		suffix := ufpath.Ext(mn)
-		if len(suffix) == 0 {
-			pathErr(mn, fmt.Errorf("no suffix"))
-			continue
-		}
-		t, err := internal.Str16ToInt64(suffix[1:])
-		if err != nil {
-			pathErr(mn, err)
-		}
-		_ = t
-		bs, err := odoi.is3.Get(mn)
-		if err != nil {
-			pathErr(mn, err)
-		}
-		sti.Path2Meta[mn] = bs
+		wg.Add(1)
+		go func(mni string) {
+			defer wg.Done()
+			if odoi.reducer == nil {
+				bs, err := doScanMetaObj(mni)
+				if err != nil {
+					pathErr(mni, err)
+				} else {
+					pathOk(mni, bs)
+				}
+			} else {
+				odoi.reducer.Launch(fmt.Sprintf("doScanMetaObj-%s", mni), func() error {
+					bs, err := doScanMetaObj(mni)
+					if err != nil {
+						pathErr(mni, err)
+					} else {
+						pathOk(mni, bs)
+					}
+					return nil
+				})
+			}
+		}(mn)
 	}
+	wg.Wait()
 }
 
-func (odoi *oDssObjImpl) scanContentObjs(sti StorageInfo, errs *ErrorCollector) {
+func (odoi *oDssObjImpl) scanContentObjs(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	pathErr := func(path string, err error) {
 		sti.Path2Error[path] = err
 		errs.Collect(err)
@@ -229,11 +266,56 @@ func (odoi *oDssObjImpl) scanContentObjs(sti StorageInfo, errs *ErrorCollector) 
 	for _, cn := range cns {
 		sti.Path2Content[cn] = cn[len("content-"):]
 	}
+	if !checksum {
+		return
+	}
+
+	mx := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	lockPathErr := func(mn string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		pathErr(mn, err)
+	}
+	doScanContentObs := func(pcn string) {
+		cr, err := odoi.is3.Download(pcn)
+		if err != nil {
+			lockPathErr(pcn, err)
+			return
+		}
+		ch := ""
+		ch, err = internal.ShaFrom(cr)
+		if err != nil {
+			cr.Close()
+			lockPathErr(pcn, err)
+			return
+		}
+		cr.Close()
+		if ch != pcn[len("content-"):] {
+			lockPathErr(pcn, fmt.Errorf("in doScanContentObs: content checksum %s differs from path %s", ch, pcn))
+		}
+	}
+	for cn, _ := range sti.Path2Content {
+		wg.Add(1)
+		go func(pcn string) {
+			defer wg.Done()
+			if odoi.reducer == nil {
+				doScanContentObs(pcn)
+			} else {
+				odoi.reducer.Launch(fmt.Sprintf("doScanContentObs-%s", cn[len("content-"):]), func() error {
+					doScanContentObs(pcn)
+					return nil
+				})
+			}
+		}(cn)
+	}
+	wg.Wait()
+	return
 }
 
-func (odoi *oDssObjImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector) {
+func (odoi *oDssObjImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	odoi.scanMetaObjs(sti, errs)
-	odoi.scanContentObjs(sti, errs)
+	odoi.scanContentObjs(checksum, sti, errs)
 }
 
 func newObsProxy() oDssProxy {
@@ -265,7 +347,8 @@ func NewObsDss(config ObsConfig, slsttime int64, aclusers []string) (HDss, error
 	if config.ReducerLimit != 0 {
 		red = plumber.NewReducer(config.ReducerLimit, 0)
 	}
-	return &ODss{proxy: proxy, reducer: red}, nil
+	proxy.setReducer(red)
+	return &ODss{proxy: proxy}, nil
 }
 
 // CreateObsDss creates an "object-storage" DSS (data storage system)

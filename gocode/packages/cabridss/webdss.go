@@ -391,8 +391,9 @@ func copyMap[T any](dst map[string]T, src map[string]T) {
 	}
 }
 
-func (wdi *webDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+func (wdi *webDssImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	copyMap(sti.Path2Meta, sts.Sti.Path2Meta)
+	copyMap(sti.Path2HnIt, sts.Sti.Path2HnIt)
 	copyMap(sti.Path2Content, sts.Sti.Path2Content)
 	copyMap(sti.Path2CContent, sts.Sti.Path2CContent)
 	copyMap(sti.ExistingCs, sts.Sti.ExistingCs)
@@ -451,14 +452,14 @@ func (wdi *webDssImpl) spAuditIndexFromRemote(sti StorageInfo, mai map[string][]
 	return nil
 }
 
-func (wdi *webDssImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector) {
-	sts, err := cScanPhysicalStorage(wdi.apc)
+func (wdi *webDssImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
+	sts, err := cScanPhysicalStorage(wdi.apc, checksum)
 	if err != nil {
 		errs.Collect(fmt.Errorf("in scanPhysicalStorage: %v", err))
 		return
 	}
 	// opportunity to decrypt if applicable
-	wdi.me.spScanPhysicalStorageClient(sts, sti, errs)
+	wdi.me.spScanPhysicalStorageClient(checksum, sts, sti, errs)
 }
 
 func (wdi *webDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error) {
@@ -467,6 +468,17 @@ func (wdi *webDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[s
 		return map[string]map[int64][]byte{}, err
 	}
 	return remx.Metas, nil
+}
+
+func (wdi *webDssImpl) spReindex() (StorageInfo, *ErrorCollector) {
+	sti := getInitStorageInfo()
+	errs := &ErrorCollector{}
+	errs.Collect(fmt.Errorf("in reindex: cannot reindex remotely"))
+	return sti, errs
+}
+
+func (wdi *webDssImpl) decodeMetaPath(mp string) (hn string, itime int64) {
+	panic("inconsistent")
 }
 
 func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isClientEdss bool) (oDssProxy, HDss, error) {
@@ -528,5 +540,6 @@ func NewWebDss(config WebDssConfig, slsttime int64, aclusers []string) (HDss, er
 	if config.ReducerLimit != 0 {
 		red = plumber.NewReducer(config.ReducerLimit, 0)
 	}
-	return &ODss{proxy: proxy, reducer: red}, nil
+	proxy.setReducer(red)
+	return &ODss{proxy: proxy}, nil
 }

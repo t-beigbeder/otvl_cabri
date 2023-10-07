@@ -13,7 +13,7 @@ by convenience the empty name can also be used to refer to it
 - x-gid:<gid> for the group permissions, gid is the file's group id
 - x-other for the _other_ permissions
 
-On non-unix systems, the file owner name is mapped to an empty name.
+On windows systems, the file owner uid is -1.
 
 DSS users are simply textual labels, except when using encryption
 where they refer to identities' aliases.

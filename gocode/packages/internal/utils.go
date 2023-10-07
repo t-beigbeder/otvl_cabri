@@ -72,11 +72,13 @@ func (s *ShaWriter) Write(p []byte) (n int, err error) {
 	return s.h.Write(p)
 }
 
-func ShaFrom(r io.Reader) string {
+func ShaFrom(r io.Reader) (string, error) {
 	w := ShaWriter{}
-	io.Copy(&w, r)
+	if _, err := io.Copy(&w, r); err != nil {
+		return "", err
+	}
 	cs := w.h.Sum(nil)
-	return Sha256ToStr32(cs)
+	return Sha256ToStr32(cs), nil
 }
 
 func CheckTimeStamp(value string) (unix int64, err error) {

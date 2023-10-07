@@ -163,3 +163,8 @@ for all the services of the API, and also for performing synchronization.
 Cabri will soon come with a Web User Interface for the same services.
 This interface will be designed to be able to run locally,
 thus never exposing secrets nor confidential data to third parties.
+
+### What's next
+
+You can come back to the [index](../README.md)
+or go on with the ["getting started"](gscli.md) page.

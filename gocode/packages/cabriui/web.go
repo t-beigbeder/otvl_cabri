@@ -79,6 +79,7 @@ func addHdssServerItem(ctx context.Context, args []string, ix int, opts WebApiOp
 		params.Encrypted = dssType[0] == 'x'
 		params.ConfigPassword = ure.MasterPassword
 		params.ConfigDir = ure.ConfigDir
+		params.RedLimit = opts.RedLimit
 		dss, err = cabridss.CreateOrNewDss(params)
 	} else {
 		dss, err = NewHDss[WebApiOptions, *WebApiVars](ctx, nil, NewHDssArgs{DssIx: ix, ObsIx: *obsIx, Lasttime: webApiOpts(ctx).getLastTime(), IsMapping: true})

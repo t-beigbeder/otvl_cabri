@@ -37,4 +37,7 @@ func init() {
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsSecretKeys, "obssk", nil, "list of object storage secret keys")
 	cliCmd.PersistentFlags().StringVar(&baseOptions.TlsCert, "tlscrt", "", "certificate file on https server or untrusted CA on https client")
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.TlsNoCheck, "tlsnc", false, "no check of certificate by https client")
+	cliCmd.PersistentFlags().StringVar(&baseOptions.HUser, "huser", "", "http client user")
+	cliCmd.PersistentFlags().StringVar(&baseOptions.HPFile, "hpfile", "", "file containing the http client user password")
+	cliCmd.PersistentFlags().BoolVar(&baseOptions.HPassword, "hpassword", false, "force http client user password prompt")
 }

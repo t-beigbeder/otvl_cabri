@@ -8,7 +8,7 @@ Encryption and decryption are closely linked to [ACL](acl.md),
 so a basic understanding of the way they work is required.
 
 Each identity is referred to by its alias, and identity aliases
-are used as ACL users for the purpose of synchonization.
+are used as ACL users for the purpose of synchronization.
 
 ## Default ACL for synchronization
 

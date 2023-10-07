@@ -1,7 +1,6 @@
 package ufpath
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -64,13 +63,6 @@ func Base(path string) string {
 	return path
 }
 
-func check(this, other interface{}) {
-	// FIXME: remove it
-	if this != other {
-		panic(fmt.Sprintf("%v != %v", this, other))
-	}
-}
-
 // Dir returns all but the last element of path, typically the path's directory.
 // If the path is empty, Dir returns ".".
 // If the path is "/", Dir returns "/".
@@ -78,11 +70,9 @@ func check(this, other interface{}) {
 func Dir(path string) string {
 	//other := filepath.Dir(path)
 	if path == "" {
-		//check(".", other)
 		return "."
 	}
 	if path == "/" {
-		//check("/", other)
 		return "/"
 	}
 	i := len(path) - 1
@@ -90,9 +80,7 @@ func Dir(path string) string {
 		i--
 	}
 	if i <= 0 {
-		//check(".", other)
 		return "."
 	}
-	//check(path[0:i], other)
 	return path[0:i]
 }

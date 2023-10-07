@@ -355,6 +355,42 @@ func TestEDssClientOlfHistory(t *testing.T) {
 	}
 }
 
+func TestEDssClientOlfRedHistory(t *testing.T) {
+	var sv WebServer
+	var err error
+	defer func() {
+		if sv != nil {
+			sv.Shutdown()
+		}
+	}()
+
+	if err := runTestHistory(t,
+		func(tfs *testfs.Fs) error {
+			getPIndex := func(config DssBaseConfig, _ string) (Index, error) {
+				return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+			}
+			sv, err = createWebDssServer(tfs, ":3000", "",
+				CreateNewParams{Create: true, DssType: "olf", Root: tfs.Path(), Size: "s", GetIndex: getPIndex, Encrypted: true},
+			)
+			return err
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			dss, err := NewEDss(
+				EDssConfig{
+					WebDssConfig: WebDssConfig{
+						DssBaseConfig: DssBaseConfig{
+							ConfigDir:    ufpath.Join(tfs.Path(), ".cabri"),
+							ReducerLimit: 2,
+							WebPort:      "3000",
+						}, NoClientLimit: true},
+				},
+				0, nil)
+			return dss, err
+		}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestEDssApiClientOlfHistory(t *testing.T) {
 	if err := runTestHistory(t,
 		func(tfs *testfs.Fs) error {
@@ -370,6 +406,43 @@ func TestEDssApiClientOlfHistory(t *testing.T) {
 						DssBaseConfig: DssBaseConfig{
 							LibApi:    true,
 							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+						},
+						LibApiDssConfig: LibApiDssConfig{
+							IsOlf: true,
+							OlfCfg: OlfConfig{
+								DssBaseConfig: DssBaseConfig{
+									LocalPath: tfs.Path(),
+									GetIndex: func(config DssBaseConfig, _ string) (Index, error) {
+										return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+									},
+								}, Root: tfs.Path(), Size: "s"},
+						},
+					},
+				},
+				0, nil)
+			return dss, err
+
+		}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEDssApiClientOlfRedHistory(t *testing.T) {
+	if err := runTestHistory(t,
+		func(tfs *testfs.Fs) error {
+			_, err := CreateOlfDss(OlfConfig{
+				DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path(), Encrypted: true},
+				Root:          tfs.Path(), Size: "s"})
+			return err
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			dss, err := NewEDss(
+				EDssConfig{
+					WebDssConfig: WebDssConfig{
+						DssBaseConfig: DssBaseConfig{
+							LibApi:       true,
+							ConfigDir:    ufpath.Join(tfs.Path(), ".cabri"),
+							ReducerLimit: 2,
 						},
 						LibApiDssConfig: LibApiDssConfig{
 							IsOlf: true,

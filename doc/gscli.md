@@ -193,6 +193,9 @@ A simple [HTTPS implementation](https.md) is provided,
 but a dedicated proxy in front of the Cabri server, like [traefik](https://traefik.io/traefik/),
 apache or nginx, may be required or more effective.
 
+Concerning the use of a HTTPS proxy, providing the authentication credentials is also
+explained on the [page mentioned above](https.md).
+
 The server setup is very simple:
 
 - create a DSS, local or cloud object storage, on the server host

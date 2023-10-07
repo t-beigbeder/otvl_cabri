@@ -193,8 +193,12 @@ func sDumpIndex(c echo.Context) error {
 }
 
 func sScanPhysicalStorage(c echo.Context) error {
+	var checksum bool
+	if err := echo.QueryParamsBinder(c).Bool("checksum", &checksum).BindError(); err != nil {
+		return NewServerErr("sScanPhysicalStorage", err)
+	}
 	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
-	sti, errs := dss.ScanStorage(false, false)
+	sti, errs := dss.ScanStorage(checksum, false, false)
 	if errs == nil {
 		errs = &ErrorCollector{}
 	}

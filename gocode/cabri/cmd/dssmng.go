@@ -315,6 +315,7 @@ func init() {
 	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.LockForTest, "lock", false, "lock for test purpose")
 	dssCmd.AddCommand(dssUnlockCmd)
 	dssCmd.AddCommand(dssAuditCmd)
+	dssScanCmd.Flags().BoolVar(&dssScanOptions.Checksum, "check", false, "checks content checksums (downloads and/or read all)")
 	dssScanCmd.Flags().BoolVar(&dssScanOptions.Purge, "purge", false, "purge unused content")
 	dssScanCmd.Flags().BoolVar(&dssScanOptions.PurgeHidden, "hidden", false, "also purge hidden metadata and content")
 	dssScanCmd.Flags().BoolVarP(&dssScanOptions.Summary, "summary", "s", false, "don't scan, only provide a summary of time periods")

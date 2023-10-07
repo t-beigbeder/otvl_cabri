@@ -215,13 +215,16 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestNewObsDssPindex" ||
 			t.Name() == "TestMockFsHistory" ||
 			t.Name() == "TestObsHistory" ||
+			t.Name() == "TestObsRedHistory1" ||
 			t.Name() == "TestObsMultiHistory" ||
 			t.Name() == "TestCreateOlfDssErr" ||
 			t.Name() == "TestNewOlfSmallDssOk" ||
+			t.Name() == "TestNewOlfSmallDssRedOk" ||
 			t.Name() == "TestNewOlfMediumDssOk" ||
 			t.Name() == "TestNewOlfLargeDssOk" ||
 			t.Name() == "TestOlfDssMindex" ||
-			t.Name() == "TestOlfHistory" ||
+			t.Name() == "TestOlfHistory1" ||
+			t.Name() == "TestOlfRedHistory1" ||
 			t.Name() == "TestOlfMultiHistory" ||
 			t.Name() == "TestNewWebDssServer" ||
 			t.Name() == "TestNewWebDssTlsServer" ||
@@ -232,12 +235,12 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestNewWebDssClientObs" ||
 			t.Name() == "TestNewWebDssClientSmf" ||
 			t.Name() == "TestNewWebDssApiClientOlf" ||
-			t.Name() == "TestNewWebDssApiClientOlfRed1" ||
+			t.Name() == "TestNewWebDssApiClientOlfRed" ||
 			t.Name() == "TestNewWebDssApiClientObs" ||
 			t.Name() == "TestNewWebDssApiClientSmf" ||
-			t.Name() == "TestWebClientOlfHistory" ||
+			t.Name() == "TestWebClientOlfHistory1" ||
 			t.Name() == "TestWebClientObsHistory" ||
-			t.Name() == "TestWebDssApiClientOlfHistory" ||
+			t.Name() == "TestWebDssApiClientOlfHistory1" ||
 			t.Name() == "TestWebDssApiClientObsHistory" ||
 			t.Name() == "TestWebClientOlfMultiHistory" ||
 			t.Name() == "TestNewWebApiClient" ||
@@ -251,8 +254,10 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestEDssApiClientOlfBaseRed" ||
 			t.Name() == "TestEDssApiClientObsBase" ||
 			t.Name() == "TestEDssApiClientSmfBase" ||
-			t.Name() == "TestEDssClientOlfHistory" ||
+			t.Name() == "TestEDssClientOlfHistory1" ||
+			t.Name() == "TestEDssClientOlfRedHistory" ||
 			t.Name() == "TestEDssApiClientOlfHistory" ||
+			t.Name() == "TestEDssApiClientOlfRedHistory1" ||
 			t.Name() == "TestEDssClientOlfMultiHistory" ||
 			t.Name() == "TestEDssApiClientOlfMultiHistory" ||
 			t.Name() == "TheEnd" {

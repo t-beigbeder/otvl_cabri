@@ -56,7 +56,7 @@ func (s3s *s3Session) Check() error {
 	return err
 }
 
-func (s3s *s3Session) List(prefix string) ([]string, error) {
+func (s3s *s3Session) doList(prefix string) ([]string, error) {
 	var res []string
 	err := s3s.s3Svc.ListObjectsV2Pages(&s3.ListObjectsV2Input{
 		Bucket: aws.String(s3s.config.Container),
@@ -73,6 +73,41 @@ func (s3s *s3Session) List(prefix string) ([]string, error) {
 	if s3s.mock != nil {
 		if _, err = s3s.mock.List(prefix); err != nil {
 			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (s3s *s3Session) List(prefix string) ([]string, error) {
+	if prefix != "meta-" && prefix != "content-" {
+		return s3s.doList(prefix)
+	}
+	ress := map[int][]string{}
+	errs := map[int]error{}
+	mx := sync.Mutex{}
+	updateMaps := func(ii int, res []string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		ress[ii], errs[ii] = res, err
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(16)
+	for i := 0; i < 16; i++ {
+		go func(ii int) {
+			c := fmt.Sprintf("%x", ii)
+			res, err := s3s.doList(prefix + c)
+			updateMaps(ii, res, err)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	res := []string{}
+	for i := 0; i < 16; i++ {
+		if errs[i] != nil {
+			return nil, errs[i]
+		}
+		for _, rsi := range ress[i] {
+			res = append(res, rsi)
 		}
 	}
 	return res, nil
@@ -227,12 +262,6 @@ type s3Session struct {
 
 func NewS3Session(config ObsConfig, getMock func(IS3Session) IS3Session) IS3Session {
 	return &s3Session{config: config, getMock: getMock}
-}
-
-func CleanS3Session(config ObsConfig, getMock func(IS3Session) IS3Session) (IS3Session, error) {
-	s3s := &s3Session{config: config, getMock: getMock}
-	err := s3s.DeleteAll("")
-	return s3s, err
 }
 
 func (s3m *s3sMockFs) Initialize() error {

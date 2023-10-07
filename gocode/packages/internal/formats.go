@@ -3,6 +3,7 @@ package internal
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"strconv"
 	"time"
 )
@@ -66,6 +67,20 @@ func Str32ToPath(s string, size string) string {
 		return fmt.Sprintf("%s/%s", s[0:3], s[3:32])
 	}
 	return fmt.Sprintf("%s/%s/%s", s[0:3], s[3:6], s[6:32])
+}
+
+func Path2Str32(p, size string) (string, error) {
+	ds, pn := ufpath.Split(p)
+	suffix := ufpath.Ext(pn)
+	if len(suffix) != 0 {
+		pn = pn[:len(pn)-len(suffix)]
+	}
+	ds, ds1 := ufpath.Split(ds[:len(ds)-1])
+	ds2 := ""
+	if size == "l" {
+		_, ds2 = ufpath.Split(ds[:len(ds)-1])
+	}
+	return ds2 + ds1 + pn, nil
 }
 
 func Int64ToStr16(i int64) string {

@@ -218,7 +218,8 @@ func TestMockFsHistory(t *testing.T) {
 	}
 }
 
-func runTestObsHistory(t *testing.T) error {
+func runTestObsHistory(t *testing.T, redLimit int) error {
+	optionalSkip(t)
 	if err := CleanObsDss(getOC()); err != nil {
 		return err
 	}
@@ -238,6 +239,7 @@ func runTestObsHistory(t *testing.T) error {
 			config := getOC()
 			config.LocalPath = tfs.Path()
 			config.DssBaseConfig.GetIndex = GetPIndex
+			config.ReducerLimit = redLimit
 			dss, err := NewObsDss(config, 0, nil)
 			if err != nil {
 				return nil, err
@@ -251,7 +253,13 @@ func runTestObsHistory(t *testing.T) error {
 
 func TestObsHistory(t *testing.T) {
 	internal.Retry(t, func(t *testing.T) error {
-		return runTestObsHistory(t)
+		return runTestObsHistory(t, 0)
+	})
+}
+
+func TestObsRedHistory(t *testing.T) {
+	internal.Retry(t, func(t *testing.T) error {
+		return runTestObsHistory(t, 2)
 	})
 }
 

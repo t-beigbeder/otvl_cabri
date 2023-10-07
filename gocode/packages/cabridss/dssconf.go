@@ -27,7 +27,7 @@ type DssBaseConfig struct {
 	TlsKey            string                                                      `json:"-"`          // certificate key file on https server
 	TlsNoCheck        bool                                                        `json:"-"`          // no check of certificate by https client
 	BasicAuthUser     string                                                      `json:"-"`          // adds basic authentication
-	BasicAuthPassword string                                                      `json:"-"`          // basic authentication pasword
+	BasicAuthPassword string                                                      `json:"-"`          // basic authentication password
 	WebRoot           string                                                      `json:"-"`          // web API server root
 	Encrypted         bool                                                        `json:"encrypted"`  // repository is encrypted
 	ReducerLimit      int                                                         `json:"-"`          // if not 0 max number of parallel I/O

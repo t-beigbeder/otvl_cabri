@@ -29,6 +29,9 @@ type BaseOptions struct {
 	ObsSecretKeys []string
 	TlsCert       string // certificate file on https server or untrusted CA on https client
 	TlsNoCheck    bool   // no check of certificate by https client
+	HUser         string // https client basic auth user
+	HPassword     bool   // https client basic auth password
+	HPFile        string // https client basic auth password
 	// Left entities located here in case of sync CLI for convenience
 	LeftUsers []string
 	LeftACL   []string
@@ -36,6 +39,10 @@ type BaseOptions struct {
 
 func (bos BaseOptions) getBaseOptions() BaseOptions {
 	return bos
+}
+
+func (bos BaseOptions) hasHOptions() bool {
+	return bos.HUser != "" || bos.HPassword || bos.HPFile != ""
 }
 
 type BaseOptionsEr interface {
@@ -282,6 +289,26 @@ func GetObsConfig(opts BaseOptions, index int, root, mp string) (cabridss.ObsCon
 		SecretKey:     secretKey,
 		Container:     container,
 	}, nil
+}
+
+func getS3ConfigAt(opt []string, index int) string {
+	if len(opt) == 0 {
+		return ""
+	}
+	if len(opt) <= index {
+		return opt[len(opt)-1]
+	}
+	return opt[index]
+}
+
+func GetS3Config(opts BaseOptions, index int) cabridss.ObsConfig {
+	return cabridss.ObsConfig{
+		Endpoint:  getS3ConfigAt(opts.ObsEndpoints, index),
+		Region:    getS3ConfigAt(opts.ObsRegions, index),
+		AccessKey: getS3ConfigAt(opts.ObsAccessKeys, index),
+		SecretKey: getS3ConfigAt(opts.ObsSecretKeys, index),
+		Container: getS3ConfigAt(opts.ObsContainers, index),
+	}
 }
 
 func GetSmfConfig(opts BaseOptions, index int, root, mp string) (cabridss.ObsConfig, error) {

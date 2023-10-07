@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"os"
 	"strings"
+	"sync"
 )
 
 type OlfConfig struct {
@@ -274,11 +275,18 @@ func (odoi *oDssOlfImpl) scanMetaDir(path string, sti StorageInfo, errs *ErrorCo
 			continue
 		}
 		sti.Path2Meta[cPath] = bs
+		hn, _ := internal.Path2Str32(cPath, odoi.size)
+		suffix := ufpath.Ext(cPath)
+		t, _ := internal.Str16ToInt64(suffix[1:])
+		sti.Path2HnIt[cPath] = SIHnIt{
+			Hn: hn,
+			It: t,
+		}
 	}
 	return
 }
 
-func (odoi *oDssOlfImpl) scanContentDir(path string, sti StorageInfo, errs *ErrorCollector) {
+func (odoi *oDssOlfImpl) scanContentDir(path string, checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	pathErr := func(path string, err error) {
 		sti.Path2Error[path] = err
 		errs.Collect(err)
@@ -297,19 +305,63 @@ func (odoi *oDssOlfImpl) scanContentDir(path string, sti StorageInfo, errs *Erro
 	for _, fi := range fil {
 		cPath := ufpath.Join(path, fi.Name())
 		if fi.IsDir() {
-			odoi.scanContentDir(cPath, sti, errs)
+			odoi.scanContentDir(cPath, false, sti, errs)
 			continue
 		}
 		relPath := cPath[strings.LastIndex(cPath, "/content/")+len("/content") : len(cPath)]
 		cch := strings.Join(strings.Split(relPath, "/"), "")
 		sti.Path2Content[cPath] = cch
 	}
+	if !checksum {
+		return
+	}
+
+	mx := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	lockPathErr := func(mn string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		pathErr(mn, err)
+	}
+	doScanContentOlf := func(pcp, pcch string) {
+		cr, err := odoi.getAfs().Open(pcp)
+		if err != nil {
+			lockPathErr(path, err)
+			return
+		}
+		ch := ""
+		ch, err = internal.ShaFrom(cr)
+		if err != nil {
+			cr.Close()
+			lockPathErr(path, err)
+			return
+		}
+		cr.Close()
+		if ch != pcch {
+			lockPathErr(path, fmt.Errorf("in doScanContentOlf: content checksum %s differs from path %s", ch, pcp))
+		}
+	}
+	for cPath, cch := range sti.Path2Content {
+		wg.Add(1)
+		go func(pcp, pcch string) {
+			defer wg.Done()
+			if odoi.reducer == nil {
+				doScanContentOlf(pcp, pcch)
+			} else {
+				odoi.reducer.Launch(fmt.Sprintf("doScanContentOlf-%s", pcch), func() error {
+					doScanContentOlf(pcp, pcch)
+					return nil
+				})
+			}
+		}(cPath, cch)
+	}
+	wg.Wait()
 	return
 }
 
-func (odoi *oDssOlfImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector) {
+func (odoi *oDssOlfImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	odoi.scanMetaDir(ufpath.Join(odoi.root, "meta"), sti, errs)
-	odoi.scanContentDir(ufpath.Join(odoi.root, "content"), sti, errs)
+	odoi.scanContentDir(ufpath.Join(odoi.root, "content"), checksum, sti, errs)
 }
 
 func newOlfProxy() oDssProxy {
@@ -353,7 +405,8 @@ func NewOlfDss(config OlfConfig, slsttime int64, aclusers []string) (HDss, error
 	if config.ReducerLimit != 0 {
 		red = plumber.NewReducer(config.ReducerLimit, 0)
 	}
-	return &ODss{proxy: proxy, reducer: red}, nil
+	proxy.setReducer(red)
+	return &ODss{proxy: proxy}, nil
 }
 
 // CreateOlfDss creates an "object-storage-like files" DSS data storage system

@@ -4,7 +4,7 @@
 
 Instructions provided below must be run on a Linux system.
 
-Install a golang 1.20+ distribution, instructions are available
+Install a golang 1.21+ distribution, instructions are available
 [here](https://go.dev/install). 
 
 Install the following golang support tool:
