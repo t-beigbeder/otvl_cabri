@@ -26,9 +26,6 @@ or using Cloud Storage services compatible with Amazon S3
 
 ## Tooling
 
-- Access to external storage systems can be provided through a remote http server,
-enabling among others multi-user sharing and synchronization of common data
-from different locations
 - a REST API is available for access to data storage services
 - a basic configurable scheduler is provided enabling automatic data synchronization among users,
 but also from developers to hosted applications concerning data feeding
@@ -49,13 +46,12 @@ The tool is documented through the links below:
 
 Other documentation is referenced from these pages, including:
 
-- [Reference documentation for Cabri DSS CLI](doc/cliref.md)
 - [Tuning synchronization parameters](doc/synctune.md)
 - [Information for configuring and using a secured HTTP server](doc/https.md)
 - [ACL (Access Control List)](doc/acl.md)
 - [Data encyption](doc/encrypt.md)
 - [DSS management](doc/mng.md)
-- [Reference documentation for the CLI](doc/cliref.md)
+- [Reference documentation for Cabri DSS CLI](doc/cliref.md)
 - [Client configuration](doc/cliconf.md)
 - [REST API](doc/restapi.md)
 - [Building the application for various platforms](doc/build.md)
