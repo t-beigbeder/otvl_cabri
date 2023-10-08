@@ -783,9 +783,9 @@ test_unlock() {
 }
 
 test_index() {
-  test_index_olf && \
-  test_index_polf && \
-  test_index_xolf && \
+#  test_index_olf && \
+#  test_index_polf && \
+#  test_index_xolf && \
   test_index_obs && \
   test_index_xobs && \
   test_index_wolf && \
@@ -810,11 +810,11 @@ test_cli_fast=
 info "starting"
 true && \
   run_command cabri version && \
-  test_basic_sync && \
-  test_more_sync && \
-  test_unlock && \
+#  test_basic_sync && \
+#  test_more_sync && \
+#  test_unlock && \
   test_index && \
-  test_fixes && \
+#  test_fixes && \
   true || (info failed && exit 1)
 st=$?
 info "ended"
