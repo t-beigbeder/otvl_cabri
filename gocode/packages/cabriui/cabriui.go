@@ -291,6 +291,26 @@ func GetObsConfig(opts BaseOptions, index int, root, mp string) (cabridss.ObsCon
 	}, nil
 }
 
+func getS3ConfigAt(opt []string, index int) string {
+	if len(opt) == 0 {
+		return ""
+	}
+	if len(opt) <= index {
+		return opt[len(opt)-1]
+	}
+	return opt[index]
+}
+
+func GetS3Config(opts BaseOptions, index int) cabridss.ObsConfig {
+	return cabridss.ObsConfig{
+		Endpoint:  getS3ConfigAt(opts.ObsEndpoints, index),
+		Region:    getS3ConfigAt(opts.ObsRegions, index),
+		AccessKey: getS3ConfigAt(opts.ObsAccessKeys, index),
+		SecretKey: getS3ConfigAt(opts.ObsSecretKeys, index),
+		Container: getS3ConfigAt(opts.ObsContainers, index),
+	}
+}
+
 func GetSmfConfig(opts BaseOptions, index int, root, mp string) (cabridss.ObsConfig, error) {
 	config, err := GetObsConfig(opts, index, root, mp)
 	if err != nil {

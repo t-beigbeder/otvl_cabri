@@ -259,12 +259,6 @@ func NewS3Session(config ObsConfig, getMock func(IS3Session) IS3Session) IS3Sess
 	return &s3Session{config: config, getMock: getMock}
 }
 
-func CleanS3Session(config ObsConfig, getMock func(IS3Session) IS3Session) (IS3Session, error) {
-	s3s := &s3Session{config: config, getMock: getMock}
-	err := s3s.DeleteAll("")
-	return s3s, err
-}
-
 func (s3m *s3sMockFs) Initialize() error {
 	if s3m.getMock != nil {
 		s3m.mock = s3m.getMock(s3m)
