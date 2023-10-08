@@ -110,6 +110,9 @@ func init() {
 	webApiCmd.AddCommand(restApiCmd)
 	restApiCmd.Flags().StringArrayVarP(&baseOptions.Users, "user", "u", nil, "list of ACL users for retrieval")
 	restApiCmd.Flags().StringArrayVar(&baseOptions.ACL, "acl", nil, "list of ACL <user:rights> items (defaults to rw) for creation and update")
+	restApiCmd.PersistentFlags().StringVar(&baseOptions.HUser, "huser", "", "http client user")
+	restApiCmd.PersistentFlags().StringVar(&baseOptions.HPFile, "hpfile", "", "file containing the http client user password")
+	restApiCmd.PersistentFlags().BoolVar(&baseOptions.HPassword, "hpassword", false, "force http client user password prompt")
 	restApiCmd.Flags().StringVar(&webApiOptions.LastTime, "lasttime", "", "upper time of entries retrieved in historized DSS")
 	restApiCmd.Flags().StringVar(&webApiOptions.TlsClientCert, "tlsclientcrt", "", "untrusted CA on https client")
 }
