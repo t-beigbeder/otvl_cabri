@@ -84,14 +84,19 @@ func (s3s *s3Session) List(prefix string) ([]string, error) {
 	}
 	ress := map[int][]string{}
 	errs := map[int]error{}
+	mx := sync.Mutex{}
+	updateMaps := func(ii int, res []string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		ress[ii], errs[ii] = res, err
+	}
 	wg := sync.WaitGroup{}
 	wg.Add(16)
 	for i := 0; i < 16; i++ {
-		c := fmt.Sprintf("%x", i)
-		ress[i] = nil
-		errs[i] = nil
 		go func(ii int) {
-			ress[ii], errs[ii] = s3s.doList(prefix + c)
+			c := fmt.Sprintf("%x", ii)
+			res, err := s3s.doList(prefix + c)
+			updateMaps(ii, res, err)
 			wg.Done()
 		}(i)
 	}

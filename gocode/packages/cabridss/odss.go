@@ -36,6 +36,8 @@ type oDssBaseProxy interface {
 	getHistoryChunks(resolution string) ([]HistoryChunk, error)
 	reindex() (StorageInfo, *ErrorCollector)
 	setSu()
+	setReducer(plumber.Reducer)
+	getReducer() plumber.Reducer
 
 	// other
 	doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error
@@ -84,16 +86,15 @@ type oDssProxy interface {
 }
 
 type ODss struct {
-	proxy   oDssProxy
-	reducer plumber.Reducer
-	closed  bool
+	proxy  oDssProxy
+	closed bool
 }
 
 func (ods *ODss) Mkns(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		return ods.proxy.mkns(npath, mtime, children, acl)
 	}
-	return ods.reducer.Launch(
+	return ods.proxy.getReducer().Launch(
 		fmt.Sprintf("Mkns %s", npath),
 		func() error {
 			return ods.proxy.mkns(npath, mtime, children, acl)
@@ -101,10 +102,10 @@ func (ods *ODss) Mkns(npath string, mtime int64, children []string, acl []ACLEnt
 }
 
 func (ods *ODss) Updatens(npath string, mtime int64, children []string, acl []ACLEntry) error {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		return ods.proxy.updatens(npath, mtime, children, acl)
 	}
-	return ods.reducer.Launch(
+	return ods.proxy.getReducer().Launch(
 		fmt.Sprintf("Updatens %s", npath),
 		func() error {
 			return ods.proxy.updatens(npath, mtime, children, acl)
@@ -112,11 +113,11 @@ func (ods *ODss) Updatens(npath string, mtime int64, children []string, acl []AC
 }
 
 func (ods *ODss) Lsns(npath string) (children []string, err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		children, err = ods.proxy.lsns(npath)
 		return
 	}
-	if err = ods.reducer.Launch(
+	if err = ods.proxy.getReducer().Launch(
 		fmt.Sprintf("Lsns %s", npath),
 		func() error {
 			var iErr error
@@ -135,11 +136,11 @@ func (ods *ODss) IsDuplicate(ch string) (bool, error) {
 }
 
 func (ods *ODss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (wc io.WriteCloser, err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		wc, err = ods.proxy.getContentWriter(npath, mtime, acl, cb)
 		return
 	}
-	if err = ods.reducer.Launch(
+	if err = ods.proxy.getReducer().Launch(
 		fmt.Sprintf("GetContentWriter %s", npath),
 		func() error {
 			var iErr error
@@ -155,11 +156,11 @@ func (ods *ODss) GetContentWriter(npath string, mtime int64, acl []ACLEntry, cb 
 }
 
 func (ods *ODss) GetContentReader(npath string) (rc io.ReadCloser, err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		rc, err = ods.proxy.getContentReader(npath)
 		return
 	}
-	if err = ods.reducer.Launch(
+	if err = ods.proxy.getReducer().Launch(
 		fmt.Sprintf("GetContentReader %s", npath),
 		func() error {
 			var iErr error
@@ -174,10 +175,10 @@ func (ods *ODss) GetContentReader(npath string) (rc io.ReadCloser, err error) {
 }
 
 func (ods *ODss) Remove(npath string) (err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		return ods.proxy.remove(npath)
 	}
-	return ods.reducer.Launch(
+	return ods.proxy.getReducer().Launch(
 		fmt.Sprintf("Remove %s", npath),
 		func() error {
 			return ods.proxy.remove(npath)
@@ -185,11 +186,11 @@ func (ods *ODss) Remove(npath string) (err error) {
 }
 
 func (ods *ODss) GetMeta(npath string, getCh bool) (meta IMeta, err error) {
-	if ods.reducer == nil {
+	if ods.proxy.getReducer() == nil {
 		meta, err = ods.proxy.getMeta(npath, getCh)
 		return
 	}
-	if err = ods.reducer.Launch(
+	if err = ods.proxy.getReducer().Launch(
 		fmt.Sprintf("GetMeta %s", npath),
 		func() error {
 			var iErr error
@@ -232,8 +233,8 @@ func (ods *ODss) Close() error {
 		return nil
 	}
 	ods.closed = true
-	if ods.reducer != nil {
-		if err := ods.reducer.Close(); err != nil {
+	if ods.proxy.getReducer() != nil {
+		if err := ods.proxy.getReducer().Close(); err != nil {
 			ods.proxy.close()
 			return err
 		}
@@ -269,14 +270,15 @@ func (ods *ODss) SuEnableWrite(string) error { return nil }
 
 type oDssBaseImpl struct {
 	me            oDssProxy
-	lsttime       int64        // if not zero is the upper time of entries retrieved in it
-	aclusers      []string     // if not nil List of ACL users to check access
-	isSu          bool         // superuser access to enable synchro
-	mockct        int64        // if not zero mock current time
-	metamockcbs   *MetaMockCbs // if not nil callbacks for json marshal/unmarshal
-	index         Index        // the DSS index, possibly nIndex which is a noop index
-	repoId        string       // the DSS repoId or ""
-	repoEncrypted bool         // repository is encrypted
+	lsttime       int64           // if not zero is the upper time of entries retrieved in it
+	aclusers      []string        // if not nil List of ACL users to check access
+	isSu          bool            // superuser access to enable synchro
+	mockct        int64           // if not zero mock current time
+	metamockcbs   *MetaMockCbs    // if not nil callbacks for json marshal/unmarshal
+	index         Index           // the DSS index, possibly nIndex which is a noop index
+	repoId        string          // the DSS repoId or ""
+	repoEncrypted bool            // repository is encrypted
+	reducer       plumber.Reducer // a reducer
 }
 
 func (odbi *oDssBaseImpl) metaTimesFor(npath string, allTimes bool) ([]int64, error) {
@@ -1190,6 +1192,10 @@ func (odbi *oDssBaseImpl) reindex() (StorageInfo, *ErrorCollector) {
 }
 
 func (odbi *oDssBaseImpl) setSu() { odbi.isSu = true }
+
+func (odbi *oDssBaseImpl) setReducer(red plumber.Reducer) { odbi.reducer = red }
+
+func (odbi *oDssBaseImpl) getReducer() plumber.Reducer { return odbi.reducer }
 
 func (odbi *oDssBaseImpl) isRepoEncrypted() bool { return odbi.repoEncrypted }
 

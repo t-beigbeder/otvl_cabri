@@ -218,9 +218,12 @@ func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
 		pathErr("meta-", err)
 		return
 	}
+	wg := sync.WaitGroup{}
 	for _, mn := range mns {
+		wg.Add(1)
 		go func(mni string) {
-			if odoi.me.getReducer() == nil {
+			defer wg.Done()
+			if odoi.reducer == nil {
 				bs, err := doScanMetaObj(mni)
 				if err != nil {
 					pathErr(mni, err)
@@ -230,6 +233,7 @@ func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
 			}
 		}(mn)
 	}
+	wg.Wait()
 }
 
 func (odoi *oDssObjImpl) scanContentObjs(sti StorageInfo, errs *ErrorCollector) {
@@ -281,7 +285,8 @@ func NewObsDss(config ObsConfig, slsttime int64, aclusers []string) (HDss, error
 	if config.ReducerLimit != 0 {
 		red = plumber.NewReducer(config.ReducerLimit, 0)
 	}
-	return &ODss{proxy: proxy, reducer: red}, nil
+	proxy.setReducer(red)
+	return &ODss{proxy: proxy}, nil
 }
 
 // CreateObsDss creates an "object-storage" DSS (data storage system)

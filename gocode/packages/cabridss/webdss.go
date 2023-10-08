@@ -528,5 +528,6 @@ func NewWebDss(config WebDssConfig, slsttime int64, aclusers []string) (HDss, er
 	if config.ReducerLimit != 0 {
 		red = plumber.NewReducer(config.ReducerLimit, 0)
 	}
-	return &ODss{proxy: proxy, reducer: red}, nil
+	proxy.setReducer(red)
+	return &ODss{proxy: proxy}, nil
 }
