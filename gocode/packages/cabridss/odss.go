@@ -36,6 +36,7 @@ type oDssBaseProxy interface {
 	getHistoryChunks(resolution string) ([]HistoryChunk, error)
 	reindex() (StorageInfo, *ErrorCollector)
 	setSu()
+
 	// other
 	doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error
 	setIndex(config DssBaseConfig, localPath string) error // to be called by oDssSpecificProxy.initialize

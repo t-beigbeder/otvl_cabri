@@ -9,6 +9,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"io"
 	"os"
+	"sync"
 )
 
 type ObsConfig struct {
@@ -188,9 +189,29 @@ func (odoi *oDssObjImpl) setAfs(tfs afero.Fs) { panic("inconsistent") }
 func (odoi *oDssObjImpl) getAfs() afero.Fs { return appFs }
 
 func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
-	pathErr := func(path string, err error) {
-		sti.Path2Error[path] = err
+	mx := sync.Mutex{}
+	doScanMetaObj := func(mn string) ([]byte, error) {
+		suffix := ufpath.Ext(mn)
+		if len(suffix) == 0 {
+			return nil, fmt.Errorf("no suffix")
+		}
+		t, err := internal.Str16ToInt64(suffix[1:])
+		if err != nil {
+			return nil, err
+		}
+		_ = t
+		return odoi.is3.Get(mn)
+	}
+	pathErr := func(mn string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		sti.Path2Error[mn] = err
 		errs.Collect(err)
+	}
+	pathOk := func(mn string, bs []byte) {
+		mx.Lock()
+		defer mx.Unlock()
+		sti.Path2Meta[mn] = bs
 	}
 	mns, err := odoi.is3.List("meta-")
 	if err != nil {
@@ -198,21 +219,16 @@ func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
 		return
 	}
 	for _, mn := range mns {
-		suffix := ufpath.Ext(mn)
-		if len(suffix) == 0 {
-			pathErr(mn, fmt.Errorf("no suffix"))
-			continue
-		}
-		t, err := internal.Str16ToInt64(suffix[1:])
-		if err != nil {
-			pathErr(mn, err)
-		}
-		_ = t
-		bs, err := odoi.is3.Get(mn)
-		if err != nil {
-			pathErr(mn, err)
-		}
-		sti.Path2Meta[mn] = bs
+		go func(mni string) {
+			if odoi.me.getReducer() == nil {
+				bs, err := doScanMetaObj(mni)
+				if err != nil {
+					pathErr(mni, err)
+				} else {
+					pathOk(mni, bs)
+				}
+			}
+		}(mn)
 	}
 }
 
