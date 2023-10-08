@@ -56,7 +56,7 @@ func (s3s *s3Session) Check() error {
 	return err
 }
 
-func (s3s *s3Session) List(prefix string) ([]string, error) {
+func (s3s *s3Session) doList(prefix string) ([]string, error) {
 	var res []string
 	err := s3s.s3Svc.ListObjectsV2Pages(&s3.ListObjectsV2Input{
 		Bucket: aws.String(s3s.config.Container),
@@ -73,6 +73,36 @@ func (s3s *s3Session) List(prefix string) ([]string, error) {
 	if s3s.mock != nil {
 		if _, err = s3s.mock.List(prefix); err != nil {
 			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (s3s *s3Session) List(prefix string) ([]string, error) {
+	if prefix != "meta-" && prefix != "content-" {
+		return s3s.doList(prefix)
+	}
+	ress := map[int][]string{}
+	errs := map[int]error{}
+	wg := sync.WaitGroup{}
+	wg.Add(16)
+	for i := 0; i < 16; i++ {
+		c := fmt.Sprintf("%x", i)
+		ress[i] = nil
+		errs[i] = nil
+		go func(ii int) {
+			ress[ii], errs[ii] = s3s.doList(prefix + c)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	res := []string{}
+	for i := 0; i < 16; i++ {
+		if errs[i] != nil {
+			return nil, errs[i]
+		}
+		for _, rsi := range ress[i] {
+			res = append(res, rsi)
 		}
 	}
 	return res, nil
