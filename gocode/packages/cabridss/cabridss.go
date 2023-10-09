@@ -373,6 +373,7 @@ type CreateNewParams struct {
 	AccessKey      string                                                      // obs: AWS S3 access key (Openstack Swift must generate it)
 	SecretKey      string                                                      // obs: AWS S3 secret key (Openstack Swift must generate it)
 	Container      string                                                      // obs: AWS S3 bucket or Openstack Swift container
+	RedLimit       int                                                         // all: reducer limit or 0
 }
 
 func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
@@ -382,7 +383,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 			localPath = params.Root
 		}
 		config := OlfConfig{
-			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, ConfigPassword: params.ConfigPassword, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
+			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, ConfigPassword: params.ConfigPassword, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted, ReducerLimit: params.RedLimit},
 			Root:          params.Root, Size: params.Size,
 		}
 		if params.Create {
@@ -394,7 +395,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 	}
 	if params.DssType == "obs" {
 		config := ObsConfig{
-			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, ConfigPassword: params.ConfigPassword, LocalPath: params.LocalPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
+			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, ConfigPassword: params.ConfigPassword, LocalPath: params.LocalPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted, ReducerLimit: params.RedLimit},
 			Endpoint:      params.Endpoint,
 			Region:        params.Region,
 			AccessKey:     params.AccessKey,
@@ -414,7 +415,7 @@ func CreateOrNewDss(params CreateNewParams) (dss Dss, err error) {
 			localPath = params.Root
 		}
 		config := ObsConfig{
-			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, ConfigPassword: params.ConfigPassword, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted},
+			DssBaseConfig: DssBaseConfig{ConfigDir: params.ConfigDir, ConfigPassword: params.ConfigPassword, LocalPath: localPath, GetIndex: params.GetIndex, Encrypted: params.Encrypted, ReducerLimit: params.RedLimit},
 			Endpoint:      params.Endpoint,
 			Region:        params.Region,
 			AccessKey:     params.AccessKey,

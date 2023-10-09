@@ -230,6 +230,16 @@ func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
 				} else {
 					pathOk(mni, bs)
 				}
+			} else {
+				odoi.reducer.Launch(fmt.Sprintf("doScanMetaObj-%s", mni), func() error {
+					bs, err := doScanMetaObj(mni)
+					if err != nil {
+						pathErr(mni, err)
+					} else {
+						pathOk(mni, bs)
+					}
+					return nil
+				})
 			}
 		}(mn)
 	}
