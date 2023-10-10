@@ -339,7 +339,7 @@ func cScanPhysicalStorage(apc WebApiClient) (*mSPS, error) {
 	wdc := apc.GetConfig().(webDssClientConfig)
 	var out mSPS
 	if wdc.LibApi {
-		sti, errs := wdc.libDss.ScanStorage(false, false)
+		sti, errs := wdc.libDss.ScanStorage(false, false, false) // FIXME: checksum on option
 		if errs == nil {
 			errs = &ErrorCollector{}
 		}

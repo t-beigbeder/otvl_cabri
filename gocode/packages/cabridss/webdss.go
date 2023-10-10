@@ -451,14 +451,14 @@ func (wdi *webDssImpl) spAuditIndexFromRemote(sti StorageInfo, mai map[string][]
 	return nil
 }
 
-func (wdi *webDssImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector) {
+func (wdi *webDssImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	sts, err := cScanPhysicalStorage(wdi.apc)
 	if err != nil {
 		errs.Collect(fmt.Errorf("in scanPhysicalStorage: %v", err))
 		return
 	}
 	// opportunity to decrypt if applicable
-	wdi.me.spScanPhysicalStorageClient(sts, sti, errs)
+	wdi.me.spScanPhysicalStorageClient(sts, sti, errs) // FIXME: checksum to be implemented
 }
 
 func (wdi *webDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error) {

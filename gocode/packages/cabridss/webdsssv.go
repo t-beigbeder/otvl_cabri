@@ -194,7 +194,7 @@ func sDumpIndex(c echo.Context) error {
 
 func sScanPhysicalStorage(c echo.Context) error {
 	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
-	sti, errs := dss.ScanStorage(false, false)
+	sti, errs := dss.ScanStorage(false, false, false) // FIXME: checksum on option
 	if errs == nil {
 		errs = &ErrorCollector{}
 	}

@@ -257,9 +257,10 @@ type HDss interface {
 
 	// ScanStorage scans the DSS storage and loads meta and content sha256 sum
 	//
+	// checksum checks content checksums
 	// purge removes unreferenced content from the repository
 	// purgeHidden removes hidden meta and content from the repository
-	ScanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector)
+	ScanStorage(checksum, purge, purgeHidden bool) (StorageInfo, *ErrorCollector)
 
 	// GetHistoryChunks returns history chunks loaded from local index
 	//

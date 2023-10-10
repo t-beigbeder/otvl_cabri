@@ -307,9 +307,9 @@ func (odoi *oDssOlfImpl) scanContentDir(path string, sti StorageInfo, errs *Erro
 	return
 }
 
-func (odoi *oDssOlfImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector) {
+func (odoi *oDssOlfImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	odoi.scanMetaDir(ufpath.Join(odoi.root, "meta"), sti, errs)
-	odoi.scanContentDir(ufpath.Join(odoi.root, "content"), sti, errs)
+	odoi.scanContentDir(ufpath.Join(odoi.root, "content"), sti, errs) // FIXME: checksum to be implemented
 }
 
 func newOlfProxy() oDssProxy {

@@ -261,9 +261,9 @@ func (odoi *oDssObjImpl) scanContentObjs(sti StorageInfo, errs *ErrorCollector) 
 	}
 }
 
-func (odoi *oDssObjImpl) scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector) {
+func (odoi *oDssObjImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	odoi.scanMetaObjs(sti, errs)
-	odoi.scanContentObjs(sti, errs)
+	odoi.scanContentObjs(sti, errs) // FIXME: checksum to be implemented
 }
 
 func newObsProxy() oDssProxy {

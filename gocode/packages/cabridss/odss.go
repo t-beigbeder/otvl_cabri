@@ -32,7 +32,7 @@ type oDssBaseProxy interface {
 	getRepoId() string
 	isEncrypted() bool
 	auditIndex() (map[string][]AuditIndexInfo, error)
-	scanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector)
+	scanStorage(checksum, purge, purgeHidden bool) (StorageInfo, *ErrorCollector)
 	getHistoryChunks(resolution string) ([]HistoryChunk, error)
 	reindex() (StorageInfo, *ErrorCollector)
 	setSu()
@@ -74,7 +74,7 @@ type oDssSpecificProxy interface {
 	removeContent(ch string) error
 	spClose() error
 	dumpIndex() string
-	scanPhysicalStorage(sti StorageInfo, errs *ErrorCollector)
+	scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector)
 	// internal functions directly mapped from Dss interface ones
 	setAfs(tfs afero.Fs)
 	getAfs() afero.Fs
@@ -254,8 +254,8 @@ func (ods *ODss) IsRepoEncrypted() bool { return ods.proxy.isRepoEncrypted() }
 
 func (ods *ODss) AuditIndex() (map[string][]AuditIndexInfo, error) { return ods.proxy.auditIndex() }
 
-func (ods *ODss) ScanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
-	return ods.proxy.scanStorage(purge, purgeHidden)
+func (ods *ODss) ScanStorage(checksum, purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
+	return ods.proxy.scanStorage(checksum, purge, purgeHidden)
 }
 
 func (ods *ODss) GetHistoryChunks(resolution string) ([]HistoryChunk, error) {
@@ -962,7 +962,7 @@ func (odbi *oDssBaseImpl) auditIndex() (map[string][]AuditIndexInfo, error) {
 	if len(mai) > 0 {
 		return mai, nil
 	}
-	sti, errs := odbi.scanStorage(false, false)
+	sti, errs := odbi.scanStorage(false, false, false)
 	if errs != nil {
 		return nil, fmt.Errorf("in doAuditIndexFromStorage: %v", errs)
 	}
@@ -1019,7 +1019,7 @@ func (odbi *oDssBaseImpl) purgeContent(sti StorageInfo, errs *ErrorCollector) {
 	}
 }
 
-func (odbi *oDssBaseImpl) scanStorage(purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
+func (odbi *oDssBaseImpl) scanStorage(checksum, purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
 	sti := StorageInfo{
 		Path2Meta:     map[string][]byte{},
 		Path2Content:  map[string]string{},
@@ -1031,7 +1031,7 @@ func (odbi *oDssBaseImpl) scanStorage(purge, purgeHidden bool) (StorageInfo, *Er
 		XRMetas:       map[string]map[int64][]byte{},
 	}
 	errs := &ErrorCollector{}
-	odbi.me.scanPhysicalStorage(sti, errs)
+	odbi.me.scanPhysicalStorage(checksum, sti, errs)
 	pathErr := func(path string, err error) {
 		sti.Path2Error[path] = err
 		errs.Collect(err)
@@ -1171,7 +1171,7 @@ func (odbi *oDssBaseImpl) reindex() (StorageInfo, *ErrorCollector) {
 	if !ok {
 		errs.Collect(fmt.Errorf("in reindex: index is not persistent"))
 	}
-	odbi.me.scanPhysicalStorage(sti, errs)
+	odbi.me.scanPhysicalStorage(false, sti, errs)
 	if len(*errs) > 0 {
 		return StorageInfo{}, errs
 	}

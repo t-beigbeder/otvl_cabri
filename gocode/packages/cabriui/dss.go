@@ -286,6 +286,7 @@ func dssAuditRun(ctx context.Context) error {
 
 type DSSScanOptions struct {
 	BaseOptions
+	Checksum    bool
 	Purge       bool
 	PurgeHidden bool
 	Summary     bool
@@ -341,7 +342,7 @@ func dssScanRun(ctx context.Context) error {
 	var sti cabridss.StorageInfo
 	if !opts.Summary || opts.Full || opts.Purge {
 		var perr *cabridss.ErrorCollector
-		sti, perr = dss.ScanStorage(opts.Purge, opts.PurgeHidden)
+		sti, perr = dss.ScanStorage(opts.Checksum, opts.Purge, opts.PurgeHidden)
 		if perr != nil {
 			return perr
 		}
