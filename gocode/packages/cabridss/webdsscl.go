@@ -335,17 +335,21 @@ func cDumpIndex(apc WebApiClient) (*mDump, error) {
 	return &out, nil
 }
 
-func cScanPhysicalStorage(apc WebApiClient) (*mSPS, error) {
+func cScanPhysicalStorage(apc WebApiClient, checksum bool) (*mSPS, error) {
 	wdc := apc.GetConfig().(webDssClientConfig)
 	var out mSPS
 	if wdc.LibApi {
-		sti, errs := wdc.libDss.ScanStorage(false, false, false) // FIXME: checksum on option
+		sti, errs := wdc.libDss.ScanStorage(checksum, false, false)
 		if errs == nil {
 			errs = &ErrorCollector{}
 		}
 		out.Sti, out.Errs = sti, *errs
 	} else {
-		_, err := apc.SimpleDoAsJson(http.MethodGet, apc.Url()+"scanPhysicalStorage", nil, &out)
+		scs := ""
+		if checksum {
+			scs = "?checksum=true"
+		}
+		_, err := apc.SimpleDoAsJson(http.MethodGet, apc.Url()+"scanPhysicalStorage"+scs, nil, &out)
 		if err != nil {
 			return nil, fmt.Errorf("in cScanPhysicalStorage: %v", err)
 		}

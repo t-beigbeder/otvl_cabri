@@ -452,7 +452,7 @@ func (wdi *webDssImpl) spAuditIndexFromRemote(sti StorageInfo, mai map[string][]
 }
 
 func (wdi *webDssImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
-	sts, err := cScanPhysicalStorage(wdi.apc)
+	sts, err := cScanPhysicalStorage(wdi.apc, checksum)
 	if err != nil {
 		errs.Collect(fmt.Errorf("in scanPhysicalStorage: %v", err))
 		return
