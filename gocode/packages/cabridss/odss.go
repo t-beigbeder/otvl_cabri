@@ -49,7 +49,7 @@ type oDssBaseProxy interface {
 	doGetMetaAt(npath string, time int64) (Meta, error)
 	storeAndIndexMeta(npath string, time int64, bs []byte) error
 	spUpdateClient(cix Index, data UpdatedData, isFull bool) error
-	spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector)
+	spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector)
 	spAuditIndexFromRemote(sti StorageInfo, mai map[string][]AuditIndexInfo) error
 	spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error)
 }
@@ -1069,8 +1069,11 @@ func (odbi *oDssBaseImpl) scanStorage(checksum, purge, purgeHidden bool) (Storag
 			pathErr(path, err)
 			continue
 		}
-		ch := internal.ShaFrom(cr)
-		cr.Close()
+		defer cr.Close()
+		ch, err := internal.ShaFrom(cr)
+		if err != nil {
+			pathErr(path, err)
+		}
 		if ch != meta.Ch {
 			pathErr(path, fmt.Errorf("%s (meta %s) cs %s loaded %s", path, ipath, meta.Ch, ch))
 			continue
@@ -1283,7 +1286,7 @@ func (odbi *oDssBaseImpl) spUpdateClient(cix Index, data UpdatedData, isFull boo
 	return cix.updateData(data, isFull)
 }
 
-func (odbi *oDssBaseImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+func (odbi *oDssBaseImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	panic("inconsistent")
 }
 

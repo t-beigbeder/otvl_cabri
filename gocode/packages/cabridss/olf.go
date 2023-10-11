@@ -278,7 +278,7 @@ func (odoi *oDssOlfImpl) scanMetaDir(path string, sti StorageInfo, errs *ErrorCo
 	return
 }
 
-func (odoi *oDssOlfImpl) scanContentDir(path string, sti StorageInfo, errs *ErrorCollector) {
+func (odoi *oDssOlfImpl) scanContentDir(path string, checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	pathErr := func(path string, err error) {
 		sti.Path2Error[path] = err
 		errs.Collect(err)
@@ -297,19 +297,38 @@ func (odoi *oDssOlfImpl) scanContentDir(path string, sti StorageInfo, errs *Erro
 	for _, fi := range fil {
 		cPath := ufpath.Join(path, fi.Name())
 		if fi.IsDir() {
-			odoi.scanContentDir(cPath, sti, errs)
+			odoi.scanContentDir(cPath, checksum, sti, errs)
 			continue
 		}
 		relPath := cPath[strings.LastIndex(cPath, "/content/")+len("/content") : len(cPath)]
 		cch := strings.Join(strings.Split(relPath, "/"), "")
 		sti.Path2Content[cPath] = cch
+		if !checksum {
+			continue
+		}
+		cr, err := odoi.getAfs().Open(cPath)
+		if err != nil {
+			pathErr(path, err)
+			continue
+		}
+		ch := ""
+		ch, err = internal.ShaFrom(cr)
+		if err != nil {
+			cr.Close()
+			pathErr(path, err)
+			continue
+		}
+		cr.Close()
+		if ch != cch {
+			pathErr(path, fmt.Errorf("in scanContentDir: content checksum %s differs from path %s", ch, cPath))
+		}
 	}
 	return
 }
 
 func (odoi *oDssOlfImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	odoi.scanMetaDir(ufpath.Join(odoi.root, "meta"), sti, errs)
-	odoi.scanContentDir(ufpath.Join(odoi.root, "content"), sti, errs) // FIXME: checksum to be implemented
+	odoi.scanContentDir(ufpath.Join(odoi.root, "content"), checksum, sti, errs) // FIXME: checksum to be implemented
 }
 
 func newOlfProxy() oDssProxy {

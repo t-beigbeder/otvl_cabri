@@ -246,7 +246,7 @@ func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
 	wg.Wait()
 }
 
-func (odoi *oDssObjImpl) scanContentObjs(sti StorageInfo, errs *ErrorCollector) {
+func (odoi *oDssObjImpl) scanContentObjs(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	pathErr := func(path string, err error) {
 		sti.Path2Error[path] = err
 		errs.Collect(err)
@@ -258,12 +258,31 @@ func (odoi *oDssObjImpl) scanContentObjs(sti StorageInfo, errs *ErrorCollector) 
 	}
 	for _, cn := range cns {
 		sti.Path2Content[cn] = cn[len("content-"):]
+		if !checksum {
+			continue
+		}
+		cr, err := odoi.is3.Download(cn)
+		if err != nil {
+			pathErr(cn, err)
+			continue
+		}
+		ch := ""
+		ch, err = internal.ShaFrom(cr)
+		if err != nil {
+			cr.Close()
+			pathErr(cn, err)
+			continue
+		}
+		cr.Close()
+		if ch != cn[len("content-"):] {
+			pathErr(cn, fmt.Errorf("in scanContentDir: content checksum %s differs from path %s", ch, cn))
+		}
 	}
 }
 
 func (odoi *oDssObjImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	odoi.scanMetaObjs(sti, errs)
-	odoi.scanContentObjs(sti, errs) // FIXME: checksum to be implemented
+	odoi.scanContentObjs(checksum, sti, errs)
 }
 
 func newObsProxy() oDssProxy {

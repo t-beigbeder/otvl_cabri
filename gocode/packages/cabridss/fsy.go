@@ -352,12 +352,10 @@ func (fsy *FsyDss) doGetMeta(npath string, getCh bool) (IMeta, error) {
 				return nil, fmt.Errorf("in GetMeta: %w", err)
 			}
 			defer cr.Close()
-			hw := sha256.New()
-			_, err = io.Copy(hw, cr)
+			ch, err = internal.ShaFrom(cr)
 			if err != nil {
 				return nil, fmt.Errorf("in GetMeta: %w", err)
 			}
-			ch = internal.Sha256ToStr32(hw.Sum(nil))
 		}
 		return Meta{
 			Path: npath, Mtime: fi.ModTime().Unix(), Size: fi.Size(), Ch: ch,
