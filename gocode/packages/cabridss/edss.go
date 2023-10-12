@@ -311,8 +311,7 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 	}
 }
 
-func (edi *eDssImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
-	// FIXME: checksum
+func (edi *eDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	copyMap(sti.Path2Error, sts.Sti.Path2Error)
 	copyMap(sti.Path2Content, sts.Sti.Path2Content)
 	errs = &sts.Errs

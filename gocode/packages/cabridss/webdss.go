@@ -391,8 +391,7 @@ func copyMap[T any](dst map[string]T, src map[string]T) {
 	}
 }
 
-func (wdi *webDssImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
-	// FIXME: checksum
+func (wdi *webDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	copyMap(sti.Path2Meta, sts.Sti.Path2Meta)
 	copyMap(sti.Path2Content, sts.Sti.Path2Content)
 	copyMap(sti.Path2CContent, sts.Sti.Path2CContent)
@@ -459,7 +458,7 @@ func (wdi *webDssImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs 
 		return
 	}
 	// opportunity to decrypt if applicable
-	wdi.me.spScanPhysicalStorageClient(checksum, sts, sti, errs) // FIXME: checksum to be implemented
+	wdi.me.spScanPhysicalStorageClient(sts, sti, errs)
 }
 
 func (wdi *webDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error) {

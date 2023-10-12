@@ -236,9 +236,9 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestNewWebDssApiClientOlfRed" ||
 			t.Name() == "TestNewWebDssApiClientObs" ||
 			t.Name() == "TestNewWebDssApiClientSmf" ||
-			t.Name() == "TestWebClientOlfHistory" ||
+			t.Name() == "TestWebClientOlfHistory1" ||
 			t.Name() == "TestWebClientObsHistory" ||
-			t.Name() == "TestWebDssApiClientOlfHistory" ||
+			t.Name() == "TestWebDssApiClientOlfHistory1" ||
 			t.Name() == "TestWebDssApiClientObsHistory" ||
 			t.Name() == "TestWebClientOlfMultiHistory" ||
 			t.Name() == "TestNewWebApiClient" ||
