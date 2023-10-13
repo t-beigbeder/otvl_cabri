@@ -270,7 +270,7 @@ func (edi *eDssImpl) spUpdateClient(cix Index, eud UpdatedData, isFull bool) err
 	return cix.updateData(udd, isFull)
 }
 
-func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+func (edi *eDssImpl) decryptScannedStorage(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	pathErr := func(path string, err error) {
 		sti.Path2Error[path] = err
 		errs.Collect(err)
@@ -297,7 +297,9 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 		sti.ExistingEcs[meta.ECh] = true
 		mc2scan[epath] = meta
 	}
-
+	if !checksum {
+		return
+	}
 	mx := sync.Mutex{}
 	wg := sync.WaitGroup{}
 	lockPathErr := func(mn string, err error) {
@@ -344,11 +346,11 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 	wg.Wait()
 }
 
-func (edi *eDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
+func (edi *eDssImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	copyMap(sti.Path2Error, sts.Sti.Path2Error)
 	copyMap(sti.Path2Content, sts.Sti.Path2Content)
 	errs = &sts.Errs
-	edi.decryptScannedStorage(sts, sti, errs)
+	edi.decryptScannedStorage(checksum, sts, sti, errs)
 }
 
 func (edi *eDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[string]map[int64][]byte, error) {
