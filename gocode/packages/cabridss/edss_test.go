@@ -440,15 +440,15 @@ func TestEDssApiClientOlfRedHistory(t *testing.T) {
 				EDssConfig{
 					WebDssConfig: WebDssConfig{
 						DssBaseConfig: DssBaseConfig{
-							LibApi:    true,
-							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
+							LibApi:       true,
+							ConfigDir:    ufpath.Join(tfs.Path(), ".cabri"),
+							ReducerLimit: 2,
 						},
 						LibApiDssConfig: LibApiDssConfig{
 							IsOlf: true,
 							OlfCfg: OlfConfig{
 								DssBaseConfig: DssBaseConfig{
-									LocalPath:    tfs.Path(),
-									ReducerLimit: 2,
+									LocalPath: tfs.Path(),
 									GetIndex: func(config DssBaseConfig, _ string) (Index, error) {
 										return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
 									},
