@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"os"
 	"strings"
+	"sync"
 )
 
 type OlfConfig struct {
@@ -303,26 +304,51 @@ func (odoi *oDssOlfImpl) scanContentDir(path string, checksum bool, sti StorageI
 		relPath := cPath[strings.LastIndex(cPath, "/content/")+len("/content") : len(cPath)]
 		cch := strings.Join(strings.Split(relPath, "/"), "")
 		sti.Path2Content[cPath] = cch
-		if !checksum {
-			continue
-		}
-		cr, err := odoi.getAfs().Open(cPath)
+	}
+	if !checksum {
+		return
+	}
+
+	mx := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	lockPathErr := func(mn string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		pathErr(mn, err)
+	}
+	doScanContentOlf := func(pcp, pcch string) {
+		cr, err := odoi.getAfs().Open(pcp)
 		if err != nil {
-			pathErr(path, err)
-			continue
+			lockPathErr(path, err)
+			return
 		}
 		ch := ""
 		ch, err = internal.ShaFrom(cr)
 		if err != nil {
 			cr.Close()
-			pathErr(path, err)
-			continue
+			lockPathErr(path, err)
+			return
 		}
 		cr.Close()
-		if ch != cch {
-			pathErr(path, fmt.Errorf("in scanContentDir: content checksum %s differs from path %s", ch, cPath))
+		if ch != pcch {
+			lockPathErr(path, fmt.Errorf("in doScanContentOlf: content checksum %s differs from path %s", ch, pcp))
 		}
 	}
+	for cPath, cch := range sti.Path2Content {
+		wg.Add(1)
+		go func(pcp, pcch string) {
+			defer wg.Done()
+			if odoi.reducer == nil {
+				doScanContentOlf(pcp, pcch)
+			} else {
+				odoi.reducer.Launch(fmt.Sprintf("doScanContentOlf-%s", pcch), func() error {
+					doScanContentOlf(pcp, pcch)
+					return nil
+				})
+			}
+		}(cPath, cch)
+	}
+	wg.Wait()
 	return
 }
 

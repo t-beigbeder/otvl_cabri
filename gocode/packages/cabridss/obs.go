@@ -258,26 +258,52 @@ func (odoi *oDssObjImpl) scanContentObjs(checksum bool, sti StorageInfo, errs *E
 	}
 	for _, cn := range cns {
 		sti.Path2Content[cn] = cn[len("content-"):]
-		if !checksum {
-			continue
-		}
-		cr, err := odoi.is3.Download(cn)
+	}
+	if !checksum {
+		return
+	}
+
+	mx := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	lockPathErr := func(mn string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		pathErr(mn, err)
+	}
+	doScanContentObs := func(pcn string) {
+		cr, err := odoi.is3.Download(pcn)
 		if err != nil {
-			pathErr(cn, err)
-			continue
+			lockPathErr(pcn, err)
+			return
 		}
 		ch := ""
 		ch, err = internal.ShaFrom(cr)
 		if err != nil {
 			cr.Close()
-			pathErr(cn, err)
-			continue
+			lockPathErr(pcn, err)
+			return
 		}
 		cr.Close()
-		if ch != cn[len("content-"):] {
-			pathErr(cn, fmt.Errorf("in scanContentDir: content checksum %s differs from path %s", ch, cn))
+		if ch != pcn[len("content-"):] {
+			lockPathErr(pcn, fmt.Errorf("in doScanContentObs: content checksum %s differs from path %s", ch, pcn))
 		}
 	}
+	for cn, _ := range sti.Path2Content {
+		wg.Add(1)
+		go func(pcn string) {
+			defer wg.Done()
+			if odoi.reducer == nil {
+				doScanContentObs(pcn)
+			} else {
+				odoi.reducer.Launch(fmt.Sprintf("doScanContentObs-%s", cn[len("content-"):]), func() error {
+					doScanContentObs(pcn)
+					return nil
+				})
+			}
+		}(cn)
+	}
+	wg.Wait()
+	return
 }
 
 func (odoi *oDssObjImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {

@@ -9,6 +9,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"io"
 	"sort"
+	"sync"
 )
 
 type EDssConfig struct {
@@ -276,6 +277,7 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 	}
 
 	eSti := sts.Sti
+	mc2scan := map[string]Meta{}
 	for epath, ebs := range eSti.Path2Meta {
 		smbs, err := DecryptMsg(ebs, edi.secrets(edi.aclusers)...)
 		if err != nil {
@@ -293,22 +295,53 @@ func (edi *eDssImpl) decryptScannedStorage(sts *mSPS, sti StorageInfo, errs *Err
 		}
 		sti.ExistingCs[meta.Ch] = true
 		sti.ExistingEcs[meta.ECh] = true
-		cr, err := edi.me.doGetContentReader(meta.Path, meta)
+		mc2scan[epath] = meta
+	}
+
+	mx := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	lockPathErr := func(mn string, err error) {
+		mx.Lock()
+		defer mx.Unlock()
+		pathErr(mn, err)
+	}
+	lockPath2CContent := func(pep, ch string) {
+		mx.Lock()
+		defer mx.Unlock()
+		sti.Path2CContent[pep] = ch
+	}
+	doDecryptContent := func(pep string, pMeta Meta) {
+		cr, err := edi.me.doGetContentReader(pMeta.Path, pMeta)
 		if err != nil {
-			pathErr(epath, err)
-			continue
+			lockPathErr(pep, err)
+			return
 		}
 		defer cr.Close()
 		ch, err := internal.ShaFrom(cr)
 		if err != nil {
-			pathErr(epath, err)
+			lockPathErr(pep, err)
 		}
-		sti.Path2CContent[epath] = ch
-		if ch != meta.Ch {
-			pathErr(epath, fmt.Errorf("%s (meta %s) cs %s loaded %s", epath, meta.Path, meta.Ch, ch))
-			continue
+		lockPath2CContent(pep, ch)
+		if ch != pMeta.Ch {
+			lockPathErr(pep, fmt.Errorf("%s (meta %s) cs %s loaded %s", pep, pMeta.Path, pMeta.Ch, ch))
+			return
 		}
 	}
+	for epath, meta := range mc2scan {
+		wg.Add(1)
+		go func(pep string, pMeta Meta) {
+			defer wg.Done()
+			if edi.reducer == nil {
+				doDecryptContent(pep, pMeta)
+			} else {
+				edi.reducer.Launch(fmt.Sprintf("doDecryptContent-%s", pep), func() error {
+					doDecryptContent(pep, pMeta)
+					return nil
+				})
+			}
+		}(epath, meta)
+	}
+	wg.Wait()
 }
 
 func (edi *eDssImpl) spScanPhysicalStorageClient(sts *mSPS, sti StorageInfo, errs *ErrorCollector) {

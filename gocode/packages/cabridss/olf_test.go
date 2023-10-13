@@ -128,6 +128,27 @@ func TestOlfHistory(t *testing.T) {
 		}); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestOlfRedHistory(t *testing.T) {
+	if err := runTestHistory(t,
+		func(tfs *testfs.Fs) error {
+			_, err := CreateOlfDss(OlfConfig{DssBaseConfig: DssBaseConfig{LocalPath: tfs.Path()}, Root: tfs.Path(), Size: "s"})
+			return err
+		},
+		func(tfs *testfs.Fs) (HDss, error) {
+			dss, err := NewOlfDss(OlfConfig{
+				Root: tfs.Path(),
+				DssBaseConfig: DssBaseConfig{
+					LocalPath:    tfs.Path(),
+					ReducerLimit: 2,
+					GetIndex: func(config DssBaseConfig, _ string) (Index, error) {
+						return NewPIndex(ufpath.Join(tfs.Path(), "index.bdb"), false, false)
+					}}}, 0, nil)
+			return dss, err
+		}); err != nil {
+		t.Fatal(err)
+	}
 
 }
 

@@ -214,7 +214,8 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestNewObsDssMindex" ||
 			t.Name() == "TestNewObsDssPindex" ||
 			t.Name() == "TestMockFsHistory" ||
-			t.Name() == "TestObsHistory1" ||
+			t.Name() == "TestObsHistory" ||
+			t.Name() == "TestObsRedHistory1" ||
 			t.Name() == "TestObsMultiHistory" ||
 			t.Name() == "TestCreateOlfDssErr" ||
 			t.Name() == "TestNewOlfSmallDssOk" ||
@@ -223,6 +224,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestNewOlfLargeDssOk" ||
 			t.Name() == "TestOlfDssMindex" ||
 			t.Name() == "TestOlfHistory1" ||
+			t.Name() == "TestOlfRedHistory1" ||
 			t.Name() == "TestOlfMultiHistory" ||
 			t.Name() == "TestNewWebDssServer" ||
 			t.Name() == "TestNewWebDssTlsServer" ||
