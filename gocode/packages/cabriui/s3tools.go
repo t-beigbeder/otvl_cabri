@@ -7,12 +7,15 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
+	"sync"
 )
 
 type S3ToolsOptions struct {
 	BaseOptions
 	S3Session bool
 	S3List    bool
+	S3Purge   bool
 	S3Clone   bool
 }
 
@@ -88,6 +91,19 @@ func s3ToolsList(ctx context.Context) error {
 	return nil
 }
 
+func s3ToolsPurge(ctx context.Context) error {
+	opts := s3ToolsOpts(ctx)
+	oc, err := GetObsConfig(opts.BaseOptions, 0, "", "")
+	if err != nil {
+		return err
+	}
+	is3 := cabridss.NewS3Session(oc, nil)
+	if err = is3.Initialize(); err != nil {
+		return err
+	}
+	return is3.DeleteAll("")
+}
+
 func s3ToolsClone(ctx context.Context) error {
 	var (
 		is3o, is3t cabridss.IS3Session
@@ -114,7 +130,58 @@ func s3ToolsClone(ctx context.Context) error {
 			return fmt.Errorf("target object storage system must be empty (%s...)", rs[0])
 		}
 	}
-	_ = is3o
+	var red plumber.Reducer = nil
+	if opts.RedLimit != 0 {
+		red = plumber.NewReducer(opts.RedLimit, 0)
+	}
+	es, err := is3o.List("")
+	if err != nil {
+		return err
+	}
+	mx := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	var errs []error
+	recErr := func(iErr error) {
+		mx.Lock()
+		defer mx.Unlock()
+		errs = append(errs, iErr)
+	}
+	cloneEntry := func(pe string) error {
+		rc, err := is3o.Download(pe)
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+		if err = is3t.Upload(pe, rc); err != nil {
+			return err
+		}
+		return nil
+	}
+	for _, ent := range es {
+		wg.Add(1)
+		go func(pe string) {
+			iErr := func() error {
+				defer wg.Done()
+				if red == nil {
+					return cloneEntry(pe)
+				} else {
+					return red.Launch(fmt.Sprintf("cloneEntry-%s", pe), func() error {
+						return cloneEntry(pe)
+					})
+				}
+			}()
+			if iErr != nil {
+				recErr(iErr)
+			}
+		}(ent)
+	}
+	wg.Wait()
+	if len(errs) > 0 {
+		for _, err := range errs {
+			s3ToolsErr(ctx, err.Error()+"\n")
+		}
+		return fmt.Errorf("some errors occured")
+	}
 	return nil
 }
 
@@ -126,6 +193,9 @@ func s3ToolsRun(ctx context.Context) error {
 	}
 	if opts.S3List {
 		err = s3ToolsList(ctx)
+	}
+	if opts.S3Purge {
+		err = s3ToolsPurge(ctx)
 	}
 	if opts.S3Clone {
 		err = s3ToolsClone(ctx)

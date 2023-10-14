@@ -31,10 +31,10 @@ in which case `<location>` is the directory where DSS configuration, index,
 metadata and data files are stored.
   - example: `smf:/home/guest/cabri_tests/smf_backup`
 - webapi+http, webapi+https: remote access to object or object-like DSS,
-in which case `<location>` takes the form `://<host>:<port>/<url-path>`
+in which case `<location>` takes the form `//<host>:<port>/<url-path>`
   - example: `webapi+http://localhost:3000/demo`
 - wfsapi+http, wfsapi+https: remote access to native filesystem DSS,
-  in which case `<location>` takes the form `://<host>:<port>/<url-path>`
+  in which case `<location>` takes the form `//<host>:<port>/<url-path>`
   - example: `wfsapi+http://localhost:3000/demo`
 - xolf, xobs and xsmf stand for encrypted DSS of the corresponding type
 - xwebapi+http, xwebapi+https must be used as well if the remote DSS is encrypted

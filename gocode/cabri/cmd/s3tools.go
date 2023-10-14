@@ -17,8 +17,8 @@ var s3ToolsCmd = &coral.Command{
 	RunE: func(cmd *coral.Command, args []string) error {
 		s3ToolsOptions.BaseOptions = baseOptions
 		if err := cabriui.MutualExcludeFlags(
-			[]string{"cnx", "ls"},
-			s3ToolsOptions.S3Session, s3ToolsOptions.S3List); err != nil {
+			[]string{"cnx", "ls", "purge", "clone"},
+			s3ToolsOptions.S3Session, s3ToolsOptions.S3List, s3ToolsOptions.S3Purge, s3ToolsOptions.S3Clone); err != nil {
 			return err
 		}
 		return cabriui.CLIRun[cabriui.S3ToolsOptions, *cabriui.S3ToolsVars](
@@ -33,5 +33,6 @@ func init() {
 	cliCmd.AddCommand(s3ToolsCmd)
 	s3ToolsCmd.Flags().BoolVar(&s3ToolsOptions.S3Session, "cnx", false, "checks connexion with given S3 parameters")
 	s3ToolsCmd.Flags().BoolVar(&s3ToolsOptions.S3List, "ls", false, "list S3 objects with given prefix")
-	s3ToolsCmd.Flags().BoolVar(&s3ToolsOptions.S3Clone, "clone", false, "clone s3 bucket to another")
+	s3ToolsCmd.Flags().BoolVar(&s3ToolsOptions.S3Purge, "purge", false, "purge swift container or s3 bucket")
+	s3ToolsCmd.Flags().BoolVar(&s3ToolsOptions.S3Clone, "clone", false, "clone swift container or s3 bucket to another")
 }
