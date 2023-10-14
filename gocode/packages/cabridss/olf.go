@@ -298,7 +298,7 @@ func (odoi *oDssOlfImpl) scanContentDir(path string, checksum bool, sti StorageI
 	for _, fi := range fil {
 		cPath := ufpath.Join(path, fi.Name())
 		if fi.IsDir() {
-			odoi.scanContentDir(cPath, checksum, sti, errs)
+			odoi.scanContentDir(cPath, false, sti, errs)
 			continue
 		}
 		relPath := cPath[strings.LastIndex(cPath, "/content/")+len("/content") : len(cPath)]
