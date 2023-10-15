@@ -394,6 +394,7 @@ func (edi *eDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[str
 func (edi *eDssImpl) spReindex() (StorageInfo, *ErrorCollector) {
 	sti := StorageInfo{
 		Path2Meta:     map[string][]byte{},
+		Path2HnIt:     map[string]SIHnIt{},
 		Path2Content:  map[string]string{},
 		Path2CContent: map[string]string{},
 		ExistingCs:    map[string]bool{},

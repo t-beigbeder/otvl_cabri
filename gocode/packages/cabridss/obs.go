@@ -212,6 +212,13 @@ func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
 		mx.Lock()
 		defer mx.Unlock()
 		sti.Path2Meta[mn] = bs
+		hn := mn[len("meta-"):]
+		suffix := ufpath.Ext(mn)
+		t, _ := internal.Str16ToInt64(suffix[1:])
+		sti.Path2HnIt[mn] = SIHnIt{
+			Hn: hn,
+			It: t,
+		}
 	}
 	mns, err := odoi.is3.List("meta-")
 	if err != nil {
@@ -309,14 +316,6 @@ func (odoi *oDssObjImpl) scanContentObjs(checksum bool, sti StorageInfo, errs *E
 func (odoi *oDssObjImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	odoi.scanMetaObjs(sti, errs)
 	odoi.scanContentObjs(checksum, sti, errs)
-}
-
-func (odoi *oDssObjImpl) decodeMetaPath(mp string) (hn string, itime int64) {
-	hn = mp[len("meta-"):]
-	suffix := ufpath.Ext(hn)
-	itime, _ = internal.Str16ToInt64(suffix[1:])
-	hn = ufpath.Base(hn)
-	return
 }
 
 func newObsProxy() oDssProxy {

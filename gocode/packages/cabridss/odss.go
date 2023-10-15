@@ -76,7 +76,6 @@ type oDssSpecificProxy interface {
 	spClose() error
 	dumpIndex() string
 	scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector)
-	decodeMetaPath(mp string) (hn string, itime int64)
 
 	// internal functions directly mapped from Dss interface ones
 	setAfs(tfs afero.Fs)
@@ -910,11 +909,11 @@ func (odbi *oDssBaseImpl) loadStoredInMemory(sti StorageInfo) map[string]map[int
 		return sti.loadStoredInMemory()
 	}
 	for mp, bs := range sti.Path2Meta {
-		hn, t := odbi.me.decodeMetaPath(mp)
-		if _, ok := metas[hn]; !ok {
-			metas[hn] = map[int64][]byte{}
+		hi := sti.Path2HnIt[mp]
+		if _, ok := metas[hi.Hn]; !ok {
+			metas[hi.Hn] = map[int64][]byte{}
 		}
-		metas[hn][t] = bs
+		metas[hi.Hn][hi.It] = bs
 	}
 	return metas
 }
@@ -1040,6 +1039,7 @@ func (odbi *oDssBaseImpl) purgeContent(sti StorageInfo, errs *ErrorCollector) {
 func (odbi *oDssBaseImpl) scanStorage(checksum, purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
 	sti := StorageInfo{
 		Path2Meta:     map[string][]byte{},
+		Path2HnIt:     map[string]SIHnIt{},
 		Path2Content:  map[string]string{},
 		Path2CContent: map[string]string{},
 		ExistingCs:    map[string]bool{},
@@ -1289,6 +1289,7 @@ func (odbi *oDssBaseImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (ma
 func (odbi *oDssBaseImpl) spReindex() (StorageInfo, *ErrorCollector) {
 	sti := StorageInfo{
 		Path2Meta:     map[string][]byte{},
+		Path2HnIt:     map[string]SIHnIt{},
 		Path2Content:  map[string]string{},
 		Path2CContent: map[string]string{},
 		ExistingCs:    map[string]bool{},

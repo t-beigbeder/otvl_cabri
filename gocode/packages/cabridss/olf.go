@@ -275,6 +275,13 @@ func (odoi *oDssOlfImpl) scanMetaDir(path string, sti StorageInfo, errs *ErrorCo
 			continue
 		}
 		sti.Path2Meta[cPath] = bs
+		hn, _ := internal.Path2Str32(cPath, odoi.size)
+		suffix := ufpath.Ext(cPath)
+		t, _ := internal.Str16ToInt64(suffix[1:])
+		sti.Path2HnIt[cPath] = SIHnIt{
+			Hn: hn,
+			It: t,
+		}
 	}
 	return
 }
@@ -355,13 +362,6 @@ func (odoi *oDssOlfImpl) scanContentDir(path string, checksum bool, sti StorageI
 func (odoi *oDssOlfImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, errs *ErrorCollector) {
 	odoi.scanMetaDir(ufpath.Join(odoi.root, "meta"), sti, errs)
 	odoi.scanContentDir(ufpath.Join(odoi.root, "content"), checksum, sti, errs)
-}
-
-func (odoi *oDssOlfImpl) decodeMetaPath(mp string) (hn string, itime int64) {
-	hn, _ = internal.Path2Str32(mp, odoi.size)
-	suffix := ufpath.Ext(mp)
-	itime, _ = internal.Str16ToInt64(suffix[1:])
-	return
 }
 
 func newOlfProxy() oDssProxy {

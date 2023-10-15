@@ -393,6 +393,7 @@ func copyMap[T any](dst map[string]T, src map[string]T) {
 
 func (wdi *webDssImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
 	copyMap(sti.Path2Meta, sts.Sti.Path2Meta)
+	copyMap(sti.Path2HnIt, sts.Sti.Path2HnIt)
 	copyMap(sti.Path2Content, sts.Sti.Path2Content)
 	copyMap(sti.Path2CContent, sts.Sti.Path2CContent)
 	copyMap(sti.ExistingCs, sts.Sti.ExistingCs)
@@ -472,6 +473,7 @@ func (wdi *webDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[s
 func (wdi *webDssImpl) spReindex() (StorageInfo, *ErrorCollector) {
 	sti := StorageInfo{
 		Path2Meta:     map[string][]byte{},
+		Path2HnIt:     map[string]SIHnIt{},
 		Path2Content:  map[string]string{},
 		Path2CContent: map[string]string{},
 		ExistingCs:    map[string]bool{},
