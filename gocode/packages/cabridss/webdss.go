@@ -469,6 +469,24 @@ func (wdi *webDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[s
 	return remx.Metas, nil
 }
 
+func (wdi *webDssImpl) spReindex() (StorageInfo, *ErrorCollector) {
+	sti := StorageInfo{
+		Path2Meta:     map[string][]byte{},
+		Path2Content:  map[string]string{},
+		Path2CContent: map[string]string{},
+		ExistingCs:    map[string]bool{},
+		ExistingEcs:   map[string]bool{},
+		Path2Error:    map[string]error{},
+	}
+	errs := &ErrorCollector{}
+	errs.Collect(fmt.Errorf("in reindex: cannot reindex remotely"))
+	return sti, errs
+}
+
+func (wdi *webDssImpl) decodeMetaPath(mp string) (hn string, itime int64) {
+	panic("inconsistent")
+}
+
 func newWebDssProxy(config WebDssConfig, lsttime int64, aclusers []string, isClientEdss bool) (oDssProxy, HDss, error) {
 	slsttime, _ := internal.Nano2SecNano(lsttime)
 	impl := webDssImpl{isClientEdss: isClientEdss}

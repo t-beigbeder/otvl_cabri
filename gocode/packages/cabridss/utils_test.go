@@ -254,7 +254,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestEDssApiClientOlfBaseRed" ||
 			t.Name() == "TestEDssApiClientObsBase" ||
 			t.Name() == "TestEDssApiClientSmfBase" ||
-			t.Name() == "TestEDssClientOlfHistory" ||
+			t.Name() == "TestEDssClientOlfHistory1" ||
 			t.Name() == "TestEDssClientOlfRedHistory" ||
 			t.Name() == "TestEDssApiClientOlfHistory" ||
 			t.Name() == "TestEDssApiClientOlfRedHistory1" ||

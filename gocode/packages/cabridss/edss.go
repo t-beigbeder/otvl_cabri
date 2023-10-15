@@ -391,6 +391,29 @@ func (edi *eDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[str
 	return cmetas, nil
 }
 
+func (edi *eDssImpl) spReindex() (StorageInfo, *ErrorCollector) {
+	sti := StorageInfo{
+		Path2Meta:     map[string][]byte{},
+		Path2Content:  map[string]string{},
+		Path2CContent: map[string]string{},
+		ExistingCs:    map[string]bool{},
+		ExistingEcs:   map[string]bool{},
+		Path2Error:    map[string]error{},
+	}
+	errs := &ErrorCollector{}
+	if !edi.libApi {
+		errs.Collect(fmt.Errorf("in reindex: cannot reindex remotely"))
+		return sti, errs
+	}
+	wdc := edi.apc.GetConfig().(webDssClientConfig)
+	sti, errs = wdc.libDss.Reindex()
+	return sti, nil
+}
+
+func (edi *eDssImpl) decodeMetaPath(mp string) (hn string, itime int64) {
+	panic("inconsistent")
+}
+
 func (edi *eDssImpl) openSession(aclusers []string) error {
 	if err := cOpenSession(edi.apc, aclusers); err != nil {
 		return fmt.Errorf("in openSession: %w", err)

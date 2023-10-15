@@ -357,6 +357,13 @@ func (odoi *oDssOlfImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, err
 	odoi.scanContentDir(ufpath.Join(odoi.root, "content"), checksum, sti, errs)
 }
 
+func (odoi *oDssOlfImpl) decodeMetaPath(mp string) (hn string, itime int64) {
+	hn, _ = internal.Path2Str32(mp, odoi.size)
+	suffix := ufpath.Ext(mp)
+	itime, _ = internal.Str16ToInt64(suffix[1:])
+	return
+}
+
 func newOlfProxy() oDssProxy {
 	return &oDssOlfImpl{}
 }

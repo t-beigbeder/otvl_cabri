@@ -311,6 +311,14 @@ func (odoi *oDssObjImpl) scanPhysicalStorage(checksum bool, sti StorageInfo, err
 	odoi.scanContentObjs(checksum, sti, errs)
 }
 
+func (odoi *oDssObjImpl) decodeMetaPath(mp string) (hn string, itime int64) {
+	hn = mp[len("meta-"):]
+	suffix := ufpath.Ext(hn)
+	itime, _ = internal.Str16ToInt64(suffix[1:])
+	hn = ufpath.Base(hn)
+	return
+}
+
 func newObsProxy() oDssProxy {
 	return &oDssObjImpl{}
 }
