@@ -347,8 +347,14 @@ func (edi *eDssImpl) decryptScannedStorage(checksum bool, sts *mSPS, sti Storage
 }
 
 func (edi *eDssImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti StorageInfo, errs *ErrorCollector) {
-	copyMap(sti.Path2Error, sts.Sti.Path2Error)
+	copyMap(sti.Path2Meta, sts.Sti.Path2Meta)
+	copyMap(sti.Path2HnIt, sts.Sti.Path2HnIt)
 	copyMap(sti.Path2Content, sts.Sti.Path2Content)
+	//copyMap(sti.Path2CContent, sts.Sti.Path2CContent)
+	//copyMap(sti.ExistingCs, sts.Sti.ExistingCs)
+	//copyMap(sti.ExistingEcs, sts.Sti.ExistingEcs)
+	copyMap(sti.Path2Error, sts.Sti.Path2Error)
+
 	errs = &sts.Errs
 	edi.decryptScannedStorage(checksum, sts, sti, errs)
 }
