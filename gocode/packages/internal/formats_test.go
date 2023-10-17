@@ -3,6 +3,7 @@ package internal_test
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"io"
 	"math/rand"
@@ -196,4 +197,17 @@ func TestSizes(t *testing.T) {
 	if ps != "73/475cb40a568e8da8a045ced110137e" || pm != "734/75cb40a568e8da8a045ced110137e" || pl != "734/75c/b40a568e8da8a045ced110137e" {
 		t.Fatalf("ps %s pm %s pl %s", ps, pm, pl)
 	}
+}
+
+func TestPath2Str32(t *testing.T) {
+	for _, sz := range []string{"s", "m", "l"} {
+		id, _ := uuid.NewUUID()
+		sid1 := internal.NameToHashStr32(id.String())
+		p := internal.Str32ToPath(sid1, sz)
+		sid2, _ := internal.Path2Str32(p, sz)
+		if sid2 != sid1 {
+			t.Fatalf("%s %s != %s", sz, sid2, sid1)
+		}
+	}
+
 }
