@@ -202,13 +202,14 @@ run_index_err() {
 run_index() {
   dss=$1
   dssd=$2
+  rdss=$3
   run_silent cabri cli dss audit $dss && \
   run_silent cabri cli dss scan $dss && \
   run_silent cabri cli dss lshisto -rs $dss@ && \
   get_out && sh1=$SHOUT && \
   run_silent cp $dssd/index.bdb $dssd/index.bdb.bck && \
   run_silent cp -a $HOME/.cabri $HOME/.cabri.bck && \
-  run_silent cabri cli dss reindex $dss && \
+  ( [ "$rdss" ] || run_silent cabri cli dss reindex $dss) && \
   run_silent cabri cli dss lshisto -rs $dss@ && \
   get_out && [ "$SHOUT" = "$sh1" ] && \
 #  backup_error && \
@@ -635,7 +636,7 @@ test_index_wolf() {
   sleep 1 && \
   wo=webapi+http://localhost:3000/wo && \
   run_advanced_sync $fsy $wo $adv && \
-  run_index $wo $TD/olf && \
+  run_index $wo $TD/olf 1 && \
   run_silent kill $pidc && \
   true
 }
@@ -652,7 +653,7 @@ test_index_wobs() {
   sleep 1 && \
   wo=webapi+http://localhost:3000/wo && \
   run_advanced_sync $fsy $wo $adv && \
-  run_index $wo $TD/obs && \
+  run_index $wo $TD/obs 1 && \
   run_silent kill $pidc && \
 #  backup_error && \
 #  false && \
@@ -671,7 +672,7 @@ test_index_xwolf() {
   sleep 1 && \
   wo=xwebapi+http://localhost:3000/wo && \
   run_advanced_sync $fsy $wo $adv && \
-  run_index $wo $TD/olf && \
+  run_index $wo $TD/olf 1 && \
   run_silent kill $pidc && \
   true
 }
@@ -688,7 +689,7 @@ test_index_xwobs() {
   sleep 1 && \
   wo=xwebapi+http://localhost:3000/wo && \
   run_advanced_sync $fsy $wo $adv && \
-  run_index $wo $TD/obs && \
+  run_index $wo $TD/obs 1 && \
   run_silent kill $pidc && \
   true
 }

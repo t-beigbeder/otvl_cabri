@@ -471,15 +471,7 @@ func (wdi *webDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[s
 }
 
 func (wdi *webDssImpl) spReindex() (StorageInfo, *ErrorCollector) {
-	sti := StorageInfo{
-		Path2Meta:     map[string][]byte{},
-		Path2HnIt:     map[string]SIHnIt{},
-		Path2Content:  map[string]string{},
-		Path2CContent: map[string]string{},
-		ExistingCs:    map[string]bool{},
-		ExistingEcs:   map[string]bool{},
-		Path2Error:    map[string]error{},
-	}
+	sti := getInitStorageInfo()
 	errs := &ErrorCollector{}
 	errs.Collect(fmt.Errorf("in reindex: cannot reindex remotely"))
 	return sti, errs

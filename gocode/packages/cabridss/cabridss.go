@@ -193,7 +193,8 @@ type SIHnIt struct {
 
 type StorageInfo struct {
 	Path2Meta     map[string][]byte           `json:"path2Meta"`
-	Path2HnIt     map[string]SIHnIt           `json:"path2HnIt"` // Local meta data
+	Path2CMeta    map[string][]byte           `json:"path2CMeta"`
+	Path2HnIt     map[string]SIHnIt           `json:"path2HnIt"`
 	ExistingCs    map[string]bool             `json:"existingCs"`
 	ExistingEcs   map[string]bool             `json:"existingEcs"`
 	Path2Content  map[string]string           `json:"path2Content"`

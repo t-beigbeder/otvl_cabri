@@ -199,9 +199,13 @@ func NewReadCloserWithCb(underlying io.Reader, closeCb func() error) (io.ReadClo
 	return &ReadCloserWithCb{underlying: underlying, closeCb: closeCb}, nil
 }
 
-func (sti StorageInfo) loadStoredInMemory() (metas map[string]map[int64][]byte) {
+func (sti StorageInfo) loadStoredInMemory(encrypted bool) (metas map[string]map[int64][]byte) {
 	metas = map[string]map[int64][]byte{}
-	for _, bs := range sti.Path2Meta {
+	p2m := sti.Path2Meta
+	if encrypted {
+		p2m = sti.Path2CMeta
+	}
+	for _, bs := range p2m {
 		var meta Meta
 		if err := json.Unmarshal(bs, &meta); err != nil {
 			continue
@@ -213,4 +217,17 @@ func (sti StorageInfo) loadStoredInMemory() (metas map[string]map[int64][]byte) 
 		metas[hn][meta.Itime] = bs
 	}
 	return
+}
+
+func getInitStorageInfo() StorageInfo {
+	return StorageInfo{
+		Path2Meta:     map[string][]byte{},
+		Path2CMeta:    map[string][]byte{},
+		Path2HnIt:     map[string]SIHnIt{},
+		ExistingCs:    map[string]bool{},
+		ExistingEcs:   map[string]bool{},
+		Path2Content:  map[string]string{},
+		Path2CContent: map[string]string{},
+		Path2Error:    map[string]error{},
+	}
 }

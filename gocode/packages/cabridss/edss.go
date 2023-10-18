@@ -284,7 +284,7 @@ func (edi *eDssImpl) decryptScannedStorage(checksum bool, sts *mSPS, sti Storage
 			pathErr(epath, err)
 			continue
 		}
-		sti.Path2Meta[epath] = []byte(smbs)
+		sti.Path2CMeta[epath] = []byte(smbs)
 		var meta Meta
 		if err := json.Unmarshal([]byte(smbs), &meta); err != nil {
 			pathErr(epath, err)
@@ -350,9 +350,6 @@ func (edi *eDssImpl) spScanPhysicalStorageClient(checksum bool, sts *mSPS, sti S
 	copyMap(sti.Path2Meta, sts.Sti.Path2Meta)
 	copyMap(sti.Path2HnIt, sts.Sti.Path2HnIt)
 	copyMap(sti.Path2Content, sts.Sti.Path2Content)
-	//copyMap(sti.Path2CContent, sts.Sti.Path2CContent)
-	//copyMap(sti.ExistingCs, sts.Sti.ExistingCs)
-	//copyMap(sti.ExistingEcs, sts.Sti.ExistingEcs)
 	copyMap(sti.Path2Error, sts.Sti.Path2Error)
 
 	errs = &sts.Errs
@@ -398,15 +395,7 @@ func (edi *eDssImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (map[str
 }
 
 func (edi *eDssImpl) spReindex() (StorageInfo, *ErrorCollector) {
-	sti := StorageInfo{
-		Path2Meta:     map[string][]byte{},
-		Path2HnIt:     map[string]SIHnIt{},
-		Path2Content:  map[string]string{},
-		Path2CContent: map[string]string{},
-		ExistingCs:    map[string]bool{},
-		ExistingEcs:   map[string]bool{},
-		Path2Error:    map[string]error{},
-	}
+	sti := getInitStorageInfo()
 	errs := &ErrorCollector{}
 	if !edi.libApi {
 		errs.Collect(fmt.Errorf("in reindex: cannot reindex remotely"))

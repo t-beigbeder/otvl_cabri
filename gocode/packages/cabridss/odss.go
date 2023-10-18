@@ -864,16 +864,24 @@ func (odbi *oDssBaseImpl) doAuditIndexFromStorage(sti StorageInfo, mai map[strin
 		}
 		mai[k] = append(mai[k], aii)
 	}
-	for path, bs := range sti.Path2Meta {
+	for path, tcbs := range sti.Path2Meta {
 		dst := ufpath.Ext(path)
 		if len(dst) == 0 {
-			appMai(path, AuditIndexInfo{"Inconsistent", fmt.Errorf("bad file extension"), MIN_TIME, bs})
+			appMai(path, AuditIndexInfo{"Inconsistent", fmt.Errorf("bad file extension"), MIN_TIME, tcbs})
 			continue
 		}
 		t, err := internal.Str16ToInt64(dst[1:])
 		if err != nil {
-			appMai(path, AuditIndexInfo{"Inconsistent", fmt.Errorf("bad file extension %v", err), MIN_TIME, bs})
+			appMai(path, AuditIndexInfo{"Inconsistent", fmt.Errorf("bad file extension %v", err), MIN_TIME, tcbs})
 			continue
+		}
+		bs := tcbs
+		if odbi.repoEncrypted {
+			cbs, ok := sti.Path2CMeta[path]
+			if !ok {
+				continue
+			}
+			bs = cbs
 		}
 		var meta Meta
 		if err := json.Unmarshal(bs, &meta); err != nil {
@@ -903,21 +911,6 @@ func (odbi *oDssBaseImpl) doAuditIndexFromStorage(sti StorageInfo, mai map[strin
 	return nil
 }
 
-func (odbi *oDssBaseImpl) loadStoredInMemory(sti StorageInfo) map[string]map[int64][]byte {
-	metas := map[string]map[int64][]byte{}
-	if !odbi.repoEncrypted {
-		return sti.loadStoredInMemory()
-	}
-	for mp, bs := range sti.Path2Meta {
-		hi := sti.Path2HnIt[mp]
-		if _, ok := metas[hi.Hn]; !ok {
-			metas[hi.Hn] = map[int64][]byte{}
-		}
-		metas[hi.Hn][hi.It] = bs
-	}
-	return metas
-}
-
 func (odbi *oDssBaseImpl) doAuditIndexFromIndex(sti StorageInfo, mai map[string][]AuditIndexInfo) error {
 	appMai := func(k string, aii AuditIndexInfo) {
 		if aii.Error == "" {
@@ -934,7 +927,7 @@ func (odbi *oDssBaseImpl) doAuditIndexFromIndex(sti StorageInfo, mai map[string]
 		return fmt.Errorf("in doAuditIndexFromIndex: %v", err)
 	}
 
-	smetas := odbi.loadStoredInMemory(sti)
+	smetas := sti.loadStoredInMemory(odbi.repoEncrypted)
 	for k, mm := range metas {
 		for t, m := range mm {
 			var meta Meta
@@ -1037,17 +1030,7 @@ func (odbi *oDssBaseImpl) purgeContent(sti StorageInfo, errs *ErrorCollector) {
 }
 
 func (odbi *oDssBaseImpl) scanStorage(checksum, purge, purgeHidden bool) (StorageInfo, *ErrorCollector) {
-	sti := StorageInfo{
-		Path2Meta:     map[string][]byte{},
-		Path2HnIt:     map[string]SIHnIt{},
-		Path2Content:  map[string]string{},
-		Path2CContent: map[string]string{},
-		ExistingCs:    map[string]bool{},
-		ExistingEcs:   map[string]bool{},
-		Path2Error:    map[string]error{},
-		XLMetas:       map[string]map[int64][]byte{},
-		XRMetas:       map[string]map[int64][]byte{},
-	}
+	sti := getInitStorageInfo()
 	errs := &ErrorCollector{}
 	odbi.me.scanPhysicalStorage(checksum, sti, errs)
 	pathErr := func(path string, err error) {
@@ -1287,15 +1270,7 @@ func (odbi *oDssBaseImpl) spLoadRemoteIndex(mai map[string][]AuditIndexInfo) (ma
 }
 
 func (odbi *oDssBaseImpl) spReindex() (StorageInfo, *ErrorCollector) {
-	sti := StorageInfo{
-		Path2Meta:     map[string][]byte{},
-		Path2HnIt:     map[string]SIHnIt{},
-		Path2Content:  map[string]string{},
-		Path2CContent: map[string]string{},
-		ExistingCs:    map[string]bool{},
-		ExistingEcs:   map[string]bool{},
-		Path2Error:    map[string]error{},
-	}
+	sti := getInitStorageInfo()
 	errs := &ErrorCollector{}
 	pi, ok := odbi.index.(*pIndex)
 	if !ok {
@@ -1305,8 +1280,20 @@ func (odbi *oDssBaseImpl) spReindex() (StorageInfo, *ErrorCollector) {
 	if len(*errs) > 0 {
 		return StorageInfo{}, errs
 	}
-	metas := odbi.loadStoredInMemory(sti)
 
+	metas := map[string]map[int64][]byte{}
+
+	if !odbi.repoEncrypted {
+		metas = sti.loadStoredInMemory(odbi.repoEncrypted)
+	} else {
+		for mp, bs := range sti.Path2Meta {
+			hi := sti.Path2HnIt[mp]
+			if _, ok := metas[hi.Hn]; !ok {
+				metas[hi.Hn] = map[int64][]byte{}
+			}
+			metas[hi.Hn][hi.It] = bs
+		}
+	}
 	metaTimes := map[string]map[int64]bool{}
 	for k, mm := range metas {
 		for t, _ := range mm {
@@ -1316,6 +1303,7 @@ func (odbi *oDssBaseImpl) spReindex() (StorageInfo, *ErrorCollector) {
 			metaTimes[k][t] = true
 		}
 	}
+
 	if err := reindexPIndex(pi.path, metaTimes, metas); err != nil {
 		errs.Collect(fmt.Errorf("in reindex: %w", err))
 	}
