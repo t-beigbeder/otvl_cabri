@@ -9,6 +9,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"io"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -212,9 +213,10 @@ func (odoi *oDssObjImpl) scanMetaObjs(sti StorageInfo, errs *ErrorCollector) {
 		mx.Lock()
 		defer mx.Unlock()
 		sti.Path2Meta[mn] = bs
-		hn := mn[len("meta-"):]
-		suffix := ufpath.Ext(mn)
-		t, _ := internal.Str16ToInt64(suffix[1:])
+		hne := mn[len("meta-"):]
+		hn := strings.Split(hne, ".")[0]
+		suffix := strings.Split(hne, ".")[1]
+		t, _ := internal.Str16ToInt64(suffix)
 		sti.Path2HnIt[mn] = SIHnIt{
 			Hn: hn,
 			It: t,

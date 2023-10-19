@@ -55,3 +55,7 @@ Other documentation is referenced from these pages, including:
 - [Client configuration](doc/cliconf.md)
 - [REST API](doc/restapi.md)
 - [Building the application for various platforms](doc/build.md)
+
+External blog:
+
+- [Using Cabri to share data with confidence](https://blog.otvl.org/blog/cabri-share-conf)
