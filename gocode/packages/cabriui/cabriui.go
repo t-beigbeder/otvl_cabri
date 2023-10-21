@@ -370,15 +370,19 @@ func GetWfsConfig(opts BaseOptions, index int, isTls bool, addr, root string, ur
 	return cabridss.WfsDssConfig{DssBaseConfig: bc}, nil
 }
 
-func MutualExcludeFlags(names []string, flags ...bool) error {
+func MutualExcludeFlags(names []string, flags ...bool) (string, error) {
+	ff := ""
 	for i, bname := range names {
 		bval := flags[i]
 		for j := i + 1; j < len(names); j++ {
 			oval := flags[j]
+			if oval {
+				ff = names[j]
+			}
 			if bval && oval {
-				return fmt.Errorf(fmt.Sprintf("flags %s and %s cannot be used at the same time", bname, names[j]))
+				return "", fmt.Errorf(fmt.Sprintf("flags %s and %s cannot be used at the same time", bname, names[j]))
 			}
 		}
 	}
-	return nil
+	return ff, nil
 }

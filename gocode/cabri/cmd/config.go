@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/muesli/coral"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabriui"
 )
@@ -16,11 +18,18 @@ var configCmd = &coral.Command{
 	},
 	RunE: func(cmd *coral.Command, args []string) error {
 		configOptions.BaseOptions = baseOptions
-		if err := cabriui.MutualExcludeFlags(
+		var (
+			ff  string
+			err error
+		)
+		if ff, err = cabriui.MutualExcludeFlags(
 			[]string{"encrypt", "decrypt", "dump", "gen", "get", "put", "remove"},
 			configOptions.Encrypt, configOptions.Decrypt, configOptions.Dump,
 			configOptions.Gen, configOptions.Get, configOptions.Put, configOptions.Remove); err != nil {
 			return err
+		}
+		if ff == "" {
+			return fmt.Errorf("at least one operation option must be given with the config command")
 		}
 		return cabriui.CLIRun[cabriui.ConfigOptions, *cabriui.ConfigVars](
 			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),

@@ -8,6 +8,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
+	"strings"
 	"sync"
 )
 
@@ -17,6 +18,11 @@ type S3ToolsOptions struct {
 	S3List    bool
 	S3Purge   bool
 	S3Clone   bool
+	S3AsOlf   bool
+	S3Put     bool
+	S3Get     bool
+	S3Rename  bool
+	S3Delete  bool
 }
 
 type S3ToolsVars struct {
@@ -185,6 +191,124 @@ func s3ToolsClone(ctx context.Context) error {
 	return nil
 }
 
+func s3ToPath(pe string, size string) string {
+	pes := strings.Split(pe, "-")
+	s := pes[1]
+	if size == "s" {
+		return fmt.Sprintf("%s/%s", s[0:2], s[2:])
+	}
+	if size == "m" {
+		return fmt.Sprintf("%s/%s", s[0:3], s[3:])
+	}
+	return fmt.Sprintf("%s/%s/%s", s[0:3], s[3:6], s[6:])
+}
+
+func s3ToOlf(ctx context.Context, red plumber.Reducer, is3 cabridss.IS3Session, olfPath string, size string) error {
+	var (
+		names []string
+		cns   []string
+		err   error
+	)
+	names, err = is3.List("meta-")
+	if err != nil {
+		return err
+	}
+	cns, err = is3.List("content-")
+	if err != nil {
+		return err
+	}
+	names = append(names, cns...)
+	mx := sync.Mutex{}
+	wg := sync.WaitGroup{}
+	var errs []error
+	recErr := func(iErr error) {
+		mx.Lock()
+		defer mx.Unlock()
+		errs = append(errs, iErr)
+	}
+	entry2olf := func(pe string) error {
+		rc, err := is3.Download(pe)
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+		pep := s3ToPath(pe, size)
+		println(pep)
+		return nil
+	}
+	for _, ent := range names {
+		wg.Add(1)
+		go func(pe string) {
+			iErr := func() error {
+				defer wg.Done()
+				if red == nil {
+					return entry2olf(pe)
+				} else {
+					return red.Launch(fmt.Sprintf("entry2olf-%s", pe), func() error {
+						return entry2olf(pe)
+					})
+				}
+			}()
+			if iErr != nil {
+				recErr(iErr)
+			}
+		}(ent)
+	}
+	wg.Wait()
+	if len(errs) > 0 {
+		for _, err := range errs {
+			s3ToolsErr(ctx, err.Error()+"\n")
+		}
+		return fmt.Errorf("some errors occured")
+	}
+	return nil
+}
+
+func s3ToolsAsOlf(ctx context.Context) error {
+	opts := s3ToolsOpts(ctx)
+	args := s3ToolsCtx(ctx).args
+	if len(args) != 1 {
+		return fmt.Errorf("an olf DSS local path must be provided")
+	}
+	var (
+		err error
+		oc  cabridss.ObsConfig
+		ure UiRunEnv
+	)
+
+	dssType, root, err := CheckDssSpec(args[0])
+	if err != nil {
+		return err
+	}
+	if dssType != "olf" && dssType != "xolf" {
+		return fmt.Errorf("only olf and xolf DSS are supported")
+	}
+	if ure, err = GetUiRunEnv[S3ToolsOptions, *S3ToolsVars](ctx, dssType[0] == 'x', false); err != nil {
+		return err
+	}
+	_, _ = root, ure
+	bc := cabridss.DssBaseConfig{LocalPath: root, ConfigPassword: ure.MasterPassword}
+	olfc := cabridss.OlfConfig{}
+	err = cabridss.LoadDssConfig(bc, &olfc)
+	if err != nil {
+		return err
+	}
+
+	oc, err = GetObsConfig(opts.BaseOptions, 0, "", "")
+	if err != nil {
+		return err
+	}
+	is3 := cabridss.NewS3Session(oc, nil)
+	if err = is3.Initialize(); err != nil {
+		return err
+	}
+	var red plumber.Reducer = nil
+	if opts.RedLimit != 0 {
+		red = plumber.NewReducer(opts.RedLimit, 0)
+	}
+	return s3ToOlf(ctx, red, is3, root, olfc.Size)
+}
+
 func s3ToolsRun(ctx context.Context) error {
 	opts := s3ToolsOpts(ctx)
 	err := fmt.Errorf("at least one operation option must be given with the s3Tools command")
@@ -199,6 +323,9 @@ func s3ToolsRun(ctx context.Context) error {
 	}
 	if opts.S3Clone {
 		err = s3ToolsClone(ctx)
+	}
+	if opts.S3AsOlf {
+		err = s3ToolsAsOlf(ctx)
 	}
 	if err != nil {
 		if errors.Is(err, cabridss.ErrPasswordRequired) {
