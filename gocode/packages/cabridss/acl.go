@@ -75,11 +75,21 @@ func setSysAclNotUx(path string, acl []ACLEntry) error {
 // CheckUiACL convert a list of <user:rights> strings into actual ACL
 func CheckUiACL(sacl []string) (acl []ACLEntry, err error) {
 	for _, sac := range sacl {
+		var (
+			u, rights string
+		)
 		sacsubs := strings.Split(sac, ":")
-		if len(sacsubs) != 2 {
-			return nil, fmt.Errorf("invalid ACL string %s, not <user:rights>", sac)
+		if strings.HasPrefix(sac, "x-uid") || strings.HasPrefix(sac, "x-gid") {
+			if len(sacsubs) != 3 {
+				return nil, fmt.Errorf("invalid ACL string %s, not <user:rights>", sac)
+			}
+			u, rights = sacsubs[0]+":"+sacsubs[1], sacsubs[2]
+		} else {
+			if len(sacsubs) != 2 {
+				return nil, fmt.Errorf("invalid ACL string %s, not <user:rights>", sac)
+			}
+			u, rights = sacsubs[0], sacsubs[1]
 		}
-		u, rights := sacsubs[0], sacsubs[1]
 		ur := Rights{}
 		for _, char := range rights {
 			if char == 'r' {

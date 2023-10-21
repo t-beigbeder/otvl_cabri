@@ -6,6 +6,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
+	"io"
 	"strings"
 	"time"
 )
@@ -157,16 +158,118 @@ func dssMknsRun(ctx context.Context) error {
 	} else if dss, err = NewHDss[DSSMknsOptions, *DSSMknsVars](ctx, nil, NewHDssArgs{}); err != nil {
 		return err
 	}
-	acl, err := ure.ACLOrDefault()
-	if err != nil {
-		return err
-	}
-	if err = dss.Mkns(npath, time.Now().Unix(), opts.Children, acl); err != nil {
-		dss.Close()
-		return err
+	acl := ure.GetACL()
+	if len(args) > 1 {
+		if err = dss.Updatens(npath, time.Now().Unix(), opts.Children, acl); err != nil {
+			dss.Close()
+			return err
+		}
+	} else {
+		if err = dss.Mkns(npath, time.Now().Unix(), opts.Children, acl); err != nil {
+			dss.Close()
+			return err
+		}
 	}
 	if err = dss.Close(); err != nil {
 		return err
+	}
+	return nil
+}
+
+type DSSGetPutOptions struct {
+	BaseOptions
+}
+
+type DSSGetPutVars struct {
+	baseVars
+}
+
+func DSSGetPutStartup(cr *joule.CLIRunner[DSSGetPutOptions]) error {
+	_ = cr.AddUow("command",
+		func(ctx context.Context, work joule.UnitOfWork, i interface{}) (interface{}, error) {
+			(*uiCtxFrom[DSSGetPutOptions, *DSSGetPutVars](ctx)).vars = &DSSGetPutVars{baseVars: baseVars{uow: work}}
+			return nil, dssGetPutRun(ctx)
+		})
+	return nil
+}
+
+func DSSGetPutShutdown(cr *joule.CLIRunner[DSSGetPutOptions]) error {
+	return cr.GetUow("command").GetError()
+}
+
+func dssGetPutCtx(ctx context.Context) *uiContext[DSSGetPutOptions, *DSSGetPutVars] {
+	return uiCtxFrom[DSSGetPutOptions, *DSSGetPutVars](ctx)
+}
+
+func dssGetPutOpts(ctx context.Context) DSSGetPutOptions { return (*dssGetPutCtx(ctx)).opts }
+
+func dssGetPutUow(ctx context.Context) joule.UnitOfWork {
+	return getUnitOfWork[DSSGetPutOptions, *DSSGetPutVars](ctx)
+}
+
+func dssGetPutOut(ctx context.Context, s string) { dssGetPutUow(ctx).UiStrOut(s) }
+
+func dssGetPutRun(ctx context.Context) error {
+	args := dssGetPutCtx(ctx).args
+	dssType, root, npath, _ := CheckDssPath(args[0])
+	var (
+		dss cabridss.Dss
+		err error
+		ure UiRunEnv
+	)
+	if ure, err = GetUiRunEnv[DSSGetPutOptions, *DSSGetPutVars](ctx, dssType[0] == 'x', false); err != nil {
+		return err
+	}
+	if dssType == "fsy" {
+		if dss, err = cabridss.NewFsyDss(cabridss.FsyConfig{}, root); err != nil {
+			return err
+		}
+	} else if strings.HasPrefix(dssType, "wfsapi+") {
+		if dss, err = NewWfsDss[DSSGetPutOptions, *DSSGetPutVars](ctx, nil, NewHDssArgs{}); err != nil {
+			return err
+		}
+	} else if dss, err = NewHDss[DSSGetPutOptions, *DSSGetPutVars](ctx, nil, NewHDssArgs{}); err != nil {
+		return err
+	}
+	defer dss.Close()
+	acl := ure.GetACL()
+	if args[2] == "get" {
+		rc, err := dss.GetContentReader(npath)
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+		w, err := dss.GetAfs().Create(args[1])
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(w, rc)
+		if err != nil {
+			return err
+		}
+		err = w.Close()
+		if err != nil {
+			return err
+		}
+	} else {
+		r, err := dss.GetAfs().Open(args[1])
+		if err != nil {
+			return err
+		}
+		defer r.Close()
+		wc, err := dss.GetContentWriter(npath, time.Now().Unix(), acl, nil)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(wc, r)
+		if err != nil {
+			wc.Close()
+			return err
+		}
+		err = wc.Close()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

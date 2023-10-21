@@ -106,15 +106,28 @@ make_obs() {
   true
 }
 
+run_test_gp() {
+  run_silent cabri cli dss get $dest@d1/f1 $TD/simple/d1/d11/f1clone && \
+  run_silent cmp $TD/simple/d1/f1 $TD/simple/d1/d11/f1clone && \
+  run_silent cabri cli dss updns $dest@d1/d11 -c f1clone --acl x-uid:1000: --acl : && \
+  run_silent cabri cli dss put $dest@d1/d11/f1clone $TD/simple/d1/d11/f1clone --acl x-uid:1000: --acl : && \
+  run_silent cabri cli dss get $dest@d1/d11/f1clone $TD/simple/d1/d11/f1clone2 && \
+  run_silent cmp $TD/simple/d1/d11/f1clone $TD/simple/d1/d11/f1clone2 && \
+  true
+}
+
 run_basic_sync() {
   ori=$1
   dest=$2
+  test_gp=$3
   run_silent cabri cli sync $ori@ $dest@ -rd && \
   find_out "created: 12" && \
   run_silent cabri cli sync $ori@ $dest@ -rv && \
   find_out "created: 12" && \
   run_silent cabri cli sync $ori@ $dest@ -rd && \
-  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0"
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
+  ([ -z "$test_gp" ] || run_test_gp) && \
+  true
 }
 
 run_advanced_sync() {
@@ -184,7 +197,7 @@ run_acl_sync() {
 
 run_basic_unlock() {
   dss=$1
-  run_silent cabri cli dss mkns $dss@ > /dev/null && \
+  run_silent cabri cli dss mkns $dss@ --acl : > /dev/null && \
   run_silent cabri cli lsns $dss@ && \
   run_error cabri cli dss unlock --lock $dss 2> /dev/null && \
   run_error cabri cli lsns $dss@ 2> /dev/null && \
@@ -223,7 +236,7 @@ test_basic_sync_olf() {
   fsy=fsy:${TD}/simple && \
   olf=olf:${TD}/olf && \
   make_olf $BTD/olf $olf && \
-  run_basic_sync $fsy $olf && \
+  run_basic_sync $fsy $olf test_gp && \
   true
 }
 
@@ -234,7 +247,7 @@ test_basic_sync_polf() {
   fsy=fsy:${TD}/simple && \
   olf=olf:${TD}/olf && \
   make_polf $BTD/olf $olf && \
-  run_basic_sync $fsy $olf && \
+  run_basic_sync $fsy $olf test_gp && \
   true
 }
 
@@ -245,7 +258,7 @@ test_basic_sync_xolf() {
   fsy=fsy:${TD}/simple && \
   olf=xolf:${TD}/olf && \
   make_olf $BTD/olf $olf && \
-  run_basic_sync $fsy $olf && \
+  run_basic_sync $fsy $olf test_gp && \
   true
 }
 
@@ -256,7 +269,7 @@ test_basic_sync_obs() {
   fsy=fsy:${TD}/simple && \
   obs=obs:${TD}/obs && \
   make_obs $BTD/obs $obs && \
-  run_basic_sync $fsy $obs && \
+  run_basic_sync $fsy $obs test_gp && \
 #  run_command cabri cli check $OBS_ENV --s3ls && \
   true
 }
@@ -268,7 +281,7 @@ test_basic_sync_xobs() {
   fsy=fsy:${TD}/simple && \
   obs=xobs:${TD}/obs && \
   make_obs $BTD/obs $obs && \
-  run_basic_sync $fsy $obs && \
+  run_basic_sync $fsy $obs test_gp && \
 #  run_command cabri cli check $OBS_ENV --s3ls && \
   true
 }
@@ -283,7 +296,7 @@ test_basic_sync_wolf() {
   run_bg_silent cabri webapi --cdir $TD/wc olf+http://localhost:3000/$TD/olf@wo && \
   sleep 1 && \
   wo=webapi+http://localhost:3000/wo && \
-  run_basic_sync $fsy $wo && \
+  run_basic_sync $fsy $wo test_gp && \
   run_silent kill $pidc && \
   true
 }
@@ -298,7 +311,7 @@ test_basic_sync_wobs() {
   run_bg_silent cabri webapi --cdir $TD/wc obs+http://localhost:3000/$TD/obs@wo && \
   sleep 1 && \
   wo=webapi+http://localhost:3000/wo && \
-  run_basic_sync $fsy $wo && \
+  run_basic_sync $fsy $wo test_gp && \
   run_silent kill $pidc && \
 #  run_command cabri cli check $OBS_ENV --s3ls && \
   true
@@ -314,7 +327,7 @@ test_basic_sync_xwolf() {
   run_bg_silent cabri webapi --cdir $TD/wc xolf+http://localhost:3000/$TD/olf@wo && \
   sleep 1 && \
   wo=xwebapi+http://localhost:3000/wo && \
-  run_basic_sync $fsy $wo && \
+  run_basic_sync $fsy $wo test_gp && \
   run_silent kill $pidc && \
   true
 }
@@ -329,7 +342,7 @@ test_basic_sync_xwobs() {
   run_bg_silent cabri webapi --cdir $TD/wc xobs+http://localhost:3000/$TD/obs@wo && \
   sleep 1 && \
   wo=xwebapi+http://localhost:3000/wo && \
-  run_basic_sync $fsy $wo && \
+  run_basic_sync $fsy $wo test_gp && \
   run_silent kill $pidc && \
 #  run_command cabri cli check $OBS_ENV --s3ls && \
   true
@@ -345,7 +358,7 @@ test_basic_sync_wfs() {
   run_bg_silent cabri webapi --cdir $TD/wc fsy+http://localhost:3000/$TD/wfs@wfs && \
   sleep 1 && \
   wfs=wfsapi+http://localhost:3000/wfs && \
-  run_basic_sync $fsy $wfs && \
+  run_basic_sync $fsy $wfs test_gp && \
   run_silent kill $pidc && \
   true
 }

@@ -70,6 +70,92 @@ var dssMknsCmd = &coral.Command{
 	SilenceUsage: true,
 }
 
+var dssUpdnsCmd = &coral.Command{
+	Use:   "updns",
+	Short: "update a namespace",
+	Long:  `update a namespace`,
+	Args: func(cmd *coral.Command, args []string) error {
+		if len(args) != 1 {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("a DSS namespace must be provided")
+		}
+		_, _, _, err := cabriui.CheckDssPath(args[0])
+		if err != nil {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("%v\nsyntax: dss-type:/path/to/dss@path/in/dss\nfor instance\n\tfsy:/home/guest@Downloads", err)
+		}
+		return nil
+	},
+	RunE: func(cmd *coral.Command, args []string) error {
+		if _, err := cabriui.CheckUiACL(baseOptions.ACL); err != nil {
+			return err
+		}
+		dssMknsOptions.BaseOptions = baseOptions
+		args = append(args, "update")
+		return cabriui.CLIRun[cabriui.DSSMknsOptions, *cabriui.DSSMknsVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssMknsOptions, args,
+			cabriui.DSSMknsStartup, cabriui.DSSMknsShutdown)
+	},
+	SilenceUsage: true,
+}
+
+var dssGetPutOptions cabriui.DSSGetPutOptions
+
+var dssGetCmd = &coral.Command{
+	Use:   "get",
+	Short: "get content from an OBS DSS entry",
+	Long:  `get content from an OBS DSS entry`,
+	Args: func(cmd *coral.Command, args []string) error {
+		if len(args) != 2 {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("a DSS entry and resulting content file must be provided")
+		}
+		_, _, _, err := cabriui.CheckDssPath(args[0])
+		if err != nil {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("%v\nsyntax: dss-type:/path/to/dss@path/in/dss\nfor instance\n\tfsy:/home/guest@Downloads", err)
+		}
+		return nil
+	},
+	RunE: func(cmd *coral.Command, args []string) error {
+		dssGetPutOptions.BaseOptions = baseOptions
+		args = append(args, "get")
+		return cabriui.CLIRun[cabriui.DSSGetPutOptions, *cabriui.DSSGetPutVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssGetPutOptions, args,
+			cabriui.DSSGetPutStartup, cabriui.DSSGetPutShutdown)
+	},
+	SilenceUsage: true,
+}
+
+var dssPutCmd = &coral.Command{
+	Use:   "put",
+	Short: "put content into an OBS DSS entry",
+	Long:  `put content into an OBS DSS entry`,
+	Args: func(cmd *coral.Command, args []string) error {
+		if len(args) != 2 {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("a DSS entry and source content file must be provided")
+		}
+		_, _, _, err := cabriui.CheckDssPath(args[0])
+		if err != nil {
+			cmd.UsageFunc()(cmd)
+			return fmt.Errorf("%v\nsyntax: dss-type:/path/to/dss@path/in/dss\nfor instance\n\tfsy:/home/guest@Downloads", err)
+		}
+		return nil
+	},
+	RunE: func(cmd *coral.Command, args []string) error {
+		dssGetPutOptions.BaseOptions = baseOptions
+		args = append(args, "put")
+		return cabriui.CLIRun[cabriui.DSSGetPutOptions, *cabriui.DSSGetPutVars](
+			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
+			dssGetPutOptions, args,
+			cabriui.DSSGetPutStartup, cabriui.DSSGetPutShutdown)
+	},
+	SilenceUsage: true,
+}
+
 var dssUnlockOptions cabriui.DSSUnlockOptions
 
 var dssUnlockCmd = &coral.Command{
@@ -310,6 +396,10 @@ func init() {
 	dssCmd.AddCommand(dssMkCmd)
 	dssMknsCmd.Flags().StringArrayVarP(&dssMknsOptions.Children, "children", "c", nil, "children")
 	dssCmd.AddCommand(dssMknsCmd)
+	dssUpdnsCmd.Flags().StringArrayVarP(&dssMknsOptions.Children, "children", "c", nil, "children")
+	dssCmd.AddCommand(dssUpdnsCmd)
+	dssCmd.AddCommand(dssGetCmd)
+	dssCmd.AddCommand(dssPutCmd)
 	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.RepairIndex, "repair", false, "repair the index if persistent")
 	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.RepairReadOnly, "read", true, "don't repair, show diagnostic")
 	dssUnlockCmd.Flags().BoolVar(&dssUnlockOptions.LockForTest, "lock", false, "lock for test purpose")
