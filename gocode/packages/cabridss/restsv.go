@@ -5,6 +5,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 func sRestGet(c echo.Context) error {
@@ -16,14 +17,18 @@ func sRestGet(c echo.Context) error {
 			&mInitialized{mError: mError{Error: "REST API here, not a remote DSS Web API!"}})
 	}
 	path := ""
-	if err := echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
+	var err error
+	if err = echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
+		return NewServerErr("sRestGet", err)
+	}
+	path, err = url.PathUnescape(path)
+	if err != nil {
 		return NewServerErr("sRestGet", err)
 	}
 	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
 	qm, ok := c.QueryParams()["meta"]
 	_, _ = qm, ok
 	var im IMeta
-	var err error
 	im, err = dss.GetMeta(path, true)
 	if err != nil {
 		return c.JSON(http.StatusConflict, &mError{Error: err.Error()})
@@ -82,7 +87,11 @@ func getUpdateQueryParams(c echo.Context) (mtime int64, acl []ACLEntry, err erro
 
 func sRestPost(c echo.Context) error {
 	path := ""
-	if err := echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
+	var err error
+	if err = echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
+		return NewServerErr("sRestPost", err)
+	}
+	if err = echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
 		return NewServerErr("sRestPost", err)
 	}
 	mtime, acl, err := getUpdateQueryParams(c)
@@ -106,7 +115,12 @@ func sRestPost(c echo.Context) error {
 
 func sRestPut(c echo.Context) error {
 	path := ""
+	var err error
 	if err := echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
+		return NewServerErr("sRestPut", err)
+	}
+	path, err = url.PathUnescape(path)
+	if err != nil {
 		return NewServerErr("sRestPut", err)
 	}
 	mtime, acl, err := getUpdateQueryParams(c)
@@ -135,7 +149,12 @@ func sRestPut(c echo.Context) error {
 
 func sRestDelete(c echo.Context) error {
 	path := ""
-	if err := echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
+	var err error
+	if err = echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
+		return NewServerErr("sRestDelete", err)
+	}
+	path, err = url.PathUnescape(path)
+	if err != nil {
 		return NewServerErr("sRestDelete", err)
 	}
 	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
