@@ -582,6 +582,9 @@ func (odbi *oDssBaseImpl) getMeta(npath string, getCh bool) (IMeta, error) {
 	if err == nil && !odbi.hasReadAcl(meta) {
 		return nil, fmt.Errorf("in GetMeta: %s access denied", npath)
 	}
+	if meta.Itime == 0 {
+		meta.Path = npath
+	}
 	return meta, nil
 }
 
