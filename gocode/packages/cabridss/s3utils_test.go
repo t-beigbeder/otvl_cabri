@@ -13,5 +13,11 @@ func TestS3SessionList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = rs
+	for _, k := range rs {
+		m, err := s3s.Meta(k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		println(k, m.Length)
+	}
 }

@@ -17,10 +17,15 @@ import (
 	"time"
 )
 
+type S3Meta struct {
+	Length int64
+}
+
 type IS3Session interface {
 	Initialize() error
 	Check() error
 	List(prefix string) ([]string, error)
+	Meta(key string) (S3Meta, error)
 	Put(key string, content []byte) error
 	Get(key string) ([]byte, error)
 	Upload(key string, r io.Reader) error
@@ -111,6 +116,17 @@ func (s3s *s3Session) List(prefix string) ([]string, error) {
 		}
 	}
 	return res, nil
+}
+
+func (s3s *s3Session) Meta(key string) (S3Meta, error) {
+	res, err := s3s.s3Svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(s3s.config.Container),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return S3Meta{}, err
+	}
+	return S3Meta{Length: *res.ContentLength}, nil
 }
 
 func (s3s *s3Session) Put(key string, content []byte) error {
@@ -302,6 +318,14 @@ func (s3m *s3sMockFs) List(prefix string) ([]string, error) {
 	return children, nil
 }
 
+func (s3m *s3sMockFs) Meta(key string) (S3Meta, error) {
+	fi, err := os.Stat(ufpath.Join(s3m.root, key))
+	if err != nil {
+		return S3Meta{}, err
+	}
+	return S3Meta{Length: fi.Size()}, nil
+}
+
 func (s3m *s3sMockFs) Put(key string, content []byte) error {
 	s3m.lock.Lock()
 	defer s3m.lock.Unlock()
@@ -461,6 +485,10 @@ func (s3t s3sMockTests) List(prefix string) ([]string, error) {
 		return nil, err.(error)
 	}
 	return nil, nil
+}
+
+func (s3t s3sMockTests) Meta(key string) (S3Meta, error) {
+	return S3Meta{}, nil
 }
 
 func (s3t s3sMockTests) Put(key string, content []byte) error {

@@ -233,9 +233,15 @@ func s3ToOlf(ctx context.Context, red plumber.Reducer, is3 cabridss.IS3Session, 
 	}
 	entry2olf := func(pe string) error {
 		pep := olfPath + "/" + s3ToPath(pe, size)
-		_, err := appFs.Stat(pep)
+		fi, err := appFs.Stat(pep)
 		if err == nil {
-			return nil
+			s3stat, err := is3.Meta(pe)
+			if err != nil {
+				return err
+			}
+			if s3stat.Length == fi.Size() {
+				return nil
+			}
 		}
 		rc, err := is3.Download(pe)
 		if err != nil {
