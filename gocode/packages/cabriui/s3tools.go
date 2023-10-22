@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/internal"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
+	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
+	"io"
 	"strings"
 	"sync"
 )
@@ -195,12 +198,13 @@ func s3ToPath(pe string, size string) string {
 	pes := strings.Split(pe, "-")
 	s := pes[1]
 	if size == "s" {
-		return fmt.Sprintf("%s/%s", s[0:2], s[2:])
+		s = fmt.Sprintf("%s/%s", s[0:2], s[2:])
+	} else if size == "m" {
+		s = fmt.Sprintf("%s/%s", s[0:3], s[3:])
+	} else {
+		s = fmt.Sprintf("%s/%s/%s", s[0:3], s[3:6], s[6:])
 	}
-	if size == "m" {
-		return fmt.Sprintf("%s/%s", s[0:3], s[3:])
-	}
-	return fmt.Sprintf("%s/%s/%s", s[0:3], s[3:6], s[6:])
+	return pes[0] + "/" + s
 }
 
 func s3ToOlf(ctx context.Context, red plumber.Reducer, is3 cabridss.IS3Session, olfPath string, size string) error {
@@ -218,6 +222,7 @@ func s3ToOlf(ctx context.Context, red plumber.Reducer, is3 cabridss.IS3Session, 
 		return err
 	}
 	names = append(names, cns...)
+	appFs := afero.NewOsFs()
 	mx := sync.Mutex{}
 	wg := sync.WaitGroup{}
 	var errs []error
@@ -227,14 +232,29 @@ func s3ToOlf(ctx context.Context, red plumber.Reducer, is3 cabridss.IS3Session, 
 		errs = append(errs, iErr)
 	}
 	entry2olf := func(pe string) error {
+		pep := olfPath + "/" + s3ToPath(pe, size)
+		_, err := appFs.Stat(pep)
+		if err == nil {
+			return nil
+		}
 		rc, err := is3.Download(pe)
 		if err != nil {
 			return err
 		}
 		defer rc.Close()
-		pep := s3ToPath(pe, size)
-		println(pep)
-		return nil
+		if err = appFs.MkdirAll(ufpath.Dir(pep), 0o777); err != nil {
+			return err
+		}
+		oe, err := appFs.Create(pep)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(oe, rc)
+		if err != nil {
+			oe.Close()
+			return err
+		}
+		return oe.Close()
 	}
 	for _, ent := range names {
 		wg.Add(1)
