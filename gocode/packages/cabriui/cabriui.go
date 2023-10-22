@@ -20,7 +20,7 @@ type BaseOptions struct {
 	PassFile      string
 	Serial        bool
 	MaxThread     int // set the maximum OS thread number
-	RedLimit      int // set the reducer I/O limit defaults to 10
+	RedLimit      int // set the reducer I/O limit defaults to 8
 	IndexImplems  []string
 	ObsRegions    []string
 	ObsEndpoints  []string
@@ -374,11 +374,11 @@ func MutualExcludeFlags(names []string, flags ...bool) (string, error) {
 	ff := ""
 	for i, bname := range names {
 		bval := flags[i]
+		if bval {
+			ff = names[i]
+		}
 		for j := i + 1; j < len(names); j++ {
 			oval := flags[j]
-			if oval {
-				ff = names[j]
-			}
 			if bval && oval {
 				return "", fmt.Errorf(fmt.Sprintf("flags %s and %s cannot be used at the same time", bname, names[j]))
 			}

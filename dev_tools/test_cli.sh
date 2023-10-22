@@ -353,12 +353,19 @@ test_basic_sync_wfs() {
   setup_test && \
   untar_simple && \
   fsy=fsy:${TD}/simple && \
+  run_silent mkdir -p ${TD}/simple2 && \
   wfs=xobs:${TD}/wfs && \
   mkdir $BTD/wfs $BTD/wc && \
   run_bg_silent cabri webapi --cdir $TD/wc fsy+http://localhost:3000/$TD/wfs@wfs && \
   sleep 1 && \
   wfs=wfsapi+http://localhost:3000/wfs && \
   run_basic_sync $fsy $wfs test_gp && \
+  run_silent cabri cli sync $wfs@ fsy:${TD}/simple2@ -rdn && \
+  find_out "created: 12, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $wfs@ fsy:${TD}/simple2@ -rvn && \
+  find_out "created: 12, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  run_silent cabri cli sync $wfs@ fsy:${TD}/simple2@ -rdn && \
+  find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent kill $pidc && \
   true
 }

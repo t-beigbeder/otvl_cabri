@@ -14,8 +14,8 @@ By default, the synchronization algorithm performs a large number of operations 
 which makes synchronization rapid on fast devices.
 
 It is possible to control the maximum number of I/O operations running in parallel
-using the `--reducer <number>` flag, which is set to 20 by default:
-- on USB keys, especially as target, use a smaller size, such as 10
+using the `--reducer <number>` flag, which is set to 8 by default:
+- on USB keys, especially as target, use a smaller size, such as 4
 - even with such limitation, accessing USB keys remotely can cause network timeouts,
 the option `--serial` forbids any parallelism and may perform even better in such circumstances
 - on SSD drives, unlimit it with size 0

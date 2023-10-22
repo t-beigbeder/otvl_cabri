@@ -9,7 +9,6 @@ import (
 
 type WfsDssConfig struct {
 	DssBaseConfig
-	NoClientLimit bool
 }
 
 type wfsDssImpl struct {
@@ -202,9 +201,6 @@ func NewWfsDss(wdc WfsDssConfig) (Dss, error) {
 	wdi.apc, err = NewWebApiClient(wdc.WebProtocol, wdc.WebHost, wdc.WebPort, tlsConfig, wdc.WebRoot, remoteWdc, wdc.WebClientTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("in NewWfsDss: %w", err)
-	}
-	if wdc.NoClientLimit {
-		wdi.apc.SetNoLimit()
 	}
 	err = cfsInitialize(wdi.apc)
 	if err != nil {

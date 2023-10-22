@@ -322,56 +322,75 @@ type WebApiClient interface {
 	DoAsJson(request *http.Request, outBody any) (*http.Response, error)
 	SimpleDoAsJson(method, url string, inBody any, outBody any) (*http.Response, error)
 	GetConfig() interface{}
-	SetNoLimit()
 	SetCabriHeader(h string)
 }
 
 type Client struct {
 	http.Client
 	mux               sync.Mutex
+	retryStateNumber  int
 	nextId            int
-	actives           map[int]bool
-	noLimit           bool
 	basicAuthUser     string
 	basicAuthPassword string
 	cabriHeader       string
 }
 
-func (c *Client) limitActive() int {
-	time.Sleep(time.Millisecond)
+func (c *Client) addRetry() int {
 	c.mux.Lock()
-	if c.actives == nil {
-		c.actives = map[int]bool{}
-	}
-	id := c.nextId
-	c.nextId += 1
-	for len(c.actives) > 200 {
-		c.mux.Unlock()
-		time.Sleep(50 * time.Millisecond)
-		c.mux.Lock()
-	}
-	c.actives[id] = true
-	c.mux.Unlock()
-	return id
+	defer c.mux.Unlock()
+	c.retryStateNumber++
+	return c.retryStateNumber
 }
 
-func (c *Client) unlimitActive(id int) {
+func (c *Client) removeRetry() {
 	c.mux.Lock()
-	delete(c.actives, id)
-	c.mux.Unlock()
+	defer c.mux.Unlock()
+	c.retryStateNumber--
+	if c.retryStateNumber < 0 {
+		panic("logic")
+	}
 }
 
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
+	getDuration := func() time.Duration {
+		an := c.retryStateNumber
+		if an == 0 {
+			return time.Duration(0)
+		}
+		if an > 20 {
+			return time.Second
+		}
+		return time.Duration(uint(an)*50) * time.Millisecond
+	}
+
 	if c.cabriHeader != "" {
 		req.Header.Set("Cabri", c.cabriHeader)
-	}
-	if !c.noLimit {
-		defer c.unlimitActive(c.limitActive())
 	}
 	if c.basicAuthUser != "" {
 		req.SetBasicAuth(c.basicAuthUser, c.basicAuthPassword)
 	}
-	return c.Client.Do(req)
+	du := getDuration()
+	hasRetry := false
+	defer func() {
+		if hasRetry {
+			c.removeRetry()
+		}
+	}()
+	for i := 0; i < 3; i++ {
+		if du != 0 {
+			time.Sleep(du)
+		}
+		rsp, err := c.Client.Do(req)
+		if err == nil || err == io.EOF {
+			return rsp, err
+		}
+		if !hasRetry {
+			c.addRetry()
+			hasRetry = true
+		}
+	}
+	rsp, err := c.Client.Do(req)
+	return rsp, err
 }
 
 type apiClient struct {
@@ -470,8 +489,6 @@ func (apc *apiClient) SimpleDoAsJson(method, url string, inBody any, outBody any
 }
 
 func (apc *apiClient) GetConfig() interface{} { return apc.config }
-
-func (apc *apiClient) SetNoLimit() { apc.client.noLimit = true }
 
 func (apc *apiClient) SetCabriHeader(h string) { apc.client.cabriHeader = h }
 

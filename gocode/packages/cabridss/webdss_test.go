@@ -148,7 +148,7 @@ func TestNewWebDssClientOlf(t *testing.T) {
 					DssBaseConfig: DssBaseConfig{
 						ConfigDir: ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
 						WebPort:   "3000",
-					}, NoClientLimit: true},
+					}},
 				0, nil)
 			return dss, err
 		}); err != nil {
@@ -190,7 +190,7 @@ func TestNewWebDssTlsClientOlf(t *testing.T) {
 						TlsCert:           "cert.pem",
 						BasicAuthUser:     "user",
 						BasicAuthPassword: "passw0rd",
-					}, NoClientLimit: true},
+					}},
 				0, nil)
 			return dss, err
 		}); err != nil {
@@ -225,7 +225,7 @@ func TestNewWebDssClientOlfRed(t *testing.T) {
 						ConfigDir:    ufpath.Join(tfs.Path(), fmt.Sprintf(".cabri-i%d", ucpCount)),
 						WebPort:      "3000",
 						ReducerLimit: 2,
-					}, NoClientLimit: true},
+					}},
 				0, nil)
 			return dss, err
 		}); err != nil {
@@ -263,7 +263,7 @@ func runTestNewWebDssClientObs(t *testing.T) error {
 					DssBaseConfig: DssBaseConfig{
 						ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 						WebPort:   "3000",
-					}, NoClientLimit: true},
+					}},
 				0, nil)
 			return dss, err
 		}); err != nil {
@@ -304,7 +304,7 @@ func TestNewWebDssClientSmf(t *testing.T) {
 					DssBaseConfig: DssBaseConfig{
 						ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 						WebPort:   "3000",
-					}, NoClientLimit: true},
+					}},
 				0, nil)
 			return dss, err
 		}); err != nil {
@@ -493,7 +493,7 @@ func TestWebClientOlfHistory(t *testing.T) {
 					DssBaseConfig: DssBaseConfig{
 						ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 						WebPort:   "3000",
-					}, NoClientLimit: true},
+					}},
 				0, nil)
 			return dss, err
 		}); err != nil {
@@ -531,7 +531,7 @@ func runTestWebClientObsHistory(t *testing.T) error {
 					DssBaseConfig: DssBaseConfig{
 						ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 						WebPort:   "3000",
-					}, NoClientLimit: true},
+					}},
 				0, nil)
 			return dss, err
 		}); err != nil {
@@ -651,7 +651,7 @@ func TestWebClientOlfMultiHistory(t *testing.T) {
 					DssBaseConfig: DssBaseConfig{
 						ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 						WebPort:   "3000",
-					}, NoClientLimit: true},
+					}},
 				0, nil)
 			return dss, err
 		}); err != nil {

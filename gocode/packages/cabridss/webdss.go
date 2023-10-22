@@ -25,8 +25,7 @@ type LibApiDssConfig struct {
 type WebDssConfig struct {
 	DssBaseConfig
 	LibApiDssConfig
-	ClId          string
-	NoClientLimit bool
+	ClId string
 }
 
 type webContentWriterHandler struct {
@@ -115,9 +114,6 @@ func (wdi *webDssImpl) initialize(me oDssProxy, config interface{}, lsttime int6
 		return fmt.Errorf("in initialize: %v", err)
 	}
 	wdi.apc.SetCabriHeader("WebApi")
-	if wdc.NoClientLimit {
-		wdi.apc.SetNoLimit()
-	}
 	mIed, err = cInitialize(wdi.apc)
 	if err != nil {
 		return fmt.Errorf("in initialize: %v", err)

@@ -67,13 +67,12 @@ type ShaWriter struct {
 func (s *ShaWriter) Write(p []byte) (n int, err error) {
 	if s.bs == nil {
 		s.bs = make([]byte, 8192)
-		s.h = sha256.New()
 	}
 	return s.h.Write(p)
 }
 
 func ShaFrom(r io.Reader) (string, error) {
-	w := ShaWriter{}
+	w := ShaWriter{h: sha256.New()}
 	if _, err := io.Copy(&w, r); err != nil {
 		return "", err
 	}

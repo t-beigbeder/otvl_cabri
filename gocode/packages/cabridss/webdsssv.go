@@ -106,7 +106,7 @@ func sPushContent(c echo.Context) error {
 		return NewServerErr("sPushContent", err)
 	}
 	jsonArgs := make([]byte, lja)
-	if n, err := req.Body.Read(jsonArgs); n != len(jsonArgs) || err != nil {
+	if n, err := req.Body.Read(jsonArgs); n != len(jsonArgs) || (err != nil && err != io.EOF) {
 		return NewServerErr("sPushContent", fmt.Errorf("%d %v", n, err))
 	}
 	args := mPushContentIn{}

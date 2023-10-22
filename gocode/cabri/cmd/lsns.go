@@ -31,10 +31,6 @@ var lsnsCmd = &coral.Command{
 		if _, err := cabriui.CheckTimeStamp(lsnsOptions.LastTime); err != nil {
 			return err
 		}
-		dssType, _, _, _ := cabriui.CheckDssPath(args[0])
-		if dssType == "fsy" && lsnsOptions.Checksum {
-			lsnsOptions.RedLimit = 0
-		}
 		return cabriui.CLIRun[cabriui.LsnsOptions, *cabriui.LsnsVars](
 			cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(),
 			lsnsOptions, args,

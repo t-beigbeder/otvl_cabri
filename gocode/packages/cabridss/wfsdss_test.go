@@ -76,7 +76,6 @@ func runWfsDssTestWithReducer(t *testing.T, doIt func(*testfs.Fs, Dss) error, re
 	defer sv.Shutdown()
 	dss, err := NewWfsDss(WfsDssConfig{
 		DssBaseConfig: DssBaseConfig{WebPort: "3000", ReducerLimit: redLimit},
-		NoClientLimit: false,
 	})
 	if err != nil {
 		t.Fatal(err)

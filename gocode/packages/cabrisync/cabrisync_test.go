@@ -536,7 +536,7 @@ func TestSynchronizeBasicFsyWebOlf(t *testing.T) {
 			DssBaseConfig: cabridss.DssBaseConfig{
 				ConfigDir: ufpath.Join(tfsr.Path(), ".cabri"),
 				WebPort:   "3000",
-			}, NoClientLimit: true},
+			}},
 		0, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -583,7 +583,6 @@ func TestSynchronizeBasicFsyWebFsy(t *testing.T) {
 
 	dssr, err := cabridss.NewWfsDss(cabridss.WfsDssConfig{
 		DssBaseConfig: cabridss.DssBaseConfig{WebPort: "3000"},
-		NoClientLimit: false,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -690,7 +689,7 @@ func TestSynchronizeBasicFsyEDssWebOlf(t *testing.T) {
 						DssBaseConfig: cabridss.DssBaseConfig{
 							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 							WebPort:   "3000",
-						}, NoClientLimit: true},
+						}},
 				},
 				0, nil)
 			return dss, err

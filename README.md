@@ -43,6 +43,7 @@ The tool is documented through the links below:
 
 - [Introduction](doc/intro.md)
 - [Getting started](doc/gscli.md)
+- [Quick reference](doc/qref.md)
 
 Other documentation is referenced from these pages, including:
 
