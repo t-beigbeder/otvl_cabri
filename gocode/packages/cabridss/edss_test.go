@@ -34,7 +34,7 @@ func TestEDssClientOlfBase(t *testing.T) {
 						DssBaseConfig: DssBaseConfig{
 							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 							WebPort:   "3000",
-						}, NoClientLimit: true},
+						}},
 				},
 				0, nil)
 			return dss, err
@@ -70,7 +70,7 @@ func TestEDssClientOlfBaseRed(t *testing.T) {
 							ConfigDir:    ufpath.Join(tfs.Path(), ".cabri"),
 							WebPort:      "3000",
 							ReducerLimit: 2,
-						}, NoClientLimit: true},
+						}},
 				},
 				0, nil)
 			return dss, err
@@ -110,7 +110,7 @@ func runTestEDssClientObsBase(t *testing.T) error {
 						DssBaseConfig: DssBaseConfig{
 							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 							WebPort:   "3000",
-						}, NoClientLimit: true},
+						}},
 				},
 				0, nil)
 			return dss, err
@@ -153,7 +153,7 @@ func TestEDssClientSmfBase(t *testing.T) {
 						DssBaseConfig: DssBaseConfig{
 							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 							WebPort:   "3000",
-						}, NoClientLimit: true},
+						}},
 				},
 				0, nil)
 			return dss, err
@@ -346,7 +346,7 @@ func TestEDssClientOlfHistory(t *testing.T) {
 						DssBaseConfig: DssBaseConfig{
 							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 							WebPort:   "3000",
-						}, NoClientLimit: true},
+						}},
 				},
 				0, nil)
 			return dss, err
@@ -382,7 +382,7 @@ func TestEDssClientOlfRedHistory(t *testing.T) {
 							ConfigDir:    ufpath.Join(tfs.Path(), ".cabri"),
 							ReducerLimit: 2,
 							WebPort:      "3000",
-						}, NoClientLimit: true},
+						}},
 				},
 				0, nil)
 			return dss, err
@@ -490,7 +490,7 @@ func TestEDssClientOlfMultiHistory(t *testing.T) {
 						DssBaseConfig: DssBaseConfig{
 							ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 							WebPort:   "3000",
-						}, NoClientLimit: true},
+						}},
 				},
 				0, nil)
 			return dss, err

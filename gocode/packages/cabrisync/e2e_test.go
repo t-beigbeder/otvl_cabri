@@ -327,7 +327,7 @@ func TestSynchronizeArboWebDssClientOlf(t *testing.T) {
 			DssBaseConfig: cabridss.DssBaseConfig{
 				ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 				WebPort:   "3000",
-			}, NoClientLimit: true},
+			}},
 		0, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -397,7 +397,7 @@ func TestSynchronizeArboWebDssClientObs(t *testing.T) {
 			DssBaseConfig: cabridss.DssBaseConfig{
 				ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 				WebPort:   "3000",
-			}, NoClientLimit: true},
+			}},
 		0, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -463,7 +463,7 @@ func TestSynchronizeArboWebDssClientSmf(t *testing.T) {
 			DssBaseConfig: cabridss.DssBaseConfig{
 				ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 				WebPort:   "3000",
-			}, NoClientLimit: true},
+			}},
 		0, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -592,7 +592,7 @@ func TestSynchronizeArboBase(t *testing.T) {
 			DssBaseConfig: cabridss.DssBaseConfig{
 				ConfigDir: ufpath.Join(tfs.Path(), ".cabri"),
 				WebPort:   "3000",
-			}, NoClientLimit: true},
+			}},
 		0, nil)
 	if err != nil {
 		t.Fatal(err)
