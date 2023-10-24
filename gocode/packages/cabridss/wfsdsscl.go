@@ -241,7 +241,7 @@ func cfsGetContentReader(apc WebApiClient, npath string) (io.ReadCloser, error) 
 		return nil, NewClientErr("cfsGetContentReader", resp, err, bs)
 	}
 	slj := make([]byte, 16)
-	if n, err := resp.Body.Read(slj); n != 16 || err != nil {
+	if n, err := resp.Body.Read(slj); n != 16 || (err != nil && err != io.EOF) {
 		return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
 	}
 	lj, err := internal.Str16ToInt64(string(slj))

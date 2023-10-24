@@ -365,11 +365,20 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	if c.cabriHeader != "" {
 		req.Header.Set("Cabri", c.cabriHeader)
 	}
-	if !c.noLimit {
-		defer c.unlimitActive(c.limitActive())
-	}
+	//if !c.noLimit {
+	//	defer c.unlimitActive(c.limitActive())
+	//}
 	if c.basicAuthUser != "" {
 		req.SetBasicAuth(c.basicAuthUser, c.basicAuthPassword)
+	}
+	for i := 0; i < 3; i++ {
+		rsp, err := c.Client.Do(req)
+		if err == nil || err == io.EOF {
+			return rsp, err
+		}
+		var msDuration uint
+		msDuration = uint(100 * (i + 1))
+		time.Sleep(time.Duration(msDuration) * time.Millisecond)
 	}
 	return c.Client.Do(req)
 }
