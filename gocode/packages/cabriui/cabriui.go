@@ -20,7 +20,7 @@ type BaseOptions struct {
 	PassFile      string
 	Serial        bool
 	MaxThread     int // set the maximum OS thread number
-	RedLimit      int // set the reducer I/O limit defaults to 10
+	RedLimit      int // set the reducer I/O limit defaults to 8
 	IndexImplems  []string
 	ObsRegions    []string
 	ObsEndpoints  []string

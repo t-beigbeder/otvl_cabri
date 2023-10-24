@@ -28,7 +28,7 @@ func init() {
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.Password, "password", false, "force master password prompt")
 	cliCmd.PersistentFlags().BoolVar(&baseOptions.Serial, "serial", false, "run all tasks in sequence")
 	cliCmd.PersistentFlags().IntVar(&baseOptions.MaxThread, "maxt", 0, "sets the maximum OS thread number, defaults to 10000")
-	cliCmd.PersistentFlags().IntVar(&baseOptions.RedLimit, "reducer", 20, "sets the maximum parallel I/O, zero means no limit")
+	cliCmd.PersistentFlags().IntVar(&baseOptions.RedLimit, "reducer", 8, "sets the maximum parallel I/O, zero means no limit")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.IndexImplems, "ximpl", nil, "list of non-default object storage index implementations")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsRegions, "obsrg", nil, "list of object storage regions")
 	cliCmd.PersistentFlags().StringArrayVar(&baseOptions.ObsEndpoints, "obsep", nil, "list of object storage endpoints")

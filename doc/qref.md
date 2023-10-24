@@ -65,4 +65,4 @@ Launch the remote server (add TLS and authentication) mapping reference dataset 
 On the client side synchronize remote source with local target, reducing network usage:
 
     $ mkdir copy-of-remote-v5.9
-    $ cabri cli sync wfsapi+http://remotehost:3000/remote-sample@ fsy:copy-of-remote-v5.9@ -rvn --summary --reducer 3
+    $ cabri cli sync wfsapi+http://remotehost:3000/remote-sample@ fsy:copy-of-remote-v5.9@ -rvn --summary --reducer 5
