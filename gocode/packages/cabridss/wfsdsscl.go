@@ -99,14 +99,18 @@ type cfsClientWriter struct {
 	wrsc       chan struct{}
 	readerErr  error
 	readerDone bool
+	info       interface{}
 }
 
-func newCfsClientWriter() *cfsClientWriter {
-	return &cfsClientWriter{wwsc: make(chan struct{}), wrsc: make(chan struct{})}
+func newCfsClientWriter(info interface{}) *cfsClientWriter {
+	return &cfsClientWriter{wwsc: make(chan struct{}), wrsc: make(chan struct{}), info: info}
 }
 
 func (ccw *cfsClientWriter) Write(p []byte) (n int, err error) {
 	<-ccw.wrsc
+	if ccw.readerErr != nil {
+		return 0, fmt.Errorf("in cfsClientWriter.Write: reader error %w", ccw.readerErr)
+	}
 	ccw.buffer = make([]byte, len(p))
 	ccw.xBuf = 0
 	copy(ccw.buffer, p)
@@ -172,6 +176,10 @@ func (ccwr *cfsClientWriterReader) Close() error {
 }
 
 func (ccwr *cfsClientWriterReader) Done(err error) {
+	select {
+	case <-ccwr.ccw.wwsc:
+	default:
+	}
 	ccwr.ccw.readerErr = err
 	ccwr.ccw.readerDone = true
 	close(ccwr.ccw.wrsc)
@@ -188,7 +196,7 @@ func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLE
 	if err != nil {
 		return
 	}
-	ccw := newCfsClientWriter()
+	ccw := newCfsClientWriter(npath)
 	go func() {
 		var (
 			err  error
@@ -207,7 +215,7 @@ func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLE
 		}()
 		req.Body = ccwr
 		req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
-		resp, err = apc.(*apiClient).client.Do(req)
+		resp, err = apc.(*apiClient).client.Do(req, nil)
 		if err = NewClientErr("", resp, err, nil); err != nil {
 			return
 		}
@@ -232,7 +240,7 @@ func cfsGetContentReader(apc WebApiClient, npath string) (io.ReadCloser, error) 
 		return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
 	}
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	resp, err := apc.(*apiClient).client.Do(req)
+	resp, err := apc.(*apiClient).client.Do(req, nil)
 	if err != nil {
 		return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
 	}

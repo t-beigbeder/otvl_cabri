@@ -192,7 +192,7 @@ func (esv *eServer) Serve() error {
 			if esv.tlsConfig != nil && esv.tlsConfig.basicAuthUser != "" {
 				req.SetBasicAuth(esv.tlsConfig.basicAuthUser, esv.tlsConfig.basicAuthPassword)
 			}
-			rsp, err = client.Do(req)
+			rsp, err = client.Do(req, nil)
 			if err == nil && rsp.StatusCode == http.StatusOK {
 				break
 			}
@@ -328,59 +328,135 @@ type WebApiClient interface {
 type Client struct {
 	http.Client
 	mux               sync.Mutex
-	retryStateNumber  int
+	curRetries        int
+	history           map[int64]bool
 	nextId            int
 	basicAuthUser     string
 	basicAuthPassword string
 	cabriHeader       string
 }
 
-func (c *Client) addRetry() int {
+type ClientReqOpts struct {
+	raiseError  bool
+	errorRaised bool
+	getRequest  func() (*http.Request, error)
+}
+
+func HasRaiseError() bool { return os.Getenv("CABRIDSS_WEB_RAISE_ERROR") != "" }
+
+func (c *Client) addRetry() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	c.retryStateNumber++
-	return c.retryStateNumber
+	c.curRetries++
 }
 
 func (c *Client) removeRetry() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	c.retryStateNumber--
-	if c.retryStateNumber < 0 {
+	c.curRetries--
+	if c.curRetries < 0 {
 		panic("logic")
 	}
 }
 
-func (c *Client) Do(req *http.Request) (*http.Response, error) {
-	getDuration := func() time.Duration {
-		an := c.retryStateNumber
-		if an == 0 {
-			return time.Duration(0)
-		}
-		if an > 20 {
-			return time.Second
-		}
-		return time.Duration(uint(an)*50) * time.Millisecond
+func (c *Client) historize() {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	if c.history == nil {
+		c.history = map[int64]bool{}
 	}
+	c.history[time.Now().UnixNano()] = true
+}
 
+func (c *Client) stats() (rps, curRetries int, du time.Duration) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	if c.history == nil {
+		c.history = map[int64]bool{}
+	}
+	now := time.Now().UnixNano()
+	for dt, _ := range c.history {
+		n := TimeResolution("s").NanoSeconds()
+		if dt+n >= now {
+			rps += 1
+		} else {
+			delete(c.history, dt)
+		}
+	}
+	curRetries = c.curRetries
+	ms := 0
+	if rps > 1000 {
+		ms = rps - 1000
+		if ms > 1000 {
+			ms = 1000
+		}
+	}
+	if curRetries == 0 {
+		du = time.Duration(uint(ms)) * time.Millisecond
+		return
+	}
+	if curRetries > 10 {
+		ms = 2000
+		du = time.Duration(uint(ms)) * time.Millisecond
+		return
+	}
+	ms2 := 200 * curRetries
+	if ms < ms2 {
+		ms = ms2
+	}
+	du = time.Duration(uint(ms)) * time.Millisecond
+	return
+}
+
+func (c *Client) doDo(req *http.Request, opts *ClientReqOpts) (*http.Response, error, int, int, time.Duration) {
+	ellapsed := time.Duration(0)
+	rps, nbr, du := c.stats()
+	du0 := du
+	for ellapsed < du {
+		time.Sleep(du)
+		ellapsed += du
+		rps, nbr, du = c.stats()
+	}
+	var err error
+	if opts.getRequest != nil {
+		req, err = opts.getRequest()
+		if err != nil {
+			return nil, err, rps, nbr, du
+		}
+	}
 	if c.cabriHeader != "" {
 		req.Header.Set("Cabri", c.cabriHeader)
 	}
 	if c.basicAuthUser != "" {
 		req.SetBasicAuth(c.basicAuthUser, c.basicAuthPassword)
 	}
-	du := getDuration()
+	c.historize()
+	rsp, err := c.Client.Do(req)
+	if err == nil && opts.raiseError && !opts.errorRaised {
+		err = fmt.Errorf("ClientReqOpts: raised")
+		opts.errorRaised = true
+		fmt.Fprintf(os.Stderr, "%v %v\n", *opts, err)
+	}
+	_ = du0
+	//if du != 0 || len(c.history) > 2000 {
+	//	fmt.Fprintf(os.Stderr, "%d, %d, %d, %d, %d, (%v)\n", rps, nbr, du, du0, len(c.history), err)
+	//}
+	return rsp, err, rps, nbr, du
+}
+
+func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, error) {
+	if opts == nil {
+		opts = &ClientReqOpts{}
+	}
+
 	hasRetry := false
 	defer func() {
 		if hasRetry {
 			c.removeRetry()
 		}
 	}()
-	for i := 0; i < 3; i++ {
-		if du != 0 {
-			time.Sleep(du)
-		}
-		rsp, err := c.Client.Do(req)
+	for i := 0; i < 2; i++ {
+		rsp, err, rps, nbr, du := c.doDo(req, opts)
 		if err == nil || err == io.EOF {
 			return rsp, err
 		}
@@ -388,8 +464,16 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 			c.addRetry()
 			hasRetry = true
 		}
+		//if err != nil {
+		//	fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
+		//}
+		_, _, _ = rps, nbr, du
 	}
-	rsp, err := c.Client.Do(req)
+	rsp, err, rps, nbr, du := c.doDo(req, opts)
+	//if err != nil {
+	//	fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
+	//}
+	_, _, _ = rps, nbr, du
 	return rsp, err
 }
 
@@ -448,7 +532,7 @@ func err2mError(err error) *mError {
 
 func (apc *apiClient) DoAsJson(request *http.Request, outBody any) (*http.Response, error) {
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	resp, err := apc.client.Do(request)
+	resp, err := apc.client.Do(request, nil)
 	if err = NewClientErr("DoAsJson", resp, err, nil); err != nil {
 		return nil, err
 	}

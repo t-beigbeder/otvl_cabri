@@ -170,4 +170,4 @@ You can come back to the [index](../README.md)
 or go on with the ["getting started"](gscli.md) page.
 
 If you just want to give it a try without too much understanding at first,
-the [quick reference](qref.md) may be a good starting point.
+the [quick start](qstart.md) may be a good starting point.

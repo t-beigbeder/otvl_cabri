@@ -357,7 +357,6 @@ func (red *scalableReducer) schedule() {
 	srs.red.mux.Lock()
 	srs.update()
 	srs.red.mux.Unlock()
-	red.wg.Add(1)
 	for !srs.terminated {
 		srs.red.printDbg(fmt.Sprintf("%-12s loop", "schedule"))
 		if srs.available && !srs.done {
@@ -404,6 +403,7 @@ func NewReducer(limit int, maxSleep time.Duration) Reducer {
 		actives:    map[int64]srqe{},
 		terminated: make(chan srqe),
 	}
+	red.wg.Add(1)
 	go red.schedule()
 	return red
 }

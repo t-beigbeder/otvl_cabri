@@ -193,17 +193,20 @@ func (wdi *webDssImpl) webPushContent(size int64, ch string, mbs []byte, emid st
 		return fmt.Errorf("in webPushContent: %w", err)
 	}
 	lja := internal.Int64ToStr16(int64(len(jsonArgs)))
-	file, err := os.Open(cf.Name())
-	if err != nil {
-		return fmt.Errorf("in webPushContent: %w", err)
+	getRequest := func() (*http.Request, error) {
+		file, err := os.Open(cf.Name())
+		if err != nil {
+			return nil, fmt.Errorf("in webPushContent: %w", err)
+		}
+		hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), rCloser: file}
+		copy(hdler.header, lja)
+		copy(hdler.header[16:], jsonArgs)
+		req, err := http.NewRequest(http.MethodPost, wdi.apc.Url()+"pushContent", nil)
+		req.Body = &hdler
+		req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
+		return req, nil
 	}
-	hdler := webContentWriterHandler{header: make([]byte, 16+len(jsonArgs)), rCloser: file}
-	copy(hdler.header, lja)
-	copy(hdler.header[16:], jsonArgs)
-	req, err := http.NewRequest(http.MethodPost, wdi.apc.Url()+"pushContent", nil)
-	req.Body = &hdler
-	req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
-	resp, err := wdi.apc.(*apiClient).client.Do(req)
+	resp, err := wdi.apc.(*apiClient).client.Do(nil, &ClientReqOpts{raiseError: HasRaiseError(), getRequest: getRequest})
 	if err = NewClientErr("webPushContent", resp, err, nil); err != nil {
 		return err
 	}
@@ -300,7 +303,7 @@ func (wdi *webDssImpl) spWebGetContentReader(ch string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("in spWebGetContentReader: %w", err)
 	}
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	resp, err := wdi.apc.(*apiClient).client.Do(req)
+	resp, err := wdi.apc.(*apiClient).client.Do(req, nil)
 	if err != nil {
 		return nil, fmt.Errorf("in spWebGetContentReader: %w", err)
 	}

@@ -192,26 +192,45 @@ func (syc *syncCtx) crUpContent(isRTL bool) error {
 	}
 	defer in.Close()
 	var closeErr error
-	out, err := tgt.dss.GetContentWriter(
-		tgt.fullPath(), ori.meta.GetMtime(), syc.mapACL(ori.meta.GetAcl(), isRTL),
-		func(err error, size int64, ch string) {
-			if err != nil || size != ori.meta.GetSize() || (ori.meta.GetChUnsafe() != "" && ch != ori.meta.GetChUnsafe()) {
-				closeErr = fmt.Errorf("%s error %w size %d ch %s", tErrPrefix, err, size, ch)
+	var out io.WriteCloser
+	doCopy := func() error {
+		var err error
+		out, err = tgt.dss.GetContentWriter(
+			tgt.fullPath(), ori.meta.GetMtime(), syc.mapACL(ori.meta.GetAcl(), isRTL),
+			func(err error, size int64, ch string) {
+				if err != nil || size != ori.meta.GetSize() || (ori.meta.GetChUnsafe() != "" && ch != ori.meta.GetChUnsafe()) {
+					closeErr = fmt.Errorf("%s error %w size %d ch %s", tErrPrefix, err, size, ch)
+				}
+			})
+		if err != nil {
+			err = fmt.Errorf("%s %w", tErrPrefix, err)
+			return err
+		}
+		if _, err = io.Copy(out, in); err != nil {
+			out.Close()
+			err = fmt.Errorf("%s %w", tErrPrefix, err)
+			return err
+		}
+		if err = out.Close(); err != nil {
+			err = fmt.Errorf("%s %w", tErrPrefix, err)
+			return err
+		}
+		return nil
+	}
+	if err = doCopy(); err != nil {
+		if strings.Contains(err.Error(), "connect: cannot assign requested address") {
+			in2, err2 := ori.dss.GetContentReader(ori.fullPath())
+			if err2 != nil {
+				in.Close()
+				syc.diagnose(fmt.Sprintf("<crUpContent %v", err2), false)
+				return fmt.Errorf("%s %w", oErrPrefix, err2)
 			}
-		})
+			in.Close()
+			in = in2
+			err = doCopy()
+		}
+	}
 	if err != nil {
-		err = fmt.Errorf("%s %w", tErrPrefix, err)
-		syc.diagnose(fmt.Sprintf("<crUpContent %v", err), false)
-		return err
-	}
-	if _, err = io.Copy(out, in); err != nil {
-		out.Close()
-		err = fmt.Errorf("%s %w", tErrPrefix, err)
-		syc.diagnose(fmt.Sprintf("<crUpContent %v", err), false)
-		return err
-	}
-	if err = out.Close(); err != nil {
-		err = fmt.Errorf("%s %w", tErrPrefix, err)
 		syc.diagnose(fmt.Sprintf("<crUpContent %v", err), false)
 		return err
 	}
