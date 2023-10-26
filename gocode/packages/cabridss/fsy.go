@@ -347,7 +347,7 @@ func (fsy *FsyDss) doGetMeta(npath string, getCh bool) (IMeta, error) {
 	} else {
 		ch := ""
 		if getCh {
-			cr, err := fsy.GetContentReader(npath)
+			cr, err := fsy.doGetContentReader(npath)
 			if err != nil {
 				return nil, fmt.Errorf("in GetMeta: %w", err)
 			}
