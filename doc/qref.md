@@ -65,6 +65,9 @@ mapping reference dataset to URL path `remote-sample`:
     # Download reference dataset a previous
     $ cabri webapi fsy+http://remotehost:3000/home/guest/Downloads/linux-5.9@remote-sample
 
+NB: you have to use the same uid on the server than on the client,
+or else you would have to map the uids, not documented here.
+
 On the client side synchronize remote source with local target:
 
     $ mkdir copy-of-remote-v5.9
@@ -152,11 +155,20 @@ Restore version v5.9 and check it:
     $ cabri cli sync fsy:linux-5.9@ fsy:restore5.9@ -rd --summary
     created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0
 
-## Backup files into an `obs` DSS
+## Backup files into an `xobs` DSS
 
-Download a reference dataset:
+You could replay the previous commands using an `obs` (object storage) DSS.
+That means using a DSS which, instead of using local files for its storage,
+relies on object storage accessed through internet.
 
-        $ wget https://github.com/torvalds/linux/archive/v5.9.zip && unzip -q v5.9.zip
+In this section, we switch directly to the use of an `xobs` (encrypted object storage) DSS.
+The commands are still the same, only the DSS content is different, fully encrypted in that case
+(which is totally irrelevant for storing an opensource project files, just for the illustration).
+
+We use a different reference dataset:
+
+    $ wget https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/corpora/framenet_v15.zip
+    $ unzip -q framenet_v15.zip
 
 Create an Object container (or S3 bucket), here hosted for instance by OVH Cloud in France:
 
@@ -164,44 +176,26 @@ Create an Object container (or S3 bucket), here hosted for instance by OVH Cloud
 - Solution Standard Object Storage - S3 API
 - Region Gravelines (GRA)
 - Link a user, create or reuse a user, copy its S3 access and secret keys
-- Container name obs-sample
+- Container name `xobs-sample`
 
-Create an `obs` (object storage) DSS:
+You can check the connectivity using `s3tools`:
 
-    $ mkdir /home/debian/Downloads/obs-sample
-    $ cabri cli dss make obs:/home/debian/Downloads/obs-sample
+    $ cabri cli s3tools --obsrg gra --obsep https://s3.gra.io.cloud.ovh.net/ --obsct xobs-sample \
+    --obsak <access-key> --obssk <secret-key> --cnx
+
+Create an `xobs` (encrypted object storage) DSS:
+
+    $ mkdir /home/guest/Downloads/xobs-sample
+    $ cabri cli dss make --obsrg gra --obsep https://s3.gra.io.cloud.ovh.net/ --obsct xobs-sample \
+    --obsak <access-key> --obssk <secret-key> xobs:/home/guest/Downloads/xobs-sample
 
 Synchronize source files with target DSS, not using checksums:
 
-    $ cabri cli sync fsy:linux-5.9@ obs:/home/debian/Downloads/obs-sample@ -rvn --summary
+    $ cabri cli sync fsy:framenet_v15@ xobs:/home/guest/Downloads/xobs-sample@ -rvn --summary
     ...
-    created: 74682, updated 1, removed 0, kept 0, touched 0, error(s) 0
+    created: 12957, updated 1, removed 0, kept 0, touched 0, error(s) 0
 
 Check copy using checksums:
 
-    $ cabri cli sync fsy:linux-5.9@ obs:/home/debian/Downloads/obs-sample@ -rd --summary
+    $ cabri cli sync fsy:framenet_v15@ xobs:/home/guest/Downloads/xobs-sample@ -rd --summary
     created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0
-
-## Incremental backup of files into an `olf` DSS
-
-Download an update to the reference dataset:
-
-    $ wget https://github.com/torvalds/linux/archive/v6.5.zip && unzip -q v6.5.zip
-
-Evaluate need to synchronize target DSS, using checksums:
-
-    $ cabri cli sync fsy:linux-6.5@ olf:/home/guest/Downloads/olf-sample@ -rd --summary
-    ...
-    created: 22295, updated 39093, removed 10660, kept 0, touched 24930, error(s) 0
-
-Do it:
-
-    $ cabri cli sync fsy:linux-6.5@ olf:/home/guest/Downloads/olf-sample@ -rv --summary
-    ...
-    created: 22295, updated 39093, removed 10660, kept 0, touched 24930, error(s) 0
-
-Check backup:
-
-    $ cabri cli sync fsy:linux-6.5@ olf:/home/guest/Downloads/olf-sample@ -rd --summary
-    created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0
-
