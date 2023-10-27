@@ -1,5 +1,9 @@
 # Cabri quick reference
 
+Cabri is not difficult to use for basic needs.
+This page provides initial information for getting quickly familiar with the tool,
+either to give it a try or to progress smoothly in its usage.
+
 ## Configuration set up
 
 ### Initialization
@@ -162,8 +166,8 @@ That means using a DSS which, instead of using local files for its storage,
 relies on object storage accessed through internet.
 
 In this section, we switch directly to the use of an `xobs` (encrypted object storage) DSS.
-The commands are still the same, only the DSS content is different, fully encrypted in that case
-(which is totally irrelevant for storing an opensource project files, just for the illustration).
+The commands are still the same, only the DSS content is different, fully encrypted in that case,
+just for the illustration.
 
 We use a different reference dataset:
 
@@ -175,7 +179,7 @@ Create an Object container (or S3 bucket), here hosted for instance by OVH Cloud
 - Public Cloud / Object Storage / Create an Object container
 - Solution Standard Object Storage - S3 API
 - Region Gravelines (GRA)
-- Link a user, create or reuse a user, copy its S3 access and secret keys
+- Link a user, create or reuse a user, copy its S3 access and secret keys to be used just below
 - Container name `xobs-sample`
 
 You can check the connectivity using `s3tools`:
@@ -199,3 +203,14 @@ Check copy using checksums:
 
     $ cabri cli sync fsy:framenet_v15@ xobs:/home/guest/Downloads/xobs-sample@ -rd --summary
     created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0
+
+Use content as you want:
+
+    $ cabri cli lsns xobs:/home/debian/Downloads/xobs-sample@ -t
+    ...
+      57 2010-09-10 22:02:23 docs/
+    1564 2010-09-14 16:10:50 README.txt
+    $ cabri cli dss get xobs:/home/debian/Downloads/xobs-sample@README.txt README.txt
+    $ cat README.txt
+    Welcome to Release 1.5 of the FrameNet data!
+    ...
