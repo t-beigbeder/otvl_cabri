@@ -82,17 +82,17 @@ Check copy using checksums:
 Create an `olf` (object-like files) DSS with an index:
 
     $ mkdir /home/guest/Downloads/olf-sample
-    $ cabri cli dss make olf:/home/guest/Downloads/xolf-sample -s m --ximpl bdb
+    $ cabri cli dss make olf:/home/guest/Downloads/olf-sample -s m --ximpl bdb
 
 Synchronize source files with target DSS, not using checksums:
 
-    $ cabri cli sync fsy:linux-5.9@ olf:/home/guest/Downloads/xolf-sample@ -rvn --summary
+    $ cabri cli sync fsy:linux-5.9@ olf:/home/guest/Downloads/olf-sample@ -rvn --summary
     ...
     created: 74682, updated 1, removed 0, kept 0, touched 0, error(s) 0
 
 Check copy using checksums:
 
-    $ cabri cli sync fsy:linux-5.9@ olf:/home/guest/Downloads/xolf-sample@ -rd --summary
+    $ cabri cli sync fsy:linux-5.9@ olf:/home/guest/Downloads/olf-sample@ -rd --summary
     created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0
 
 ## Incremental backup of files into an `olf` DSS
@@ -151,3 +151,57 @@ Restore version v5.9 and check it:
     created: 74682, updated 1, removed 0, kept 0, touched 0, error(s) 0
     $ cabri cli sync fsy:linux-5.9@ fsy:restore5.9@ -rd --summary
     created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0
+
+## Backup files into an `obs` DSS
+
+Download a reference dataset:
+
+        $ wget https://github.com/torvalds/linux/archive/v5.9.zip && unzip -q v5.9.zip
+
+Create an Object container (or S3 bucket), here hosted for instance by OVH Cloud in France:
+
+- Public Cloud / Object Storage / Create an Object container
+- Solution Standard Object Storage - S3 API
+- Region Gravelines (GRA)
+- Link a user, create or reuse a user, copy its S3 access and secret keys
+- Container name obs-sample
+
+Create an `obs` (object storage) DSS:
+
+    $ mkdir /home/debian/Downloads/obs-sample
+    $ cabri cli dss make obs:/home/debian/Downloads/obs-sample
+
+Synchronize source files with target DSS, not using checksums:
+
+    $ cabri cli sync fsy:linux-5.9@ obs:/home/debian/Downloads/obs-sample@ -rvn --summary
+    ...
+    created: 74682, updated 1, removed 0, kept 0, touched 0, error(s) 0
+
+Check copy using checksums:
+
+    $ cabri cli sync fsy:linux-5.9@ obs:/home/debian/Downloads/obs-sample@ -rd --summary
+    created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0
+
+## Incremental backup of files into an `olf` DSS
+
+Download an update to the reference dataset:
+
+    $ wget https://github.com/torvalds/linux/archive/v6.5.zip && unzip -q v6.5.zip
+
+Evaluate need to synchronize target DSS, using checksums:
+
+    $ cabri cli sync fsy:linux-6.5@ olf:/home/guest/Downloads/olf-sample@ -rd --summary
+    ...
+    created: 22295, updated 39093, removed 10660, kept 0, touched 24930, error(s) 0
+
+Do it:
+
+    $ cabri cli sync fsy:linux-6.5@ olf:/home/guest/Downloads/olf-sample@ -rv --summary
+    ...
+    created: 22295, updated 39093, removed 10660, kept 0, touched 24930, error(s) 0
+
+Check backup:
+
+    $ cabri cli sync fsy:linux-6.5@ olf:/home/guest/Downloads/olf-sample@ -rd --summary
+    created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0
+
