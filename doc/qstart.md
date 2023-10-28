@@ -1,8 +1,11 @@
-# Cabri quick reference
+# Cabri quick start
 
 Cabri is not difficult to use for basic needs.
 This page provides initial information for getting quickly familiar with the tool,
 either to give it a try or to progress smoothly in its usage.
+
+Anyway you will not find a lot of explanations here,
+reading the full documentation is necessary when it is missing on that page.
 
 ## Configuration set up
 
@@ -46,7 +49,7 @@ Now all commands need to provide a password (`--password` or `--pfile` options)
 
 Download a reference dataset:
 
-    $ wget https://github.com/torvalds/linux/archive/v5.9.zip && unzip v5.9.zip
+    $ wget https://github.com/torvalds/linux/archive/v5.9.zip && unzip -q v5.9.zip
 
 Synchronize source with target, not using checksums:
 
@@ -158,6 +161,33 @@ Restore version v5.9 and check it:
     created: 74682, updated 1, removed 0, kept 0, touched 0, error(s) 0
     $ cabri cli sync fsy:linux-5.9@ fsy:restore5.9@ -rd --summary
     created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0
+
+## Expose and access a remote `olf` DSS
+
+Exposing a remote DSS is not different from seen above for files:
+
+- the server maps DSS to URL path
+- the client now uses the URL type `webapi` instead of `wfsapi` because the protocol is different for DSS
+
+Create an `olf` (object-like files) DSS with an index on the remote server:
+
+    $ ssh remotehost    
+    # Create a `olf` DSS as previous
+    $ mkdir /home/guest/Downloads/olf-remote-sample
+    $ cabri cli dss make olf:/home/guest/Downloads/olf-remote-sample -s m --ximpl bdb
+
+Launch the remote server (add TLS and authentication when relevant)
+mapping the DSS to URL path to URL path `remote-olf-sample`:
+
+    $ cabri webapi olf+http://remotehost:3000/home/guest/Downloads/olf-remote-sample@remote-olf-sample
+
+On the client side synchronize local source with remote target:
+
+    $ cabri cli sync fsy:linux-5.9@ webapi+http://remotehost:3000/remote-olf-sample@ -rvn --summary
+    ...
+    created: 74682, updated 1, removed 0, kept 0, touched 0, error(s) 0
+
+Other cabri commands apply to the client view of the DSS as usual.
 
 ## Backup files into an `xobs` DSS
 
