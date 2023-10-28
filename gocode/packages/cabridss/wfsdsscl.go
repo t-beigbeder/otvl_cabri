@@ -207,7 +207,7 @@ func cfsGetContentWriter(apc WebApiClient, npath string, mtime int64, acl []ACLE
 		}()
 		req.Body = ccwr
 		req.Header.Set(echo.HeaderContentType, echo.MIMEOctetStream)
-		resp, err = apc.(*apiClient).client.Do(req)
+		resp, err = apc.(*apiClient).client.Do(req, nil)
 		if err = NewClientErr("", resp, err, nil); err != nil {
 			return
 		}
@@ -232,7 +232,7 @@ func cfsGetContentReader(apc WebApiClient, npath string) (io.ReadCloser, error) 
 		return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
 	}
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	resp, err := apc.(*apiClient).client.Do(req)
+	resp, err := apc.(*apiClient).client.Do(req, nil)
 	if err != nil {
 		return nil, fmt.Errorf("in cfsGetContentReader: %w", err)
 	}

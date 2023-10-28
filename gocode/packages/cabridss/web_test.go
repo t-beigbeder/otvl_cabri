@@ -324,7 +324,7 @@ func (d *dataSink) Close() error {
 func cPostStream(apc WebApiClient) (interface{}, error) {
 	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%sin", apc.Url()), nil)
 	req.Body = &dataGen{}
-	resp, err := apc.(*apiClient).client.Do(req)
+	resp, err := apc.(*apiClient).client.Do(req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +336,7 @@ func cPostStream(apc WebApiClient) (interface{}, error) {
 
 func cOutStream(apc WebApiClient) (interface{}, error) {
 	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%sout", apc.Url()), nil)
-	resp, err := apc.(*apiClient).client.Do(req)
+	resp, err := apc.(*apiClient).client.Do(req, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +412,7 @@ func TestWebTestSleep(t *testing.T) {
 
 	apc, _ := NewWebApiClient("", "", "3000", nil, "test", nil, time.Duration(0))
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("%ssleep/%d", apc.Url(), 500), nil)
-	resp, err := apc.(*apiClient).client.Do(req)
+	resp, err := apc.(*apiClient).client.Do(req, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,7 +422,7 @@ func TestWebTestSleep(t *testing.T) {
 	count := 1000000
 	req, _ = http.NewRequest(http.MethodPost, fmt.Sprintf("%spostStream/%d/%d", apc.Url(), count, 5000), nil)
 	req.Body = ioutil.NopCloser(strings.NewReader(strings.Repeat("0", count)))
-	resp, err = apc.(*apiClient).client.Do(req)
+	resp, err = apc.(*apiClient).client.Do(req, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

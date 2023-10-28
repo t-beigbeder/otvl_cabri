@@ -192,7 +192,7 @@ func (esv *eServer) Serve() error {
 			if esv.tlsConfig != nil && esv.tlsConfig.basicAuthUser != "" {
 				req.SetBasicAuth(esv.tlsConfig.basicAuthUser, esv.tlsConfig.basicAuthPassword)
 			}
-			rsp, err = client.Do(req)
+			rsp, err = client.Do(req, nil)
 			if err == nil && rsp.StatusCode == http.StatusOK {
 				break
 			}
@@ -335,6 +335,12 @@ type Client struct {
 	cabriHeader       string
 }
 
+type ClientReqOpts struct {
+	raiseError  bool
+	errorRaised bool
+	getRequest  func() (*http.Request, error)
+}
+
 func (c *Client) addRetry() int {
 	c.mux.Lock()
 	defer c.mux.Unlock()
@@ -351,7 +357,7 @@ func (c *Client) removeRetry() {
 	}
 }
 
-func (c *Client) Do(req *http.Request) (*http.Response, error) {
+func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, error) {
 	getDuration := func() time.Duration {
 		an := c.retryStateNumber
 		if an == 0 {
@@ -362,7 +368,9 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 		}
 		return time.Duration(uint(an)*50) * time.Millisecond
 	}
-
+	if opts == nil {
+		opts = &ClientReqOpts{}
+	}
 	if c.cabriHeader != "" {
 		req.Header.Set("Cabri", c.cabriHeader)
 	}
@@ -381,6 +389,11 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 			time.Sleep(du)
 		}
 		rsp, err := c.Client.Do(req)
+		if err == nil && opts.raiseError && !opts.errorRaised {
+			err = fmt.Errorf("ClientReqOpts: raised")
+			opts.errorRaised = true
+			fmt.Fprintf(os.Stderr, "%v %v\n", *opts, err)
+		}
 		if err == nil || err == io.EOF {
 			return rsp, err
 		}
@@ -448,7 +461,7 @@ func err2mError(err error) *mError {
 
 func (apc *apiClient) DoAsJson(request *http.Request, outBody any) (*http.Response, error) {
 	request.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	resp, err := apc.client.Do(request)
+	resp, err := apc.client.Do(request, nil)
 	if err = NewClientErr("DoAsJson", resp, err, nil); err != nil {
 		return nil, err
 	}
