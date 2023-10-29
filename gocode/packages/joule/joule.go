@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"sync"
 	"syscall"
 	"time"
@@ -145,6 +146,14 @@ func (cr *CLIRunner[OT]) AddUow(
 
 func (cr *CLIRunner[OT]) GetUow(id string) UnitOfWork { return cr.uowReg[id] }
 
+func dumpStackIf() {
+	if os.Getenv("JOULE_DBG_STACK") == "" {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "joule dumpStackIf\n")
+	pprof.Lookup("goroutine").WriteTo(os.Stderr, 1)
+}
+
 func (cr *CLIRunner[OT]) initAndGetFinalizer() func() {
 	var ctx context.Context
 	ctx, cr.cancel = context.WithCancel(context.Background())
@@ -156,6 +165,7 @@ func (cr *CLIRunner[OT]) initAndGetFinalizer() func() {
 		for sig := range c {
 			count += 1
 			if count == 1 {
+				dumpStackIf()
 				fmt.Fprintf(os.Stderr, "signal %s received, preparing to exit\n", sig)
 				cr.cancel()
 				continue
