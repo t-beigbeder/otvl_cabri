@@ -341,6 +341,8 @@ type ClientReqOpts struct {
 	getRequest  func() (*http.Request, error)
 }
 
+func HasRaiseError() bool { return os.Getenv("CABRIDSS_WEB_RAISE_ERROR") != "" }
+
 func (c *Client) addRetry() int {
 	c.mux.Lock()
 	defer c.mux.Unlock()
@@ -371,12 +373,6 @@ func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, err
 	if opts == nil {
 		opts = &ClientReqOpts{}
 	}
-	if c.cabriHeader != "" {
-		req.Header.Set("Cabri", c.cabriHeader)
-	}
-	if c.basicAuthUser != "" {
-		req.SetBasicAuth(c.basicAuthUser, c.basicAuthPassword)
-	}
 	du := getDuration()
 	hasRetry := false
 	defer func() {
@@ -387,6 +383,19 @@ func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, err
 	for i := 0; i < 3; i++ {
 		if du != 0 {
 			time.Sleep(du)
+		}
+		var err error
+		if opts.getRequest != nil {
+			req, err = opts.getRequest()
+			if err != nil {
+				return nil, err
+			}
+		}
+		if c.cabriHeader != "" {
+			req.Header.Set("Cabri", c.cabriHeader)
+		}
+		if c.basicAuthUser != "" {
+			req.SetBasicAuth(c.basicAuthUser, c.basicAuthPassword)
 		}
 		rsp, err := c.Client.Do(req)
 		if err == nil && opts.raiseError && !opts.errorRaised {

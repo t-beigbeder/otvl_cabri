@@ -287,7 +287,6 @@ test_basic_sync_xobs() {
 }
 
 test_basic_sync_wolf() {
-  info test_basic_sync_wolf && \
   setup_test && \
   untar_simple && \
   fsy=fsy:${TD}/simple && \
@@ -301,8 +300,21 @@ test_basic_sync_wolf() {
   true
 }
 
+test_basic_sync_wolf_noe() {
+  info test_basic_sync_wolf_noe && \
+  export CABRIDSS_WEB_RAISE_ERROR= && \
+  test_basic_sync_wolf && \
+  true
+}
+
+test_basic_sync_wolf_err() {
+  info test_basic_sync_wolf_err && \
+  export CABRIDSS_WEB_RAISE_ERROR=1 && \
+  test_basic_sync_wolf && \
+  true
+}
+
 test_basic_sync_wobs() {
-  info test_basic_sync_wobs && \
   setup_test && \
   untar_simple && \
   fsy=fsy:${TD}/simple && \
@@ -313,7 +325,20 @@ test_basic_sync_wobs() {
   wo=webapi+http://localhost:3000/wo && \
   run_basic_sync $fsy $wo test_gp && \
   run_silent kill $pidc && \
-#  run_command cabri cli check $OBS_ENV --s3ls && \
+  true
+}
+
+test_basic_sync_wobs_noe() {
+  info test_basic_sync_wobs_noe && \
+  export CABRIDSS_WEB_RAISE_ERROR= && \
+  test_basic_sync_wobs && \
+  true
+}
+
+test_basic_sync_wobs_err() {
+  info test_basic_sync_wobs_err && \
+  export CABRIDSS_WEB_RAISE_ERROR=1 && \
+  test_basic_sync_wobs && \
   true
 }
 
@@ -776,8 +801,11 @@ test_basic_sync() {
   test_basic_sync_xolf && \
   test_basic_sync_obs && \
   test_basic_sync_xobs && \
-  test_basic_sync_wolf && \
+  test_basic_sync_wolf_noe && \
+  test_basic_sync_wolf_err && \
   test_basic_sync_wobs && \
+  test_basic_sync_wobs_noe && \
+  test_basic_sync_wobs_err && \
   test_basic_sync_xwolf && \
   test_basic_sync_xwobs && \
   test_basic_sync_wfs && \
@@ -834,7 +862,7 @@ test_cli_fast=
 info "starting"
 true && \
   run_command cabri version && \
-  test_basic_sync_wolf && \
+  test_basic_sync_wfs && \
   false && \
   test_basic_sync && \
   test_more_sync && \
