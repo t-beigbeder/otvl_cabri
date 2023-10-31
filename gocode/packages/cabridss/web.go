@@ -408,6 +408,42 @@ func (c *Client) stats() (rps, curRetries int, du time.Duration) {
 	return
 }
 
+func (c *Client) doDo(req *http.Request, opts *ClientReqOpts) (*http.Response, error, int, int, time.Duration) {
+	ellapsed := time.Duration(0)
+	rps, nbr, du := c.stats()
+	du0 := du
+	for ellapsed < du {
+		time.Sleep(du)
+		ellapsed += du
+		rps, nbr, du = c.stats()
+	}
+	var err error
+	if opts.getRequest != nil {
+		req, err = opts.getRequest()
+		if err != nil {
+			return nil, err, rps, nbr, du
+		}
+	}
+	if c.cabriHeader != "" {
+		req.Header.Set("Cabri", c.cabriHeader)
+	}
+	if c.basicAuthUser != "" {
+		req.SetBasicAuth(c.basicAuthUser, c.basicAuthPassword)
+	}
+	c.historize()
+	rsp, err := c.Client.Do(req)
+	if err == nil && opts.raiseError && !opts.errorRaised {
+		err = fmt.Errorf("ClientReqOpts: raised")
+		opts.errorRaised = true
+		fmt.Fprintf(os.Stderr, "%v %v\n", *opts, err)
+	}
+	_ = du0
+	//if du != 0 || len(c.history) > 2000 {
+	//	fmt.Fprintf(os.Stderr, "%d, %d, %d, %d, %d, (%v)\n", rps, nbr, du, du0, len(c.history), err)
+	//}
+	return rsp, err, rps, nbr, du
+}
+
 func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, error) {
 	if opts == nil {
 		opts = &ClientReqOpts{}
@@ -419,31 +455,8 @@ func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, err
 			c.removeRetry()
 		}
 	}()
-	for i := 0; i < 3; i++ {
-		rps, nbr, du := c.stats()
-		if du != 0 {
-			time.Sleep(du)
-		}
-		var err error
-		if opts.getRequest != nil {
-			req, err = opts.getRequest()
-			if err != nil {
-				return nil, err
-			}
-		}
-		if c.cabriHeader != "" {
-			req.Header.Set("Cabri", c.cabriHeader)
-		}
-		if c.basicAuthUser != "" {
-			req.SetBasicAuth(c.basicAuthUser, c.basicAuthPassword)
-		}
-		c.historize()
-		rsp, err := c.Client.Do(req)
-		if err == nil && opts.raiseError && !opts.errorRaised {
-			err = fmt.Errorf("ClientReqOpts: raised")
-			opts.errorRaised = true
-			fmt.Fprintf(os.Stderr, "%v %v\n", *opts, err)
-		}
+	for i := 0; i < 2; i++ {
+		rsp, err, rps, nbr, du := c.doDo(req, opts)
 		if err == nil || err == io.EOF {
 			return rsp, err
 		}
@@ -454,18 +467,13 @@ func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, err
 		//if err != nil {
 		//	fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
 		//}
-		_, _ = rps, nbr
+		_, _, _ = rps, nbr, du
 	}
-	rps, nbr, du := c.stats()
-	if du != 0 {
-		time.Sleep(du)
-	}
-	c.historize()
-	rsp, err := c.Client.Do(req)
+	rsp, err, rps, nbr, du := c.doDo(req, opts)
 	//if err != nil {
 	//	fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
 	//}
-	_, _ = rps, nbr
+	_, _, _ = rps, nbr, du
 	return rsp, err
 }
 
