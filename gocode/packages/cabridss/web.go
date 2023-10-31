@@ -451,9 +451,10 @@ func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, err
 			c.addRetry()
 			hasRetry = true
 		}
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
-		}
+		//if err != nil {
+		//	fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
+		//}
+		_, _ = rps, nbr
 	}
 	rps, nbr, du := c.stats()
 	if du != 0 {
@@ -461,9 +462,10 @@ func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, err
 	}
 	c.historize()
 	rsp, err := c.Client.Do(req)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
-	}
+	//if err != nil {
+	//	fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
+	//}
+	_, _ = rps, nbr
 	return rsp, err
 }
 
