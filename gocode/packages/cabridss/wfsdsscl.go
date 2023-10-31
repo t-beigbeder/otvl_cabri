@@ -109,7 +109,7 @@ func newCfsClientWriter(info interface{}) *cfsClientWriter {
 func (ccw *cfsClientWriter) Write(p []byte) (n int, err error) {
 	<-ccw.wrsc
 	if ccw.readerErr != nil {
-		return 0, fmt.Errorf("in cfsClientWriter.Write: reader error")
+		return 0, fmt.Errorf("in cfsClientWriter.Write: reader error %w", ccw.readerErr)
 	}
 	ccw.buffer = make([]byte, len(p))
 	ccw.xBuf = 0

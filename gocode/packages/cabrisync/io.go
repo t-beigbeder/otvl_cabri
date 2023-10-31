@@ -204,28 +204,26 @@ func (syc *syncCtx) crUpContent(isRTL bool) error {
 			})
 		if err != nil {
 			err = fmt.Errorf("%s %w", tErrPrefix, err)
-			syc.diagnose(fmt.Sprintf("<crUpContent %v", err), false)
 			return err
 		}
 		if _, err = io.Copy(out, in); err != nil {
 			out.Close()
 			err = fmt.Errorf("%s %w", tErrPrefix, err)
-			syc.diagnose(fmt.Sprintf("<crUpContent %v", err), false)
 			return err
 		}
 		if err = out.Close(); err != nil {
 			err = fmt.Errorf("%s %w", tErrPrefix, err)
-			syc.diagnose(fmt.Sprintf("<crUpContent %v", err), false)
 			return err
 		}
 		return nil
 	}
 	if err = doCopy(); err != nil {
 		if strings.Contains(err.Error(), "connect: cannot assign requested address") {
-			in2, err := ori.dss.GetContentReader(ori.fullPath())
-			if err != nil {
-				syc.diagnose(fmt.Sprintf("<crUpContent %v", err), false)
-				return fmt.Errorf("%s %w", oErrPrefix, err)
+			in2, err2 := ori.dss.GetContentReader(ori.fullPath())
+			if err2 != nil {
+				in.Close()
+				syc.diagnose(fmt.Sprintf("<crUpContent %v", err2), false)
+				return fmt.Errorf("%s %w", oErrPrefix, err2)
 			}
 			in.Close()
 			in = in2

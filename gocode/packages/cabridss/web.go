@@ -328,7 +328,8 @@ type WebApiClient interface {
 type Client struct {
 	http.Client
 	mux               sync.Mutex
-	retryStateNumber  int
+	curRetries        int
+	history           map[int64]bool
 	nextId            int
 	basicAuthUser     string
 	basicAuthPassword string
@@ -343,37 +344,75 @@ type ClientReqOpts struct {
 
 func HasRaiseError() bool { return os.Getenv("CABRIDSS_WEB_RAISE_ERROR") != "" }
 
-func (c *Client) addRetry() int {
+func (c *Client) addRetry() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	c.retryStateNumber++
-	return c.retryStateNumber
+	c.curRetries++
 }
 
 func (c *Client) removeRetry() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	c.retryStateNumber--
-	if c.retryStateNumber < 0 {
+	c.curRetries--
+	if c.curRetries < 0 {
 		panic("logic")
 	}
 }
 
-func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, error) {
-	getDuration := func() time.Duration {
-		an := c.retryStateNumber
-		if an == 0 {
-			return time.Duration(0)
-		}
-		if an > 20 {
-			return time.Second
-		}
-		return time.Duration(uint(an)*50) * time.Millisecond
+func (c *Client) historize() {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	if c.history == nil {
+		c.history = map[int64]bool{}
 	}
+	c.history[time.Now().UnixNano()] = true
+}
+
+func (c *Client) stats() (rps, curRetries int, du time.Duration) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	if c.history == nil {
+		c.history = map[int64]bool{}
+	}
+	now := time.Now().UnixNano()
+	for dt, _ := range c.history {
+		n := TimeResolution("s").NanoSeconds()
+		if dt+n >= now {
+			rps += 1
+		} else {
+			delete(c.history, dt)
+		}
+	}
+	curRetries = c.curRetries
+	ms := 0
+	if rps > 1000 {
+		ms = rps - 1000
+		if ms > 1000 {
+			ms = 1000
+		}
+	}
+	if curRetries == 0 {
+		du = time.Duration(uint(ms)) * time.Millisecond
+		return
+	}
+	if curRetries > 10 {
+		ms = 2000
+		du = time.Duration(uint(ms)) * time.Millisecond
+		return
+	}
+	ms2 := 200 * curRetries
+	if ms < ms2 {
+		ms = ms2
+	}
+	du = time.Duration(uint(ms)) * time.Millisecond
+	return
+}
+
+func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, error) {
 	if opts == nil {
 		opts = &ClientReqOpts{}
 	}
-	du := getDuration()
+
 	hasRetry := false
 	defer func() {
 		if hasRetry {
@@ -381,6 +420,7 @@ func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, err
 		}
 	}()
 	for i := 0; i < 3; i++ {
+		rps, nbr, du := c.stats()
 		if du != 0 {
 			time.Sleep(du)
 		}
@@ -397,6 +437,7 @@ func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, err
 		if c.basicAuthUser != "" {
 			req.SetBasicAuth(c.basicAuthUser, c.basicAuthPassword)
 		}
+		c.historize()
 		rsp, err := c.Client.Do(req)
 		if err == nil && opts.raiseError && !opts.errorRaised {
 			err = fmt.Errorf("ClientReqOpts: raised")
@@ -410,8 +451,19 @@ func (c *Client) Do(req *http.Request, opts *ClientReqOpts) (*http.Response, err
 			c.addRetry()
 			hasRetry = true
 		}
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
+		}
 	}
+	rps, nbr, du := c.stats()
+	if du != 0 {
+		time.Sleep(du)
+	}
+	c.historize()
 	rsp, err := c.Client.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%d, %d, %d (%v)\n", rps, nbr, du, err)
+	}
 	return rsp, err
 }
 
