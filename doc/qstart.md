@@ -2,10 +2,17 @@
 
 Cabri is not difficult to use for basic needs.
 This page provides initial information for getting quickly familiar with the tool,
-either to give it a try or to progress smoothly in its usage.
+either to give it a try or to progress rapidly in its usage.
 
 Anyway you will not find a lot of explanations here,
 reading the full documentation is necessary when it is missing on that page.
+
+See [getting started](doc/gscli.md) for installing the application.
+
+When in doubt with a (sub-)command syntax, use the `--help` or `-h` flag, for instance:
+
+    cabri cli -h
+    cabri cli sync --help
 
 ## Configuration set up
 
@@ -15,23 +22,24 @@ Because Cabri stores some secrets such as S3 secret keys, an encryption key has 
 
     $ cabri cli config --dump
     {
-    "clientId": "0e4c659a-d084-466a-b725-21c27d069a21",
+    "clientId": "<a unique id for this CLI client's configuration>",
     "Identities": [
     {
     "alias": "",
-    "pKey": "age1z66mme7e4mv0c6x6s3emrqgflphn3zt2pjtx7k9vck7xn0pw29usufue4r",
-    "secret": "AGE-SECRET-KEY-1RS099MRK3WRMLARVESXPFLG754EF0CALV60JZYRMYX09CCRUNYQS46K82H"
+    "pKey": "<user's default public key>",
+    "secret": "<user's default secret key>"
     }
     ],
     "Internal": {
     "alias": "__internal__",
-    "pKey": "age13nht4agnsza4f7z9exymgneecq3ndp0rdmjkaspe9jggwctkjqlsmm3hfg",
-    "secret": "AGE-SECRET-KEY-1ASR7RXXALPPQLSMHQDHW3C8YM9AG0ZJMAXVSWNQD75TXUMS6S0FQCDUTL6"
+    "pKey": "<default public key for this CLI client's configuration>",
+    "secret": "<an internal secret key for this CLI client's configuration>"
     }
     }
 
 - The empty alias key is the default identity for encrypting data in DSS.
-- The `__internal__` key encrypts DSS configuration.
+- The `__internal__` key encrypts DSS configuration, such as configured S3 keys.
+- Always keep "secret" parts... secret ;)
 
 Copy this information in a safe place (such as Keepass) and make a backup.
 

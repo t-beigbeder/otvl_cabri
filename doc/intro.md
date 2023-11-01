@@ -76,7 +76,7 @@ as soon as it leaves the client or until it is delivered to it.
 
 Internally, Cabri makes use of [age](https://age-encryption.org/) technology
 whose specification can be found [here](https://github.com/C2SP/C2SP/blob/main/age.md).
-Many thanks to its author Filippo Valsorda!
+Many thanks to its author Filippo Valsorda and its contributors.
 
 Data encryption is incompatible with deduplication because the same content
 is never encrypted the same twice.
@@ -166,7 +166,7 @@ thus never exposing secrets nor confidential data to third parties.
 
 ### What's next
 
-You can come back to the [index](../README.md)
+You can come back to the [documentation index](../README.md#read-the-documentation)
 or go on with the ["getting started"](gscli.md) page.
 
 If you just want to give it a try without too much understanding at first,
