@@ -335,6 +335,119 @@ func s3ToolsAsOlf(ctx context.Context) error {
 	return s3ToOlf(ctx, red, is3, root, olfc.Size)
 }
 
+func s3ToolsPut(ctx context.Context) error {
+	opts := s3ToolsOpts(ctx)
+	args := s3ToolsCtx(ctx).args
+	if len(args) != 2 {
+		return fmt.Errorf("<content> file and <object> path must be provided")
+	}
+	oc := GetS3Config(opts.BaseOptions, 0)
+	is3 := cabridss.NewS3Session(oc, nil)
+	if err := is3.Initialize(); err != nil {
+		return err
+	}
+	appFs := afero.NewOsFs()
+	in, err := appFs.Open(args[0])
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	if err = is3.Upload(args[1], in); err != nil {
+		return err
+	}
+	return nil
+}
+
+func s3ToolsGet(ctx context.Context) error {
+	opts := s3ToolsOpts(ctx)
+	args := s3ToolsCtx(ctx).args
+	if len(args) != 2 {
+		return fmt.Errorf("<content> file and <object> path must be provided")
+	}
+	oc := GetS3Config(opts.BaseOptions, 0)
+	is3 := cabridss.NewS3Session(oc, nil)
+	if err := is3.Initialize(); err != nil {
+		return err
+	}
+	appFs := afero.NewOsFs()
+	out, err := appFs.Create(args[0])
+	if err != nil {
+		return err
+	}
+	var in io.ReadCloser
+	if in, err = is3.Download(args[1]); err != nil {
+		out.Close()
+		return err
+	}
+	defer in.Close()
+	if _, err = io.Copy(out, in); err != nil {
+		out.Close()
+		return err
+	}
+	return out.Close()
+}
+
+func s3ToolsRename(ctx context.Context) error {
+	opts := s3ToolsOpts(ctx)
+	args := s3ToolsCtx(ctx).args
+	if len(args) != 2 {
+		return fmt.Errorf("<object1> file and <object2> paths must be provided")
+	}
+	oc := GetS3Config(opts.BaseOptions, 0)
+	is3 := cabridss.NewS3Session(oc, nil)
+	if err := is3.Initialize(); err != nil {
+		return err
+	}
+	appFs := afero.NewOsFs()
+	tempFile, err := afero.TempFile(appFs, "", "s3ren")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		tempFile.Close()
+		appFs.Remove(tempFile.Name())
+	}()
+	var in io.ReadCloser
+	if in, err = is3.Download(args[0]); err != nil {
+		tempFile.Close()
+		return err
+	}
+	defer in.Close()
+	if _, err = io.Copy(tempFile, in); err != nil {
+		tempFile.Close()
+		return err
+	}
+	if err = tempFile.Close(); err != nil {
+		return err
+	}
+	in2, err := appFs.Open(tempFile.Name())
+	if err != nil {
+		return err
+	}
+	defer in2.Close()
+	if err = is3.Upload(args[1], in2); err != nil {
+		return err
+	}
+
+	return is3.Delete(args[0])
+}
+
+func s3ToolsDelete(ctx context.Context) error {
+	opts := s3ToolsOpts(ctx)
+	args := s3ToolsCtx(ctx).args
+	oc := GetS3Config(opts.BaseOptions, 0)
+	is3 := cabridss.NewS3Session(oc, nil)
+	if err := is3.Initialize(); err != nil {
+		return err
+	}
+	for _, key := range args {
+		if err := is3.Delete(key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func s3ToolsRun(ctx context.Context) error {
 	opts := s3ToolsOpts(ctx)
 	err := fmt.Errorf("at least one operation option must be given with the s3Tools command")
@@ -352,6 +465,18 @@ func s3ToolsRun(ctx context.Context) error {
 	}
 	if opts.S3AsOlf {
 		err = s3ToolsAsOlf(ctx)
+	}
+	if opts.S3Put {
+		err = s3ToolsPut(ctx)
+	}
+	if opts.S3Get {
+		err = s3ToolsGet(ctx)
+	}
+	if opts.S3Rename {
+		err = s3ToolsRename(ctx)
+	}
+	if opts.S3Delete {
+		err = s3ToolsDelete(ctx)
 	}
 	if err != nil {
 		if errors.Is(err, cabridss.ErrPasswordRequired) {
