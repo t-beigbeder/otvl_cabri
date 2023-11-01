@@ -113,6 +113,12 @@ func (odoi *oDssObjImpl) pushContent(size int64, ch string, mbs []byte, emid str
 		}
 		defer r.Close()
 		if err = odoi.is3.Upload(cName, r); err != nil {
+			if strings.Contains(err.Error(), "A conflicting conditional operation is currently in progress against this resource.") {
+				lr, _ = odoi.is3.List(cName)
+				if len(lr) != 0 {
+					return nil
+				}
+			}
 			return fmt.Errorf("in pushContent: %w", err)
 		}
 	}
