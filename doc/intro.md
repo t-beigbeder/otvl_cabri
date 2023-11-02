@@ -166,7 +166,7 @@ thus never exposing secrets nor confidential data to third parties.
 
 ### What's next
 
-You can come back to the [index](../README.md)
+You can come back to the [documentation index](../README.md#read-the-documentation)
 or go on with the ["getting started"](gscli.md) page.
 
 If you just want to give it a try without too much understanding at first,
