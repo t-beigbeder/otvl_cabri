@@ -55,6 +55,8 @@ but also from developers to hosted applications concerning data feeding
 - Cabri makes use of indexes for fast synchronization or data retrieval, indexes may be rebuilt if broken
 - Encrypted data is only decrypted on the user endpoint even when using a remote http server
 
+This [blog article](https://blog.otvl.org/blog/cabri-tech-ovw) provides useful technical information.
+
 ## Read the documentation
 
 The tool is documented through the links below:
