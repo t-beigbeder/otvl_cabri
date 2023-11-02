@@ -1,18 +1,29 @@
 # Cabri Data Storage System
 
-## Share data with confidence using Cabri
+Cabri enables fast and secure data synchronization between people, medias and places.
 
-Cabri is a free and open source tool designed specifically to store data
-and synchronize it on various media, between different places, with the people you want.
+It is mainly available as a command-line tool, but also provides an API (Golang or REST).
 
-It is both fast and secure, providing confidentiality in untrusted environments.
+Cabri is currently in beta release. A GUI is under development.
 
-It is mainly available as a command-line tool, but also provides an API (Golang and REST).
-A GUI is under development.
+## Technical simple presentation
 
-Cabri is currently in beta release.
+To make it simple, Cabri can be compared to the synchronization command-line tool: `rsync`
 
-## Main features
+- using HTTP instead of SSH for remote access
+- also providing bidirectional synchronization 
+- enabling multi-user data sharing
+- parallelizing data transfers on different parts
+- being able to synchronize back and forth with S3 compatible object storage...
+- but also with local storage...
+- providing in both cases data historization, deduplication or encryption
+- taking care of data confidentiality in the Cloud or any unsafe environment
+- providing an API for data storage (Golang or REST)
+- all of that as a no-dependency single binary of less than 30 MB
+
+To get an idea, have a look at the [quick start](doc/qstart.md).
+
+## Functional simple presentation
 
 - Cabri manages data storage on local and external devices such as USB drives,
 or using Cloud Storage services compatible with Amazon S3
@@ -21,14 +32,18 @@ or using Cloud Storage services compatible with Amazon S3
   from different locations
 - Cabri provides a data synchronization service between those storage systems,
   synchronization may be unidirectional or bidirectional 
-- Storage is incremental, no data is lost until you decide to remove some parts of the history
+- Storage is incremental, no data is lost unless it is wanted to remove some parts of the history
 - Storage may be encrypted, relying on public keys, meaning no secrets need to be shared
+
+To get an overview, have a look at the article
+[using Cabri to share data with confidence](https://blog.otvl.org/blog/cabri-share-conf).
 
 ## Tooling
 
 - a REST API is available for access to data storage services
 - a basic configurable scheduler is provided enabling automatic data synchronization among users,
 but also from developers to hosted applications concerning data feeding
+(can be useful as a Kubernetes pod sidecar to pull initial data)
 
 ## Implementation
 
@@ -60,3 +75,4 @@ Other documentation is referenced from these pages, including:
 External blog:
 
 - [Using Cabri to share data with confidence](https://blog.otvl.org/blog/cabri-share-conf)
+- [Cabri technical overview](https://blog.otvl.org/blog/cabri-tech-ovw)

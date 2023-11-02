@@ -2,10 +2,15 @@
 
 Cabri is not difficult to use for basic needs.
 This page provides initial information for getting quickly familiar with the tool,
-either to give it a try or to progress smoothly in its usage.
+either to give it a try or to progress rapidly in its usage.
 
 Anyway you will not find a lot of explanations here,
 reading the full documentation is necessary when it is missing on that page.
+
+When in doubt with a (sub-)command syntax, use the `--help` or `-h` flag, for instance:
+
+    cabri cli -h
+    cabri cli sync --help
 
 ## Configuration set up
 
