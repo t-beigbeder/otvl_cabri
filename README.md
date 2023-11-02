@@ -6,6 +6,8 @@ It is mainly available as a command-line tool, but also provides an API (Golang 
 
 Cabri is currently in beta release. A GUI is under development.
 
+Documentation links are available at the [bottom](#read-the-documentation) of this page.
+
 ## Technical simple presentation
 
 To make it simple, Cabri can be compared to the synchronization command-line tool: `rsync`
