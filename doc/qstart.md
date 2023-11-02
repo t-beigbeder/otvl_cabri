@@ -7,6 +7,8 @@ either to give it a try or to progress rapidly in its usage.
 Anyway you will not find a lot of explanations here,
 reading the full documentation is necessary when it is missing on that page.
 
+See [getting started](doc/gscli.md) for installing the application.
+
 When in doubt with a (sub-)command syntax, use the `--help` or `-h` flag, for instance:
 
     cabri cli -h
