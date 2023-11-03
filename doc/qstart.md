@@ -38,7 +38,8 @@ Because Cabri stores some secrets such as S3 secret keys, an encryption key has 
     }
 
 - The empty alias key is the default identity for encrypting data in DSS.
-- The `__internal__` key encrypts DSS configuration.
+- The `__internal__` key encrypts DSS configuration, such as configured S3 keys.
+- Always keep "secret" parts... secret ;)
 
 Copy this information in a safe place (such as Keepass) and make a backup.
 

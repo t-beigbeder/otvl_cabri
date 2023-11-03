@@ -8,7 +8,7 @@ Cabri is currently in beta release. A GUI is under development.
 
 Documentation links are available at the [bottom](#read-the-documentation) of this page.
 
-## Technical simple presentation
+## Simple presentation
 
 To make it simple, Cabri can be compared to the synchronization command-line tool: `rsync`
 
@@ -16,30 +16,15 @@ To make it simple, Cabri can be compared to the synchronization command-line too
 - enabling mono or bidirectional synchronization 
 - providing synchronization between local files and S3 compatible object storage
 - but also with a data store on local storage
-- providing in both cases data historization, deduplication or encryption, on a system neutral storage system
+- providing in both cases data historization, deduplication or encryption,
+on a system neutral storage system
 - and enabling multi-user data sharing through remote server
-- taking care of data confidentiality in the Cloud or any unsafe environment 
+- taking care of data confidentiality in the Cloud or any unsafe environment,
+relying on public keys for data encryption and related sharing
 
-as a no-dependency single binary of less than 30 MB.
-
-It is fast if the infrastructure is available, using parallel processing.
+all of that as a no-dependency single binary of less than 30 MB.
 
 To get an idea, have a look at the [quick start](doc/qstart.md).
-
-## Functional simple presentation
-
-To get an overview, have a look at the article
-[using Cabri to share data with confidence](https://blog.otvl.org/blog/cabri-share-conf).
-
-- Cabri manages data storage on local and external devices such as USB drives,
-or using Cloud Storage services compatible with Amazon S3
-- Access to storage systems can be provided through a remote http server,
-  enabling among others multi-user sharing and synchronization of common data
-  from different locations
-- Cabri provides a data synchronization service between those storage systems,
-  synchronization may be unidirectional or bidirectional 
-- Storage is incremental, no data is lost unless it is wanted to remove some parts of the history
-- Storage may be encrypted, relying on public keys, meaning no secrets need to be shared
 
 ## Tooling
 
@@ -48,9 +33,10 @@ or using Cloud Storage services compatible with Amazon S3
 but also from developers to hosted applications concerning data feeding
 (can be useful as a Kubernetes pod sidecar to pull initial data)
 
-## Implementation
+## Implementation information
 
-- Most actions are performed in parallel, synchronization is as fast as the infrastructure permits
+- Most actions are performed in parallel,
+synchronization is fast if the infrastructure provides enough resources
 - Cloud storage is natively "eventually consistent" and Cabri takes care of not trusting successful updates
 - Cabri makes use of indexes for fast synchronization or data retrieval, indexes may be rebuilt if broken
 - Encrypted data is only decrypted on the user endpoint even when using a remote http server
