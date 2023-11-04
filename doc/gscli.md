@@ -255,7 +255,8 @@ If your data is confidential, and you have to store it on unsafe media
 such as unencrypted laptop drive, USB drive, public cloud storage,
 you have the option to encrypt a full Cabri DSS.
 It may be worth noting that encryption
-can be subject to legal concerns in various countries, take legal advice in doubt.
+can be subject to legal concerns in some countries or when crossing borders,
+take legal advice in doubt.
 
 In that case, all data and corresponding metadata such as entity names are encrypted.
 The encryption uses public key, meaning that the data may be decrypted by any of the owners

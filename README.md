@@ -13,7 +13,7 @@ Documentation links are available at the [bottom](#read-the-documentation) of th
 To make it simple, Cabri can be compared to the synchronization command-line tool: `rsync`
 
 - using HTTP instead of SSH for remote access
-- enabling mono or bidirectional synchronization 
+- enabling unidirectional or bidirectional synchronization 
 - providing synchronization between local files and S3 compatible object storage
 - but also with a data store on local storage
 - providing in both cases data historization, deduplication or encryption,
@@ -29,9 +29,9 @@ To get an idea, have a look at the [quick start](doc/qstart.md).
 ## Tooling
 
 - a Golang or a REST API are available for access to data storage services
-- a basic configurable scheduler is provided enabling automatic data synchronization among users,
-but also from developers to hosted applications concerning data feeding
-(can be useful as a Kubernetes pod sidecar to pull initial data)
+- a basic configurable scheduler is provided,
+enabling automatic data synchronization among users,
+or between users and hosted applications for the support of DevOps practices
 
 ## Implementation information
 

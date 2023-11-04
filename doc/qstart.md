@@ -22,18 +22,18 @@ Because Cabri stores some secrets such as S3 secret keys, an encryption key has 
 
     $ cabri cli config --dump
     {
-    "clientId": "0e4c659a-d084-466a-b725-21c27d069a21",
+    "clientId": "<a unique id for this CLI client's configuration>",
     "Identities": [
     {
     "alias": "",
-    "pKey": "age1z66mme7e4mv0c6x6s3emrqgflphn3zt2pjtx7k9vck7xn0pw29usufue4r",
-    "secret": "AGE-SECRET-KEY-1RS099MRK3WRMLARVESXPFLG754EF0CALV60JZYRMYX09CCRUNYQS46K82H"
+    "pKey": "<user's default public key>",
+    "secret": "<user's default secret key>"
     }
     ],
     "Internal": {
     "alias": "__internal__",
-    "pKey": "age13nht4agnsza4f7z9exymgneecq3ndp0rdmjkaspe9jggwctkjqlsmm3hfg",
-    "secret": "AGE-SECRET-KEY-1ASR7RXXALPPQLSMHQDHW3C8YM9AG0ZJMAXVSWNQD75TXUMS6S0FQCDUTL6"
+    "pKey": "<default public key for this CLI client's configuration>",
+    "secret": "<an internal secret key for this CLI client's configuration>"
     }
     }
 
