@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -34,7 +35,7 @@ func TestNewFsyDssErr(t *testing.T) {
 }
 
 func TestNewFsyDssBase(t *testing.T) {
-
+	optionalSkip(t)
 	startup := func(tfs *testfs.Fs) error {
 		if err := tfs.RandTextFile("a.txt", 41); err != nil {
 			return err
@@ -84,6 +85,7 @@ func TestNewFsyDssBase(t *testing.T) {
 }
 
 func TestNewFsyDssOsErrors(t *testing.T) {
+	optionalSkip(t)
 
 	startup := func(tfs *testfs.Fs) error {
 		return nil
@@ -142,6 +144,8 @@ func TestNewFsyDssOsErrors(t *testing.T) {
 }
 
 func TestFsyDssLsnsBase(t *testing.T) {
+	optionalSkip(t)
+
 	tfs, err := testfs.CreateFs("TestFsyDssLsnsBase", nil)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -180,6 +184,7 @@ func TestFsyDssLsnsBase(t *testing.T) {
 }
 
 func TestFsyDssLsnsErr(t *testing.T) {
+	optionalSkip(t)
 	openErr := func(afs afero.Fs, name string) (afero.File, error) {
 		if ufpath.Base(name) == "d2" {
 			return nil, fmt.Errorf("mockfs open %s error", name)
@@ -232,6 +237,7 @@ func TestFsyDssLsnsErr(t *testing.T) {
 }
 
 func TestFsyDssGetContentWriterBase(t *testing.T) {
+	optionalSkip(t)
 	startup := func(tfs *testfs.Fs) error {
 		if err := tfs.RandTextFile("a.txt", 41); err != nil {
 			return err
@@ -287,6 +293,7 @@ func TestFsyDssGetContentWriterBase(t *testing.T) {
 }
 
 func TestFsyDssMtime(t *testing.T) {
+	optionalSkip(t)
 	startup := func(tfs *testfs.Fs) error {
 		if err := tfs.RandTextFile("a.txt", 41); err != nil {
 			return err
@@ -341,6 +348,7 @@ func TestFsyDssMtime(t *testing.T) {
 }
 
 func TestFsyDssGetContentReaderBase(t *testing.T) {
+	optionalSkip(t)
 	startup := func(tfs *testfs.Fs) error {
 		if err := tfs.RandTextFile("a.txt", 41); err != nil {
 			return err
@@ -394,6 +402,7 @@ func TestFsyDssGetContentReaderBase(t *testing.T) {
 }
 
 func TestFsyDssOsErrors(t *testing.T) {
+	optionalSkip(t)
 	step := ""
 	startup := func(tfs *testfs.Fs) error {
 		if err := tfs.RandTextFile("a.txt", 41); err != nil {
@@ -488,6 +497,7 @@ func TestFsyDssOsErrors(t *testing.T) {
 }
 
 func TestFsyDssRemoveBase(t *testing.T) {
+	optionalSkip(t)
 	startup := func(tfs *testfs.Fs) error {
 		if err := tfs.RandTextFile("a.txt", 41); err != nil {
 			return err
@@ -577,6 +587,7 @@ func TestFsyDssRemoveBase(t *testing.T) {
 }
 
 func TestFsyDssGetMetaBasic(t *testing.T) {
+	optionalSkip(t)
 	step := ""
 	subStep := 0
 
@@ -731,6 +742,7 @@ func TestFsyDssGetMetaBasic(t *testing.T) {
 }
 
 func TestFsyDssUpdateNsBasic(t *testing.T) {
+	optionalSkip(t)
 	step := ""
 	subStep := 0
 
@@ -861,7 +873,7 @@ func TestIrregular(t *testing.T) {
 		if err := tfs.RandTextFile("d/b.txt", 20); err != nil {
 			return err
 		}
-		if err := os.Symlink(ufpath.Join(tfs.Path(), "a.txt"), ufpath.Join(tfs.Path(), "d", "link.a.txt")); err != nil {
+		if err := syscall.Mkfifo(ufpath.Join(tfs.Path(), "d", "fifo"), 0666); err != nil {
 			return err
 		}
 		return nil
@@ -947,9 +959,40 @@ func TestFsyStat(t *testing.T) {
 	if !m2.Equals(m, true) {
 		t.Fatalf("IMeta Equals")
 	}
+	if err = os.Symlink(ufpath.Join(tfs.Path(), "d2/f2.txt"), ufpath.Join(tfs.Path(), "d2/f2sl.txt")); err != nil {
+		t.Fatal(err)
+	}
+	t1 := time.Now().Unix() - 3600
+	if err = dss.Symlink("d2/f2sl.txt", ufpath.Join(tfs.Path(), "d2/f2.txt"), t1, []ACLEntry{
+		{User: "x-uid:1000", Rights: Rights{Read: true, Write: true, Execute: true}},
+		{User: "x-gid:1000", Rights: Rights{Read: true, Execute: true}},
+		{User: "x-other", Rights: Rights{Execute: true}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	m, err = dss.GetMeta("d2/f2sl.txt", true)
+	if err != nil || !m.GetIsSymLink() || m.GetSymLinkTarget() == "" || m.GetMtime() != t1 {
+		t.Fatal(err, fmt.Sprintf("%+v", m))
+	}
+	if err = os.Symlink(ufpath.Join(tfs.Path(), "d2/f2not.txt"), ufpath.Join(tfs.Path(), "d2/f2notsl.txt")); err != nil {
+		t.Fatal(err)
+	}
+	t2 := t1 - 3600
+	if err = dss.Symlink("d2/f2notsl.txt", ufpath.Join(tfs.Path(), "d2/f2not.txt"), t2, []ACLEntry{
+		{User: "x-uid:1000", Rights: Rights{Read: true, Write: true, Execute: true}},
+		{User: "x-gid:1000", Rights: Rights{Read: true, Execute: true}},
+		{User: "x-other", Rights: Rights{Execute: true}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	m, err = dss.GetMeta("d2/f2notsl.txt", true)
+	if err != nil || !m.GetIsSymLink() || m.GetSymLinkTarget() == "" || m.GetMtime() != t2 {
+		t.Fatal(err, fmt.Sprintf("%+v", m))
+	}
 }
 
 func TestSetSysAcl(t *testing.T) {
+	optionalSkip(t)
 	tfs, err := testfs.CreateFs("Test_setSysAcl", tfsStartup)
 	if err != nil {
 		t.Fatal(err.Error())
@@ -966,6 +1009,7 @@ func TestSetSysAcl(t *testing.T) {
 }
 
 func TestFsyDssRed(t *testing.T) {
+	optionalSkip(t)
 	startup := func(tfs *testfs.Fs) error {
 		if err := tfs.RandTextFile("a.txt", 41); err != nil {
 			return err

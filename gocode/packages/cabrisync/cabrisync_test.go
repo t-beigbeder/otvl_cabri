@@ -59,12 +59,19 @@ func basicTfsStartup(tfs *testfs.Fs) error {
 	if err := tfs.RandTextFile("a.txt", 41); err != nil {
 		return err
 	}
-	if err := os.Mkdir(ufpath.Join(tfs.Path(), "d"), 0755); err != nil {
+	if err := os.MkdirAll(ufpath.Join(tfs.Path(), "d", "sl"), 0755); err != nil {
 		return err
 	}
 	if err := tfs.RandTextFile("d/b.txt", 20); err != nil {
 		return err
 	}
+	if err := os.Symlink(ufpath.Join(tfs.Path(), "d/b.txt"), ufpath.Join(tfs.Path(), "d/sl/bsl.txt")); err != nil {
+		return err
+	}
+	if err := os.Symlink(ufpath.Join(tfs.Path(), "d/bnok.txt"), ufpath.Join(tfs.Path(), "d/sl/bnoksl.txt")); err != nil {
+		return err
+	}
+
 	if err := os.MkdirAll(ufpath.Join(tfs.Path(), "e", "se"), 0755); err != nil {
 		return err
 	}
@@ -96,6 +103,13 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 	var err error
 
 	optionalSleep(t)
+	beVerbose := func(level int, line string) {
+		if !verbose || level > 3 {
+			return
+		}
+		fmt.Fprintln(os.Stderr, line)
+	}
+
 	if err = dssr.Mkns("", time.Now().Unix(), []string{"step1/", "step2/", "step3/", "step4/"}, nil); err != nil {
 		t.Fatalf("runTestSynchronizeBasic error %v", err)
 	}
@@ -105,34 +119,34 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 	report1 := Synchronize(nil, dssl, "", dssr, "step1", SyncOptions{InDepth: true, Evaluate: true, NoACL: noAcl})
 	report1.TextOutput(io.Discard)
 	rs1 := report1.GetStats()
-	if report1.HasErrors() || rs1.CreNum != 14 || rs1.UpdNum != 1 || rs1.MUpNum != 0 {
+	if report1.HasErrors() || rs1.CreNum != 17 || rs1.UpdNum != 1 || rs1.MUpNum != 0 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs1)
 	}
 
-	report2 := Synchronize(nil, dssl, "", dssr, "step1", SyncOptions{InDepth: true, NoACL: noAcl})
+	report2 := Synchronize(nil, dssl, "", dssr, "step1", SyncOptions{InDepth: true, NoACL: noAcl, BeVerbose: beVerbose})
 	rs2 := report2.GetStats()
-	if rs2.ErrNum != 0 || rs2.CreNum != 14 || rs2.UpdNum != 1 || rs2.MUpNum != 0 {
+	if rs2.ErrNum != 0 || rs2.CreNum != 17 || rs2.UpdNum != 1 || rs2.MUpNum != 0 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs2)
 	}
 	if err = dssr.Mkns("step2", time.Now().Unix(), nil, nil); err != nil {
 		t.Fatalf("runTestSynchronizeBasic error %v", err)
 	}
 	rs2bis := Synchronize(nil, dssl, "", dssr, "step2", SyncOptions{InDepth: true, NoACL: noAcl}).GetStats()
-	if rs2bis.ErrNum != 0 || rs2bis.CreNum != 14 || rs2bis.UpdNum != 1 {
+	if rs2bis.ErrNum != 0 || rs2bis.CreNum != 17 || rs2bis.UpdNum != 1 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs2bis)
 	}
 	if err = dssr.Mkns("step3", time.Now().Unix(), nil, nil); err != nil {
 		t.Fatalf("runTestSynchronizeBasic error %v", err)
 	}
 	rs2ter := Synchronize(nil, dssl, "", dssr, "step3", SyncOptions{InDepth: true, NoACL: noAcl}).GetStats()
-	if rs2ter.ErrNum != 0 || rs2ter.CreNum != 14 || rs2ter.UpdNum != 1 {
+	if rs2ter.ErrNum != 0 || rs2ter.CreNum != 17 || rs2ter.UpdNum != 1 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs2ter)
 	}
 	if err = dssr.Mkns("step4", time.Now().Unix(), nil, nil); err != nil {
 		t.Fatalf("runTestSynchronizeBasic error %v", err)
 	}
 	rs2d := Synchronize(nil, dssl, "", dssr, "step4", SyncOptions{InDepth: true, NoACL: noAcl}).GetStats()
-	if rs2d.ErrNum != 0 || rs2d.CreNum != 14 || rs2d.UpdNum != 1 {
+	if rs2d.ErrNum != 0 || rs2d.CreNum != 17 || rs2d.UpdNum != 1 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs2d)
 	}
 
@@ -220,12 +234,6 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs12)
 	}
 
-	beVerbose := func(level int, line string) {
-		if !verbose || level > 3 {
-			return
-		}
-		fmt.Fprintln(os.Stderr, line)
-	}
 	report13 := Synchronize(nil, dssl, "", dssr, "step4", SyncOptions{InDepth: true, BiDir: true, Evaluate: true, NoACL: noAcl, BeVerbose: beVerbose})
 	es := SyncStats{}
 	rs13 := report13.GetStats()

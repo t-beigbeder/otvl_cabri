@@ -34,6 +34,13 @@ type mfsGetMetaOut struct {
 	MetaOut Meta `json:"meta"`
 }
 
+type mfsSymlink struct {
+	Npath string     `json:"npath"`
+	Tpath string     `json:"tpath"`
+	Mtime int64      `json:"mtime,string"`
+	ACL   []ACLEntry `json:"acl"`
+}
+
 func cfsInitialize(apc WebApiClient) error {
 	var out mError
 	_, err := apc.SimpleDoAsJson(http.MethodGet, apc.Url()+"wfsInitialize", nil, &out)
@@ -264,6 +271,24 @@ func cfsGetContentReader(apc WebApiClient, npath string) (io.ReadCloser, error) 
 		return nil, fmt.Errorf("in cfsGetContentReader: %s", sErr)
 	}
 	return resp.Body, nil
+}
+
+func cfsSymlink(apc WebApiClient, npath, tpath string, mtime int64, acl []ACLEntry) error {
+	var rer mError
+	_, err := apc.SimpleDoAsJson(http.MethodPost, apc.Url()+"wfsSymlink",
+		mfsSymlink{
+			Npath: npath,
+			Tpath: tpath,
+			Mtime: mtime,
+			ACL:   acl,
+		}, &rer)
+	if err != nil {
+		return fmt.Errorf("in cfsSymlink: %w", err)
+	}
+	if rer.Error != "" {
+		return fmt.Errorf("in cfsSymlink: %s", rer.Error)
+	}
+	return nil
 }
 
 func cfsRemove(apc WebApiClient, npath string) (err error) {

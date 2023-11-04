@@ -1,4 +1,4 @@
-//go:build !(unix || linux || darwin)
+//go:build !unix
 
 package cabrifsu
 
@@ -12,4 +12,8 @@ func HasFileWriteAccess(pathOrFi any) (bool, bool, error) {
 		panic(fmt.Sprintf("cabrifsu.HasFileWriteAccess not uxlike was only tested on windows"))
 	}
 	return hasFileWriteAccessNotUx(pathOrFi)
+}
+
+func Lutimes(path string, mtime int64) error {
+	return nil
 }

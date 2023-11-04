@@ -133,7 +133,7 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	six, cix := serverIndex(dss)
 	_, _ = six, cix
 
-	if err := dss.Mkns("", mtimeCount(), []string{"d1é/", "d2/"}, nil); err != nil {
+	if err := dss.Mkns("", mtimeCount(), []string{"d1é/", "d2/", "d3sl/"}, nil); err != nil {
 		return err
 	}
 	// check client index if applicable
@@ -253,6 +253,31 @@ func runTestBasic(t *testing.T, createDssCb func(*testfs.Fs) error, newDssCb fun
 	if meta.GetSize() != 0 || meta.GetCh() != "e3b0c44298fc1c149afbf4c8996fb924" {
 		return fmt.Errorf("meta %v", meta)
 	}
+
+	if err := dss.Mkns("d3sl", mtimeCount(), []string{"aslok.txt", "aslnok.txt"}, nil); err != nil {
+		return err
+	}
+	if err = dss.Symlink("d3sl/aslok.txt", "a.txt", mtimeCount(), nil); err != nil {
+		return err
+	}
+	if err = dss.Symlink("d3sl/aslnok.txt", "anok.txt", mtimeCount(), nil); err != nil {
+		return err
+	}
+	meta, err = dss.GetMeta("d3sl/aslok.txt", true)
+	if err != nil {
+		return err
+	}
+	if meta.GetSize() != 5 || meta.GetCh() != "18b7cb099a9ea3f50ba899b5ba81e0d3" {
+		return fmt.Errorf("meta %v", meta)
+	}
+	meta, err = dss.GetMeta("d3sl/aslnok.txt", true)
+	if err != nil {
+		return err
+	}
+	if meta.GetSize() != 8 || meta.GetCh() != "e8856359184d39eb9b7e2f52acfa0f08" {
+		return fmt.Errorf("meta %v", meta)
+	}
+
 	// check client index if applicable
 	if cix != nil {
 		dumpIx(six, cix)

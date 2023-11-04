@@ -2,6 +2,7 @@ package cabridss
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"github.com/spf13/afero"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabrifsu"
@@ -10,6 +11,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/ufpath"
 	"hash"
 	"io"
+	"io/fs"
 	"os"
 	"sort"
 	"time"
@@ -172,7 +174,7 @@ func (fsy *FsyDss) doLsns(npath string) ([]string, error) {
 	for _, fi := range tfi {
 		if fi.IsDir() {
 			children = append(children, fi.Name()+"/")
-		} else if fi.Mode().IsRegular() {
+		} else if fi.Mode().IsRegular() || fi.Mode().Type()&fs.ModeSymlink != 0 {
 			children = append(children, fi.Name())
 		}
 	}
@@ -276,10 +278,67 @@ func (fsy *FsyDss) GetContentReader(npath string) (rc io.ReadCloser, err error) 
 	return
 }
 
+func (fsy *FsyDss) doSymlink(npath string, tpath string, mtime int64, acl []ACLEntry) error {
+	if err := checkNpath(npath); err != nil {
+		return err
+	}
+	cpath := ufpath.Join(fsy.root, npath)
+	if fi, err := os.Lstat(cpath); fi != nil && err == nil {
+		ppath := ufpath.Join(fsy.root, ufpath.Dir(npath))
+		uio, rw, err := cabrifsu.HasFileWriteAccess(ppath)
+		if err != nil {
+			return fmt.Errorf("in Symlink: %w", err)
+		}
+		if uio && !rw && fsy.su {
+			if err = cabrifsu.EnableWrite(fsy.GetAfs(), ppath, false); err != nil {
+				return fmt.Errorf("in Symlink: %w", err)
+			}
+		}
+		if err := os.Remove(cpath); err != nil {
+			return fmt.Errorf("in Symlink: %w", err)
+		}
+	}
+	if err := os.Symlink(tpath, cpath); err != nil {
+		return fmt.Errorf("in Symlink: %w", err)
+	}
+	if err := cabrifsu.Lutimes(cpath, mtime); err != nil {
+		os.Remove(cpath)
+	}
+	return nil
+}
+
+func (fsy *FsyDss) Symlink(npath string, tpath string, mtime int64, acl []ACLEntry) error {
+	if fsy.reducer == nil {
+		return fsy.doSymlink(npath, tpath, mtime, acl)
+	}
+	return fsy.reducer.Launch(
+		fmt.Sprintf("Symlink %s", npath),
+		func() error {
+			return fsy.doSymlink(npath, tpath, mtime, acl)
+		})
+}
+
 func (fsy *FsyDss) ctlStat(fp string, isNS bool) (os.FileInfo, error) {
+	checkLfi := func(fp string, err error) (os.FileInfo, bool, error) {
+		if err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return nil, false, err
+		}
+		lfi, lerr := os.Lstat(fp)
+		if lerr != nil {
+			return nil, false, err
+		}
+		if lfi.Mode().Type()&fs.ModeSymlink != 0 {
+			return lfi, true, nil
+		}
+		return nil, false, err
+	}
 	fi, err := fsy.GetAfs().Stat(fp)
+	lfi, isSymLink, err := checkLfi(fp, err)
 	if err != nil {
 		return nil, fmt.Errorf("in ctlStat: %w", err)
+	}
+	if isSymLink {
+		fi = lfi
 	}
 	if isNS && !fi.IsDir() {
 		return nil, fmt.Errorf("%s is not a directory", fp)
@@ -331,6 +390,7 @@ func (fsy *FsyDss) doGetMeta(npath string, getCh bool) (IMeta, error) {
 	if err != nil {
 		return nil, fmt.Errorf("in GetMeta: %w", err)
 	}
+	isSymLink := fi.Mode().Type()&fs.ModeSymlink != 0
 	if isNS {
 		children, err := fsy.doLsns(ipath)
 		sort.Strings(children)
@@ -343,6 +403,21 @@ func (fsy *FsyDss) doGetMeta(npath string, getCh bool) (IMeta, error) {
 			IsNs: true, Children: children,
 			ACL:   getSysAcl(fi),
 			Itime: fi.ModTime().UnixNano(),
+		}, nil
+	} else if isSymLink {
+		rl, err := os.Readlink(ufpath.Join(fsy.root, npath))
+		if err != nil {
+			return nil, fmt.Errorf("in GetMeta: %w", err)
+		}
+		cs := sha256.Sum256([]byte(rl))
+		ch := internal.Sha256ToStr32(cs[:])
+		return Meta{
+			Path: npath, Mtime: fi.ModTime().Unix(), Size: fi.Size(), Ch: ch,
+			IsNs:          false,
+			IsSymLink:     true,
+			SymLinkTarget: rl,
+			ACL:           getSysAcl(fi),
+			Itime:         fi.ModTime().UnixNano(),
 		}, nil
 	} else {
 		ch := ""
@@ -411,8 +486,7 @@ func (fsy *FsyDss) SuEnableWrite(npath string) error {
 	if err != nil {
 		return err
 	}
-	fp := ufpath.Join(fsy.root, ipath)
-	return cabrifsu.EnableWrite(fsy.GetAfs(), fp, false)
+	return cabrifsu.EnableWrite(fsy.GetAfs(), ufpath.Join(fsy.root, ipath), false)
 }
 
 func (fsy *FsyDss) GetRoot() string { return fsy.root }

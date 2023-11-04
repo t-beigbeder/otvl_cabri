@@ -54,7 +54,7 @@ to launch a REST Web API server to access a remote webapi server
 The REST API follows the simple rules below:
 
 - namespace or content path is appended at the end of the URL
-- create or update a namespace with POST 
+- create or update a namespace or a symlink with POST 
 - create or update content with PUT
 - get namespace or content data with GET
 - get namespace or content metadata with GET adding the query parameter `meta`
@@ -68,21 +68,23 @@ For POST or PUT, the following query parameters are used:
 For POST, the namespace children are provided as `child` query parameter, with the child name
 ending with "/" in the case of a sub-namespace.
 
+For POST, the symlink target is provided as `symlink` query parameter.
+
 Following sample helps to clarify:
 
     $ cabri cli dss make olf:/home/guest/cabri_olf/olfsimpleacl -s s --ximpl bdb --pfile /home/guest/secrets/cabri
     $ cabri webapi rest olf+http://localhost:3000/home/guest/cabri_olf/olfsimpleacl@demo/ --pfile /home/guest/secrets/cabri --haslog
     
-    $ curl -X POST  -H "Content-Type: application/json" "http://0.0.0.0:3000/demo/?mtime=2023-06-14T19:04:44Z&child=d1/&child=f1"
+    $ curl -X POST -H "Content-Type: application/json" "http://0.0.0.0:3000/demo/?mtime=2023-06-14T19:04:44Z&child=d1/&child=f1"
     $ curl -X GET "http://0.0.0.0:3000/demo/"
     ["d1/","f1"]
     $ curl -X GET "http://0.0.0.0:3000/demo/?meta"
     {"path":"/","mtime":1686769484,"size":7,"ch":"521ecf89977e207c7528c94f6afa99b4","isNs":true,"children":["d1/","f1"],"acl":null,"itime":1686762504746623437,"ech":"","emid":""}
     $ date > /tmp/guest.sample
-    $ curl -X PUT  -H "Content-Type: application/octet-stream" "http://0.0.0.0:3000/demo/f1?mtime=2023-06-14T19:05:45Z" --data-binary @/tmp/guest.sample
+    $ curl -X PUT -H "Content-Type: application/octet-stream" "http://0.0.0.0:3000/demo/f1?mtime=2023-06-14T19:05:45Z" --data-binary @/tmp/guest.sample
     $ curl -X GET "http://0.0.0.0:3000/demo/f1?meta"
     {"path":"f1","mtime":1686769545,"size":33,"ch":"103d8beb9d0f106325c788860e1c6ef9","isNs":false,"children":null,"acl":null,"itime":1686762800350494070,"ech":"","emid":""}
-    $ curl -X GET  "http://0.0.0.0:3000/demo/f1"
+    $ curl -X GET "http://0.0.0.0:3000/demo/f1"
     Wed 14 Jun 2023 07:12:54 PM CEST
     $ curl -X DELETE "http://0.0.0.0:3000/demo/f1"
     $ curl -X GET "http://0.0.0.0:3000/demo/"

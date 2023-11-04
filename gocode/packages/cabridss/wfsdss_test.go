@@ -133,6 +133,34 @@ func TestNewWfsDssBase(t *testing.T) {
 		if err != nil {
 			return fmt.Errorf("TestNewFsyDssBase failed with error %v", err)
 		}
+		err = dss.Updatens("", time.Now().Unix(), []string{"d2/", "d3sl/"}, nil)
+		if err != nil {
+			return fmt.Errorf("TestNewFsyDssBase failed with error %v", err)
+		}
+		if err := dss.Mkns("d3sl", time.Now().Unix(), []string{"aslok.txt", "aslnok.txt"}, nil); err != nil {
+			return err
+		}
+		if err = dss.Symlink("d3sl/aslok.txt", "a.txt", time.Now().Unix(), nil); err != nil {
+			return err
+		}
+		if err = dss.Symlink("d3sl/aslnok.txt", "anok.txt", time.Now().Unix(), nil); err != nil {
+			return err
+		}
+		var meta IMeta
+		meta, err = dss.GetMeta("d3sl/aslok.txt", true)
+		if err != nil {
+			return err
+		}
+		if meta.GetSize() != 5 || meta.GetCh() != "18b7cb099a9ea3f50ba899b5ba81e0d3" {
+			return fmt.Errorf("meta %v", meta)
+		}
+		meta, err = dss.GetMeta("d3sl/aslnok.txt", true)
+		if err != nil {
+			return err
+		}
+		if meta.GetSize() != 8 || meta.GetCh() != "e8856359184d39eb9b7e2f52acfa0f08" {
+			return fmt.Errorf("meta %v", meta)
+		}
 		return nil
 	})
 	if err != nil {

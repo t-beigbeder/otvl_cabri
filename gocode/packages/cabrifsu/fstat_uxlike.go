@@ -1,10 +1,12 @@
-//go:build unix || linux || darwin
+//go:build unix
 
 package cabrifsu
 
 import (
+	"golang.org/x/sys/unix"
 	"os"
 	"syscall"
+	"time"
 )
 
 func HasFileWriteAccess(pathOrFi any) (bool, bool, error) {
@@ -37,4 +39,8 @@ func HasFileWriteAccess(pathOrFi any) (bool, bool, error) {
 		}
 	}
 	return false, false, nil
+}
+
+func Lutimes(path string, mtime int64) error {
+	return unix.Lutimes(path, []unix.Timeval{unix.NsecToTimeval(time.Now().UnixNano()), unix.NsecToTimeval(mtime * 1e9)})
 }

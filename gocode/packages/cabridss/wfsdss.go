@@ -96,7 +96,24 @@ func (wdi *wfsDssImpl) GetContentReader(npath string) (rc io.ReadCloser, err err
 		return
 	}
 	return
+}
 
+func (wdi *wfsDssImpl) Symlink(npath, tpath string, mtime int64, acl []ACLEntry) (err error) {
+	if wdi.reducer == nil {
+		return cfsSymlink(wdi.apc, npath, tpath, mtime, acl)
+	}
+	if err = wdi.reducer.Launch(
+		fmt.Sprintf("Lsns %s", npath),
+		func() error {
+			var iErr error
+			if iErr = cfsSymlink(wdi.apc, npath, tpath, mtime, acl); iErr != nil {
+				return iErr
+			}
+			return nil
+		}); err != nil {
+		return
+	}
+	return
 }
 
 func (wdi *wfsDssImpl) Remove(npath string) (err error) {

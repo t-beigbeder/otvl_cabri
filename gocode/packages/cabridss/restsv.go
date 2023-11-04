@@ -91,9 +91,6 @@ func sRestPost(c echo.Context) error {
 	if err = echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
 		return NewServerErr("sRestPost", err)
 	}
-	if err = echo.PathParamsBinder(c).String("path", &path).BindError(); err != nil {
-		return NewServerErr("sRestPost", err)
-	}
 	mtime, acl, err := getUpdateQueryParams(c)
 	if err != nil {
 		_, bpe := err.(*ErrBadParameter)
@@ -106,9 +103,19 @@ func sRestPost(c echo.Context) error {
 	if err = echo.QueryParamsBinder(c).Strings("child", &children).BindError(); err != nil {
 		return err
 	}
+	var symlink string
+	if err = echo.QueryParamsBinder(c).String("symlink", &symlink).BindError(); err != nil {
+		return err
+	}
 	dss := GetCustomConfig(c).(WebDssServerConfig).Dss
-	if err := dss.Updatens(path, mtime, children, acl); err != nil {
-		return c.JSON(http.StatusConflict, &mError{Error: err.Error()})
+	if symlink != "" {
+		if err := dss.Symlink(path, symlink, mtime, acl); err != nil {
+			return c.JSON(http.StatusConflict, &mError{Error: err.Error()})
+		}
+	} else {
+		if err := dss.Updatens(path, mtime, children, acl); err != nil {
+			return c.JSON(http.StatusConflict, &mError{Error: err.Error()})
+		}
 	}
 	return c.NoContent(http.StatusCreated)
 }

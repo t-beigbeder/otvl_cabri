@@ -15,7 +15,7 @@ func plizedSyncEntries(ctx context.Context, ins interface{}) interface{} {
 			if syc.left.isNs {
 				return syncNs(ctx, &syc)
 			} else {
-				return syncContent(ctx, &syc)
+				return syncContentOrSymLink(ctx, &syc)
 			}
 		},
 		chsSyc...) {
@@ -125,12 +125,12 @@ func syncNs(ctx context.Context, syc *syncCtx) []SyncReportEntry {
 	return entries
 }
 
-func syncContent(ctx context.Context, syc *syncCtx) []SyncReportEntry {
-	syc.diagnose(">syncContent", false)
+func syncContentOrSymLink(ctx context.Context, syc *syncCtx) []SyncReportEntry {
+	syc.diagnose(">syncContentOrSymLink", false)
 	rent := SyncReportEntry{IsNs: false, LPath: syc.left.fullPath(), RPath: syc.right.fullPath()}
 	if syc.err != nil {
 		rent.Err = syc.err
-		syc.diagnose(fmt.Sprintf("<syncContent %v", syc.err), true)
+		syc.diagnose(fmt.Sprintf("<syncContentOrSymLink %v", syc.err), true)
 		return []SyncReportEntry{rent}
 	}
 	iLrOuts := plumber.LaunchAndWait(ctx,
@@ -141,7 +141,7 @@ func syncContent(ctx context.Context, syc *syncCtx) []SyncReportEntry {
 	if (leftErr != nil && !syc.options.BiDir) || (leftErr != nil && rightErr != nil) {
 		syc.err = leftErr
 		rent.Err = syc.err
-		syc.diagnose(fmt.Sprintf("<syncContent %v", syc.err), true)
+		syc.diagnose(fmt.Sprintf("<syncContentOrSymLink %v", syc.err), true)
 		return []SyncReportEntry{rent}
 	}
 
@@ -155,12 +155,16 @@ func syncContent(ctx context.Context, syc *syncCtx) []SyncReportEntry {
 	}
 	if !syc.options.Evaluate {
 		if syc.err == nil && (rent.Created || rent.Updated || rent.MUpdated) {
-			syc.err = syc.crUpContent(rent.isRTL)
+			if rent.isSymLink {
+				syc.err = syc.crUpSymLink(rent.isRTL)
+			} else {
+				syc.err = syc.crUpContent(rent.isRTL)
+			}
 			if syc.err != nil {
 				rent.Err = syc.err
 			}
 		}
 	}
-	syc.diagnose("<syncContent", true)
+	syc.diagnose("<syncContentOrSymLink", true)
 	return []SyncReportEntry{rent}
 }
