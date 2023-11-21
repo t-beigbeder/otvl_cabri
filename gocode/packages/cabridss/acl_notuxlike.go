@@ -1,4 +1,4 @@
-//go:build !(unix || linux || darwin)
+//go:build !unix
 
 package cabridss
 
