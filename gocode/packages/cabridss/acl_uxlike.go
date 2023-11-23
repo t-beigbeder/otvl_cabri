@@ -75,7 +75,7 @@ func setSysAcl(path string, acl []ACLEntry) error {
 		return fmt.Errorf("in setSysAcl: %v", err)
 	}
 	if os.Geteuid() == 0 {
-		if err = os.Chown(path, uid, gid); err != nil {
+		if err = os.Lchown(path, uid, gid); err != nil {
 			return fmt.Errorf("in setSysAcl: %v", err)
 		}
 	}

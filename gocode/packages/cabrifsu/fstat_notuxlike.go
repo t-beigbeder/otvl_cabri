@@ -13,3 +13,7 @@ func HasFileWriteAccess(pathOrFi any) (bool, bool, error) {
 	}
 	return hasFileWriteAccessNotUx(pathOrFi)
 }
+
+func Lutimes(path string, mtime int64) error {
+	return nil
+}

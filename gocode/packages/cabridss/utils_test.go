@@ -206,6 +206,24 @@ func optionalSkip(t *testing.T) {
 	}
 	if os.Getenv("CABRIDSS_SKIP_DEV_TESTS") != "" {
 		if t.Name() == "InTheBeginning" ||
+			t.Name() == "TestNewFsyDssOk" ||
+			t.Name() == "TestNewFsyDssErr" ||
+			t.Name() == "TestNewFsyDssBase" ||
+			t.Name() == "TestNewFsyDssOsErrors" ||
+			t.Name() == "TestFsyDssLsnsBase" ||
+			t.Name() == "TestFsyDssLsnsErr" ||
+			t.Name() == "TestFsyDssGetContentWriterBase" ||
+			t.Name() == "TestFsyDssMtime" ||
+			t.Name() == "TestFsyDssGetContentReaderBase" ||
+			t.Name() == "TestFsyDssOsErrors" ||
+			t.Name() == "TestFsyDssRemoveBase" ||
+			t.Name() == "TestFsyDssGetMetaBasic" ||
+			t.Name() == "TestFsyDssUpdateNsBasic" ||
+			t.Name() == "TestIrregular" ||
+			t.Name() == "TestFsyStat1" ||
+			t.Name() == "TestSetSysAcl" ||
+			t.Name() == "TestFsyDssRed" ||
+			t.Name() == "InTheBeginning" ||
 			t.Name() == "TestNewObsDssBase" ||
 			t.Name() == "TestNewObsDssMockFsBase" ||
 			t.Name() == "TestNewObsDssMockFsUnlock" ||
@@ -215,7 +233,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestNewObsDssPindex" ||
 			t.Name() == "TestMockFsHistory" ||
 			t.Name() == "TestObsHistory" ||
-			t.Name() == "TestObsRedHistory1" ||
+			t.Name() == "TestObsRedHistory" ||
 			t.Name() == "TestObsMultiHistory" ||
 			t.Name() == "TestCreateOlfDssErr" ||
 			t.Name() == "TestNewOlfSmallDssOk" ||
@@ -254,10 +272,10 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestEDssApiClientOlfBaseRed" ||
 			t.Name() == "TestEDssApiClientObsBase" ||
 			t.Name() == "TestEDssApiClientSmfBase" ||
-			t.Name() == "TestEDssClientOlfHistory1" ||
+			t.Name() == "TestEDssClientOlfHistory" ||
 			t.Name() == "TestEDssClientOlfRedHistory" ||
 			t.Name() == "TestEDssApiClientOlfHistory" ||
-			t.Name() == "TestEDssApiClientOlfRedHistory1" ||
+			t.Name() == "TestEDssApiClientOlfRedHistory" ||
 			t.Name() == "TestEDssClientOlfMultiHistory" ||
 			t.Name() == "TestEDssApiClientOlfMultiHistory" ||
 			t.Name() == "TheEnd" {

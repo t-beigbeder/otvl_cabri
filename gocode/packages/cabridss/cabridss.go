@@ -72,6 +72,17 @@ type Dss interface {
 	// - err error if any happens
 	GetContentReader(npath string) (io.ReadCloser, error)
 
+	// Symlink makes a symlink from npath to target path
+	//
+	// npath is the full namespace + name without leading slash
+	// tpath is the target as a relative path following underlying OS conventions
+	// mtime is the last modification POSIX time
+	// acl is the access control List to the content
+	//
+	// returns:
+	// - err error if any happens
+	Symlink(npath string, tpath string, mtime int64, acl []ACLEntry) error
+
 	// Remove removes a namespace (and recursively its children) or some content
 	//
 	// npath is the full namespace + name without leading slash, trailing slash indicates it is a namespace

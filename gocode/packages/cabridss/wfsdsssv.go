@@ -122,6 +122,15 @@ func sfsGetContentReader(c echo.Context) error {
 	return nil
 }
 
+func sfsSymlink(c echo.Context) error {
+	dss := GetCustomConfig(c).(WfsDssServerConfig).Dss
+	var sl mfsSymlink
+	if err := c.Bind(&sl); err != nil {
+		return NewServerErr("sfsSymlink", err)
+	}
+	return c.JSON(http.StatusOK, err2mError(dss.Symlink(sl.Npath, sl.Tpath, sl.Mtime, sl.ACL)))
+}
+
 func sfsRemove(c echo.Context) error {
 	var (
 		err   error
@@ -193,6 +202,7 @@ func WfsDssServerConfigurator(e *echo.Echo, root string, configs map[string]inte
 	e.GET(root+"wfsLsns/", sfsLsnsRoot)
 	e.POST(root+"wfsGetContentWriter", sfsGetContentWriter)
 	e.GET(root+"wfsGetContentReader/:npath", sfsGetContentReader)
+	e.POST(root+"wfsSymlink", sfsSymlink)
 	e.DELETE(root+"wfsRemove/:npath", sfsRemove)
 	e.GET(root+"wfsGetMeta/:npath", sfsGetMeta)
 	e.GET(root+"wfsGetMeta/", sfsGetMetaRoot)

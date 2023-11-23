@@ -21,6 +21,7 @@ type oDssBaseProxy interface {
 	isDuplicate(ch string) (bool, error)
 	getContentWriter(npath string, mtime int64, acl []ACLEntry, cb WriteCloserCb) (io.WriteCloser, error)
 	getContentReader(npath string) (io.ReadCloser, error)
+	symlink(npath, tpath string, mtime int64, acl []ACLEntry) error
 	remove(npath string) error
 	getMeta(npath string, getCh bool) (IMeta, error)
 	getHistory(npath string, recursive bool, resolution string) (map[string][]HistoryInfo, error)
@@ -174,6 +175,17 @@ func (ods *ODss) GetContentReader(npath string) (rc io.ReadCloser, err error) {
 		return
 	}
 	return
+}
+
+func (ods *ODss) Symlink(npath string, tpath string, mtime int64, acl []ACLEntry) (err error) {
+	if ods.proxy.getReducer() == nil {
+		return ods.proxy.symlink(npath, tpath, mtime, acl)
+	}
+	return ods.proxy.getReducer().Launch(
+		fmt.Sprintf("Symlink %s", npath),
+		func() error {
+			return ods.proxy.symlink(npath, tpath, mtime, acl)
+		})
 }
 
 func (ods *ODss) Remove(npath string) (err error) {
@@ -520,6 +532,26 @@ func (odbi *oDssBaseImpl) getContentReader(npath string) (io.ReadCloser, error) 
 		return nil, fmt.Errorf("in GetContentReader: %s access denied", npath)
 	}
 	return odbi.me.doGetContentReader(npath, meta)
+}
+func (odbi *oDssBaseImpl) symlink(npath, tpath string, mtime int64, acl []ACLEntry) error {
+	if odbi.lsttime != 0 {
+		return fmt.Errorf("read-only DSS")
+	}
+	if err := checkNpath(npath); err != nil {
+		return err
+	}
+	ok, err := odbi.hasParent(npath, false)
+	if err != nil {
+		return fmt.Errorf("in Symlink: %v", err)
+	}
+	if !ok {
+		return fmt.Errorf("no such entry: %s", npath)
+	}
+	meta, err := odbi.doGetMeta(npath)
+	if err == nil && !odbi.hasWriteAcl(meta) {
+		return fmt.Errorf("in Symlink: %s read-only", npath)
+	}
+	return fmt.Errorf("symlink: to be implemented")
 }
 
 func (odbi *oDssBaseImpl) remove(npath string) error {
