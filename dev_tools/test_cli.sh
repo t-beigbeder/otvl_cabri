@@ -847,6 +847,37 @@ test_index() {
   true
 }
 
+test_rest_api() {
+  rurl="http://0.0.0.0:3000/wo/"
+  info test_rest_api && \
+  setup_test && \
+  untar_simple && \
+  fsy=fsy:${TD}/simple && \
+  olf=olf:${TD}/olf && \
+  make_polf $BTD/olf $olf $TD/wc && \
+  run_bg_silent cabri webapi rest --cdir $TD/wc olf+http://localhost:3000/$TD/olf@wo && \
+  sleep 1 && \
+  run_silent curl -X POST -H "Content-Type: application/json" "${rurl}?mtime=2023-06-14T19:04:44Z&child=d1/&child=f1" && \
+  run_silent curl -X GET ${rurl} && \
+  find_out "[\"d1/\",\"f1\"]" &&  \
+  run_silent curl -X GET "${rurl}?meta" && \
+  find_out "\":[\"d1/\",\"f1\"]" &&  \
+  run_silent curl -X PUT -H "Content-Type: application/octet-stream" "${rurl}f1?mtime=2023-06-14T19:05:45Z" --data-binary @$TD/simple/d1/f1 && \
+  run_silent curl -X GET "${rurl}f1?meta" && \
+  find_out "size\":3" &&  \
+  run_silent curl -X GET "${rurl}f1" && \
+  find_out "f1" && \
+  run_silent curl -X DELETE "${rurl}f1" && \
+  run_silent curl -X GET ${rurl} && \
+  find_out "[\"d1/\"]" &&  \
+  run_silent curl -X POST -H "Content-Type: application/json" "${rurl}?mtime=2023-06-14T19:04:44Z&child=d1/&child=f1sl" && \
+  run_silent curl -X POST -H "Content-Type: application/json" "${rurl}f1sl?mtime=2023-06-14T19:04:45Z&child=d1/&symlink=d1/targetf1" && \
+  run_silent curl -X GET "${rurl}f1sl?meta" && \
+  find_out "ch\":\"7387f77968d069db425fd8761690877d" &&  \
+  run_silent kill $pidc && \
+  true
+}
+
 test_fixes() {
   test_serve_olf_xolf && \
   test_serve_obs_xobs && \
@@ -866,6 +897,7 @@ true && \
   test_more_sync && \
   test_unlock && \
   test_index && \
+  test_rest_api && \
   test_fixes && \
   true || (info failed && exit 1)
 st=$?
