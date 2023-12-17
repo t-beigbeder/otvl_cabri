@@ -42,6 +42,7 @@ type oDssBaseProxy interface {
 
 	// other
 	doUpdatens(npath string, mtime int64, children []string, acl []ACLEntry) error
+	doSymlink(npath, tpath string, mtime int64, acl []ACLEntry) error
 	setIndex(config DssBaseConfig, localPath string) error // to be called by oDssSpecificProxy.initialize
 	isRepoEncrypted() bool
 	defaultAcl(acl []ACLEntry) []ACLEntry
@@ -551,7 +552,7 @@ func (odbi *oDssBaseImpl) symlink(npath, tpath string, mtime int64, acl []ACLEnt
 	if err == nil && !odbi.hasWriteAcl(meta) {
 		return fmt.Errorf("in Symlink: %s read-only", npath)
 	}
-	return fmt.Errorf("symlink: to be implemented")
+	return odbi.me.doSymlink(npath, tpath, mtime, acl)
 }
 
 func (odbi *oDssBaseImpl) remove(npath string) error {
@@ -887,6 +888,23 @@ func (odbi *oDssBaseImpl) doUpdatens(npath string, mtime int64, children []strin
 		return fmt.Errorf("in doUpdatens: %w", err)
 	}
 	return odbi.storeAndIndexMeta(RemoveSlashIf(meta.Path), itime, mbs)
+}
+
+func (odbi *oDssBaseImpl) doSymlink(npath, tpath string, mtime int64, acl []ACLEntry) error {
+	meta := Meta{
+		Path:          npath,
+		Mtime:         mtime,
+		Size:          int64(len(tpath)),
+		Ch:            internal.BytesToSha256Str([]byte(tpath)),
+		IsSymLink:     true,
+		SymLinkTarget: tpath,
+		ACL:           acl,
+	}
+	mbs, itime, err := odbi.getMetaBytes(meta)
+	if err != nil {
+		return fmt.Errorf("in doSymlink: %w", err)
+	}
+	return odbi.storeAndIndexMeta(meta.Path, itime, mbs)
 }
 
 func (odbi *oDssBaseImpl) doAuditIndexFromStorage(sti StorageInfo, mai map[string][]AuditIndexInfo) error {

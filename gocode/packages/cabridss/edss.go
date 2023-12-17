@@ -121,6 +121,34 @@ func (edi *eDssImpl) doUpdatens(npath string, mtime int64, children []string, ac
 	return nil
 }
 
+func (edi *eDssImpl) doSymlink(npath, tpath string, mtime int64, acl []ACLEntry) error {
+	meta := Meta{
+		Path:          npath,
+		Mtime:         mtime,
+		Size:          int64(len(tpath)),
+		Ch:            internal.BytesToSha256Str([]byte(tpath)),
+		IsSymLink:     true,
+		SymLinkTarget: tpath,
+		ACL:           acl,
+	}
+	meta.EMId = uuid.New().String()
+	mbs, itime, err := edi.getMetaBytes(meta)
+	if err != nil {
+		return fmt.Errorf("in doSymlink: %w", err)
+	}
+	embs, err := EncryptMsg(string(mbs), edi.pkeys(Users(acl))...)
+	if err != nil {
+		return fmt.Errorf("in doSymlink: %w", err)
+	}
+	if err := edi.storeMeta(meta.EMId, MIN_TIME, embs); err != nil {
+		return fmt.Errorf("in doSymlink: %w", err)
+	}
+	if err := edi.index.storeMeta(meta.Path, itime, mbs); err != nil {
+		return fmt.Errorf("in doSymlink: %w", err)
+	}
+	return nil
+}
+
 func (edi *eDssImpl) doGetMetaTimesFor(npath string) ([]int64, error) {
 	return nil, nil // encrypted meta is only retrieved from local index
 }
