@@ -59,12 +59,19 @@ func basicTfsStartup(tfs *testfs.Fs) error {
 	if err := tfs.RandTextFile("a.txt", 41); err != nil {
 		return err
 	}
-	if err := os.Mkdir(ufpath.Join(tfs.Path(), "d"), 0755); err != nil {
+	if err := os.MkdirAll(ufpath.Join(tfs.Path(), "d", "sl"), 0755); err != nil {
 		return err
 	}
 	if err := tfs.RandTextFile("d/b.txt", 20); err != nil {
 		return err
 	}
+	if err := os.Symlink(ufpath.Join(tfs.Path(), "d/b.txt"), ufpath.Join(tfs.Path(), "d/sl/bsl.txt")); err != nil {
+		return err
+	}
+	if err := os.Symlink(ufpath.Join(tfs.Path(), "d/bnok.txt"), ufpath.Join(tfs.Path(), "d/sl/bnoksl.txt")); err != nil {
+		return err
+	}
+
 	if err := os.MkdirAll(ufpath.Join(tfs.Path(), "e", "se"), 0755); err != nil {
 		return err
 	}
@@ -105,13 +112,14 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 	report1 := Synchronize(nil, dssl, "", dssr, "step1", SyncOptions{InDepth: true, Evaluate: true, NoACL: noAcl})
 	report1.TextOutput(io.Discard)
 	rs1 := report1.GetStats()
-	if report1.HasErrors() || rs1.CreNum != 14 || rs1.UpdNum != 1 || rs1.MUpNum != 0 {
+	if report1.HasErrors() || rs1.CreNum != 17 || rs1.UpdNum != 1 || rs1.MUpNum != 0 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs1)
 	}
 
 	report2 := Synchronize(nil, dssl, "", dssr, "step1", SyncOptions{InDepth: true, NoACL: noAcl})
 	rs2 := report2.GetStats()
-	if rs2.ErrNum != 0 || rs2.CreNum != 14 || rs2.UpdNum != 1 || rs2.MUpNum != 0 {
+	if rs2.ErrNum != 0 || rs2.CreNum != 17 || rs2.UpdNum != 1 || rs2.MUpNum != 0 {
+		report2.TextOutput(os.Stdout)
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs2)
 	}
 	if err = dssr.Mkns("step2", time.Now().Unix(), nil, nil); err != nil {
