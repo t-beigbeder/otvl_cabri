@@ -121,9 +121,9 @@ run_basic_sync() {
   dest=$2
   test_gp=$3
   run_silent cabri cli sync $ori@ $dest@ -rd && \
-  find_out "created: 15" && \
+  find_out "created: 16" && \
   run_silent cabri cli sync $ori@ $dest@ -rv && \
-  find_out "created: 15" && \
+  find_out "created: 16" && \
   run_silent cabri cli sync $ori@ $dest@ -rd && \
   find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
   ([ -z "$test_gp" ] || run_test_gp) && \
@@ -156,21 +156,21 @@ run_acl_sync() {
   fsyb1=fsy:${TD}/fsyb1
   fsyb2=fsy:${TD}/fsyb2
   run_silent cabri cli sync $ori@ $dest@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -rd && \
-  find_out "created: 13, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  find_out "created: 16, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $ori@ $dest@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -rv && \
-  find_out "created: 13, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  find_out "created: 16, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $ori@ $dest@ --acl u1: --acl u2:rx --macl :u1 --macl :u2 -u u1 -rv && \
   find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $dest@ $fsyb1@ --macl u1: -rd && \
-  find_out "created: 13, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  find_out "created: 16, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $dest@ $fsyb1@ --macl u1: -rv && \
-  find_out "created: 13, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  find_out "created: 16, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $dest@ $fsyb1@ --macl u1: -rd && \
   find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $dest@ $fsyb2@ --macl u2: -rd && \
-  find_out "created: 13, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  find_out "created: 16, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $dest@ $fsyb2@ --macl u2: -rv && \
-  find_out "created: 13, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  find_out "created: 16, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $dest@ $fsyb2@ --macl u2: -rd && \
   find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
   update_acl $simple && \
@@ -386,9 +386,9 @@ test_basic_sync_wfs() {
   wfs=wfsapi+http://localhost:3000/wfs && \
   run_basic_sync $fsy $wfs test_gp && \
   run_silent cabri cli sync $wfs@ fsy:${TD}/simple2@ -rdn && \
-  find_out "created: 13, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  find_out "created: 16, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $wfs@ fsy:${TD}/simple2@ -rvn && \
-  find_out "created: 13, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
+  find_out "created: 16, updated 1, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent cabri cli sync $wfs@ fsy:${TD}/simple2@ -rdn && \
   find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
   run_silent kill $pidc && \

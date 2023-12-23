@@ -97,10 +97,18 @@ func (syc *syncCtx) cmpMeta(isRight bool) (updated, mUpdated bool) {
 	if syc.options.NoACL {
 		return
 	}
+	_, okl := syc.left.dss.(*cabridss.FsyDss)
+	_, okr := syc.right.dss.(*cabridss.FsyDss)
 	if !isRight {
+		if lMeta.IsSymLink && (okl || okr) {
+			return
+		}
 		mACL := syc.mapACL(lMeta.ACL, false)
 		mUpdated = !cabridss.CmpAcl(rMeta.ACL, mACL)
 	} else {
+		if rMeta.IsSymLink && (okl || okr) {
+			return
+		}
 		mACL := syc.mapACL(rMeta.ACL, true)
 		mUpdated = !cabridss.CmpAcl(lMeta.ACL, mACL)
 	}

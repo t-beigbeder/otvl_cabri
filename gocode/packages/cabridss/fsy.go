@@ -284,8 +284,18 @@ func (fsy *FsyDss) doSymlink(npath string, tpath string, mtime int64, acl []ACLE
 	}
 	cpath := ufpath.Join(fsy.root, npath)
 	if fi, err := os.Lstat(cpath); fi != nil && err == nil {
+		ppath := ufpath.Join(fsy.root, ufpath.Dir(npath))
+		uio, rw, err := cabrifsu.HasFileWriteAccess(ppath)
+		if err != nil {
+			return fmt.Errorf("in Symlink: %w", err)
+		}
+		if uio && !rw && fsy.su {
+			if err = cabrifsu.EnableWrite(fsy.GetAfs(), ppath, false); err != nil {
+				return fmt.Errorf("in Symlink: %w", err)
+			}
+		}
 		if err := os.Remove(cpath); err != nil {
-			return fmt.Errorf("in Symlink: in Remove: %w", err)
+			return fmt.Errorf("in Symlink: %w", err)
 		}
 	}
 	if err := os.Symlink(tpath, cpath); err != nil {
@@ -476,8 +486,7 @@ func (fsy *FsyDss) SuEnableWrite(npath string) error {
 	if err != nil {
 		return err
 	}
-	fp := ufpath.Join(fsy.root, ipath)
-	return cabrifsu.EnableWrite(fsy.GetAfs(), fp, false)
+	return cabrifsu.EnableWrite(fsy.GetAfs(), ufpath.Join(fsy.root, ipath), false)
 }
 
 func (fsy *FsyDss) GetRoot() string { return fsy.root }
