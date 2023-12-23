@@ -129,6 +129,13 @@ func (syc *syncCtx) eval(rent *SyncReportEntry) {
 			}
 		}
 	}
+	if rent.isRTL {
+		rent.isSymLink = syc.right.meta.GetIsSymLink()
+	} else {
+		if syc.left.exist {
+			rent.isSymLink = syc.left.meta.GetIsSymLink()
+		}
+	}
 }
 
 func (syc *syncCtx) makeChild(path string) syncCtx {

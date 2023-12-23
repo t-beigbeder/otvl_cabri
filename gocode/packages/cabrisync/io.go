@@ -147,7 +147,7 @@ func (syc *syncCtx) mergeNsAfter(rent SyncReportEntry) {
 }
 
 func (sdc *sideCtx) crUpNs(mtime int64, children []string, acl []cabridss.ACLEntry) (err error) {
-	if sdc.exist {
+	if sdc.exist || sdc.actualMtime != 0 {
 		sdc.diagnose(">crUpNsU")
 		if err = sdc.dss.Updatens(sdc.fullPath(), mtime, children, acl); err != nil {
 			sdc.diagnose(fmt.Sprintf("<crUpNs %v", err))
@@ -245,4 +245,33 @@ func (syc *syncCtx) crUpContent(isRTL bool) error {
 		syc.diagnose(fmt.Sprintf("<crUpContent %v", closeErr), false)
 		return closeErr
 	}
+}
+
+func (syc *syncCtx) crUpSymLink(isRTL bool) error {
+	syc.diagnose(">crUpSymLink", false)
+	ori := syc.left
+	tgt := syc.right
+	if isRTL {
+		ori = syc.right
+		tgt = syc.left
+	}
+	var tErrPrefix = fmt.Sprintf("in crUpSymLink: %c%s", tgt.arrow(), tgt.fullPath())
+	if tgt.meta != nil {
+		err := tgt.dss.SuEnableWrite(tgt.meta.GetPath())
+		if err != nil {
+			err = fmt.Errorf("%s %w", tErrPrefix, err)
+			syc.diagnose(fmt.Sprintf("<crUpSymLink %v", err), false)
+			return err
+		}
+	}
+	if err := tgt.dss.Symlink(tgt.fullPath(), ori.meta.GetSymLinkTarget(), ori.meta.GetMtime(), syc.mapACL(ori.meta.GetAcl(), isRTL)); err != nil {
+		syc.diagnose(fmt.Sprintf("<crUpSymLink %v", err), false)
+		return err
+	}
+	if !tgt.exist {
+		tgt.created = true
+	}
+	tgt.actualMtime = ori.meta.GetMtime()
+	syc.diagnose("<crUpSymLink", false)
+	return nil
 }

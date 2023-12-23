@@ -7,16 +7,17 @@ import (
 )
 
 type SyncReportEntry struct {
-	IsNs     bool   // entry is a namespace
-	LPath    string // content's path in left DSS
-	RPath    string // content's path in right DSS
-	isRTL    bool   // if BiDir is active, indicates the synchronization is reversed: right to left
-	Created  bool   // content is created on target
-	Updated  bool   // content is updated on target
-	Removed  bool   // content is removed on target
-	Kept     bool   // content is kept on target
-	MUpdated bool   // meta data is updated on target
-	Err      error  // if entry synchronization has errors
+	IsNs      bool // entry is a namespace
+	isSymLink bool
+	LPath     string // content's path in left DSS
+	RPath     string // content's path in right DSS
+	isRTL     bool   // if BiDir is active, indicates the synchronization is reversed: right to left
+	Created   bool   // content is created on target
+	Updated   bool   // content is updated on target
+	Removed   bool   // content is removed on target
+	Kept      bool   // content is kept on target
+	MUpdated  bool   // meta data is updated on target
+	Err       error  // if entry synchronization has errors
 }
 
 // SyncReport provides the Synchronize execution result

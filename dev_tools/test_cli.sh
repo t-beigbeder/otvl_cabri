@@ -121,9 +121,9 @@ run_basic_sync() {
   dest=$2
   test_gp=$3
   run_silent cabri cli sync $ori@ $dest@ -rd && \
-  find_out "created: 13" && \
+  find_out "created: 15" && \
   run_silent cabri cli sync $ori@ $dest@ -rv && \
-  find_out "created: 13" && \
+  find_out "created: 15" && \
   run_silent cabri cli sync $ori@ $dest@ -rd && \
   find_out "created: 0, updated 0, removed 0, kept 0, touched 0, error(s) 0" && \
   ([ -z "$test_gp" ] || run_test_gp) && \
