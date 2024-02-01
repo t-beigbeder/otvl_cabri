@@ -4,8 +4,6 @@ on:
     types: [published]
 permissions:
   contents: read
-env:
-  IMAGE_TAG: ${{ GITHUB_REF_NAME }}
 jobs:
   build:
     name: Build binaries
@@ -104,11 +102,15 @@ jobs:
         with:
           images: tbeigbeder/cabri
 
+      - name: Extract branch
+        run: echo "branch=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+        id: extract_branch
+
       - name: Build and push Docker image
         uses: docker/build-push-action@3b5e8027fcad23fda98b2e3ac259d8d67585f671
         with:
           context: ./docker/general
-          build-args: VERSION=${{ env.IMAGE_TAG }}
+          build-args: VERSION=${{ steps.extract_branch.outputs.branch }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
