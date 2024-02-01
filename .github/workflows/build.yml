@@ -103,7 +103,7 @@ jobs:
           images: tbeigbeder/cabri
 
       - name: Extract branch
-        run: echo "branch=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+        run: echo "branch=`echo $GITHUB_REF_NAME | sed -e 's/.//'`" >> $GITHUB_OUTPUT
         id: extract_branch
 
       - name: Build and push Docker image
