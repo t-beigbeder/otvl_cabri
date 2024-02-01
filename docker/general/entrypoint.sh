@@ -1,3 +1,4 @@
+#!/bin/sh
 export HOME=$VHOME
 mkdir -p $VHOME || exit
 for f in /docker-entrypoint-init.d/*; do
