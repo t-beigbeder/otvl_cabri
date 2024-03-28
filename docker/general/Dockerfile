@@ -1,6 +1,6 @@
 FROM alpine:3.19
 ARG ARCH="amd64"
-ARG TAG="0.2.13"
+ARG TAG="0.2.14"
 RUN wget --quiet -O /tmp/cabri.tar.gz "https://github.com/t-beigbeder/otvl_cabri/releases/download/v${TAG}/cabri-v${TAG}-linux-${ARCH}.tar.gz" && \
 	tar xzvf /tmp/cabri.tar.gz -C /usr/local/bin cabri/cabri --strip-components 1 && \
     rm -f /tmp/cabri.tar.gz && \
