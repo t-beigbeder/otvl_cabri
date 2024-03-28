@@ -64,9 +64,7 @@ jobs:
         with:
           name: cabri-binaries
           path: cabri-*
-      - name: Build docker image for cabri webapi server
-        run: |
-          docker build
+
   upload:
     name: Upload release binaries
     needs: build
