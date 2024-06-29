@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"os/user"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -1537,4 +1538,59 @@ func TestMappedEncryptedAcl(t *testing.T) {
 		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
 	}
 
+}
+
+func TestExclude(t *testing.T) {
+	optionalSkip(t)
+	tfsl, err := testfs.CreateFs("TestExcludeLeft", basicTfsStartup)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfsl.Delete()
+	dssl, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, tfsl.Path())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	tfsr, err := testfs.CreateFs("TestExcludeRight", nil)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	defer tfsr.Delete()
+	dssr, err := cabridss.NewFsyDss(cabridss.FsyConfig{}, tfsr.Path())
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	rel := []*regexp.Regexp{}
+	rel = append(rel, regexp.MustCompile("e/se$"))
+	rel = append(rel, regexp.MustCompile("g$"))
+	report1 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true, Evaluate: false, ExclList: rel})
+	report1.TextOutput(io.Discard, false)
+	rs1 := report1.GetStats()
+	if report1.HasErrors() || rs1.CreNum != 10 || rs1.UpdNum != 1 || rs1.MUpNum != 0 {
+		t.Fatalf("TestExclude failed %+v", rs1)
+	}
+	rel = []*regexp.Regexp{}
+	rel = append(rel, regexp.MustCompile("e/se$"))
+	report2 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true, Evaluate: false, ExclList: rel})
+	report2.TextOutput(io.Discard, false)
+	rs2 := report2.GetStats()
+	if report2.HasErrors() || rs2.CreNum != 2 || rs2.UpdNum != 1 || rs1.MUpNum != 0 {
+		t.Fatalf("TestExclude failed %+v", rs2)
+	}
+	os.Rename(ufpath.Join(tfsr.Path(), "d"), ufpath.Join(tfsr.Path(), "d2"))
+	rel = []*regexp.Regexp{}
+	rel = append(rel, regexp.MustCompile("e/se$"))
+	rel = append(rel, regexp.MustCompile("d2/sl$"))
+	report3 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true, Evaluate: false, BiDir: true, ExclList: rel})
+	report3.TextOutput(io.Discard, false)
+	rs3 := report3.GetStats()
+	if report3.HasErrors() || rs3.CreNum != 7 || rs3.UpdNum != 1 || rs3.MUpNum != 0 {
+		t.Fatalf("TestExclude failed %+v", rs3)
+	}
+	report4 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true, Evaluate: false, BiDir: true, ExclList: nil})
+	report4.TextOutput(io.Discard, false)
+	rs4 := report4.GetStats()
+	if report4.HasErrors() || rs4.CreNum != 5 || rs4.UpdNum != 2 || rs4.MUpNum != 0 {
+		t.Fatalf("TestExclude failed %+v", rs4)
+	}
 }

@@ -17,6 +17,7 @@ type SyncReportEntry struct {
 	Removed   bool   // content is removed on target
 	Kept      bool   // content is kept on target
 	MUpdated  bool   // meta data is updated on target
+	Excluded  bool   // content was excluded
 	Err       error  // if entry synchronization has errors
 }
 
@@ -105,12 +106,14 @@ func (sr SyncReport) doTextOutput(out io.Writer, summary, dispRight bool) {
 			c = 'x'
 		case entry.Kept:
 			c = '~'
+		case entry.Excluded:
+			c = ';'
 		}
 		rpathOmitIf := "-"
 		if entry.RPath != entry.LPath || dispRight {
 			rpathOmitIf = entry.RPath
 		}
-		if entry.Err == nil && (!summary || c != '.') {
+		if entry.Err == nil && (!summary || (c != '.' && c != ';')) {
 			out.Write([]byte(fmt.Sprintf("%c%c %s %s\n", arrow, c, entry.LPath, rpathOmitIf)))
 		} else if entry.Err != nil {
 			c = '?'

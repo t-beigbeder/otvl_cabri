@@ -40,7 +40,7 @@ func optionalSleep(t *testing.T) {
 
 func optionalSkip(t *testing.T) {
 	if os.Getenv("CABRISYNC_SKIP_DEV_TESTS") != "" {
-		if t.Name() == "TestSynchronizeBasic1" ||
+		if t.Name() == "TestSynchronizeBasic" ||
 			t.Name() == "TestSynchronizeBasicACL" ||
 			t.Name() == "TestSynchronizeBasicRed" ||
 			t.Name() == "TestSynchronizeBasicFsyOlf" ||
@@ -57,6 +57,7 @@ func optionalSkip(t *testing.T) {
 			t.Name() == "TestLoopSynchroInconsistentChildren" ||
 			t.Name() == "TestMappedAcl" ||
 			t.Name() == "TestMappedEncryptedAcl" ||
+			t.Name() == "TestFsy2Fsy1" ||
 			t.Name() == "TestSynchronizeArboTiny" ||
 			t.Name() == "TestSynchronizeArboSmfPix" ||
 			t.Name() == "TestSynchronizeArboObsPix" ||
