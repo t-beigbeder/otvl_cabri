@@ -73,6 +73,7 @@ func init() {
 	syncCmd.Flags().BoolVarP(&syncOptions.KeepContent, "keep", "k", false, "don't remove content deleted from one side in other side")
 	syncCmd.Flags().BoolVarP(&syncOptions.NoCh, "nocheck", "n", false, "don't evaluate checksum when not available, compare content's size and modification time")
 	syncCmd.Flags().BoolVar(&syncOptions.Summary, "summary", false, "only displays synchronization summary")
+	syncCmd.Flags().BoolVar(&syncOptions.DisplayRight, "dispright", false, "display right entries in report even if equal to left")
 	syncCmd.Flags().BoolVarP(&syncOptions.Verbose, "verbose", "v", false, "display synchronization statistics")
 	syncCmd.Flags().IntVar(&syncOptions.VerboseLevel, "debug", 0, "display synchronization debug messages if level >= 2")
 	syncCmd.Flags().StringVar(&syncOptions.LeftTime, "lefttime", "", "upper time of entries retrieved in left historized DSS")

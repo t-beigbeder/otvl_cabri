@@ -22,6 +22,7 @@ type SyncOptions struct {
 	NoACL        bool
 	MapACL       []string
 	Summary      bool
+	DisplayRight bool
 	Verbose      bool
 	VerboseLevel int
 	LeftTime     string
@@ -274,9 +275,9 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 		ssr := sr.SortByPath()
 		wrt := syncUow(ctx).UiOutWriter()
 		if opts.Summary {
-			ssr.SummaryOutput(wrt)
+			ssr.SummaryOutput(wrt, opts.DisplayRight)
 		} else {
-			ssr.TextOutput(wrt)
+			ssr.TextOutput(wrt, opts.DisplayRight)
 		}
 		syncOut(ctx, fmt.Sprintf(
 			"created: %d, updated %d, removed %d, kept %d, touched %d, error(s) %d\n",

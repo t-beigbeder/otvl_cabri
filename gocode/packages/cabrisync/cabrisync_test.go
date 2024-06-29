@@ -117,7 +117,7 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 		t.Fatalf("runTestSynchronizeBasic error %v", err)
 	}
 	report1 := Synchronize(nil, dssl, "", dssr, "step1", SyncOptions{InDepth: true, Evaluate: true, NoACL: noAcl})
-	report1.TextOutput(io.Discard)
+	report1.TextOutput4Test(io.Discard)
 	rs1 := report1.GetStats()
 	if report1.HasErrors() || rs1.CreNum != 17 || rs1.UpdNum != 1 || rs1.MUpNum != 0 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs1)
@@ -151,10 +151,10 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 	}
 
 	report3 := Synchronize(nil, dssl, "", dssr, "step1", SyncOptions{InDepth: true, Evaluate: true, NoACL: noAcl})
-	report3.TextOutput(io.Discard)
+	report3.TextOutput4Test(io.Discard)
 	rs3 := report3.GetStats()
 	if rs3.ErrNum != 0 || rs3.CreNum != 0 || rs3.UpdNum != 0 || rs3.MUpNum != 0 {
-		report3.TextOutput(os.Stdout)
+		report3.TextOutput4Test(os.Stdout)
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs3)
 	}
 
@@ -185,50 +185,50 @@ func runTestSynchronizeBasic(t *testing.T, tfsl *testfs.Fs, dssl, dssr cabridss.
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs5)
 	}
 	report6 := Synchronize(nil, dssl, "", dssr, "step2", SyncOptions{InDepth: true, Evaluate: true, NoACL: noAcl})
-	report6.TextOutput(io.Discard)
+	report6.TextOutput4Test(io.Discard)
 	rs6 := report6.GetStats()
 	if rs6.ErrNum != 0 || rs6.CreNum != 0 || rs6.UpdNum != 0 || rs6.RmvNum != 0 || rs6.KeptNum != 0 || rs6.MUpNum != 0 {
-		report6.TextOutput(os.Stdout)
+		report6.TextOutput4Test(os.Stdout)
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs6)
 	}
 
 	report7 := Synchronize(nil, dssl, "", dssr, "step3", SyncOptions{InDepth: true, Evaluate: true, KeepContent: true, NoACL: noAcl})
-	report7.TextOutput(io.Discard)
+	report7.TextOutput4Test(io.Discard)
 	rs7 := report7.GetStats()
 	if rs7.ErrNum != 0 || rs7.CreNum != 1 || rs7.UpdNum != 4 || rs7.RmvNum != 0 || rs7.KeptNum != 3 || rs7.MUpNum != 2 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs7)
 	}
 	report8 := Synchronize(nil, dssl, "", dssr, "step3", SyncOptions{InDepth: true, KeepContent: true, NoACL: noAcl})
-	report8.TextOutput(io.Discard)
+	report8.TextOutput4Test(io.Discard)
 	rs8 := report8.GetStats()
 	if rs8.ErrNum != 0 || rs8.CreNum != 1 || rs8.UpdNum != 4 || rs8.RmvNum != 0 || rs8.KeptNum != 3 || rs8.MUpNum != 2 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs8)
 	}
 	report9 := Synchronize(nil, dssl, "", dssr, "step3", SyncOptions{InDepth: true, KeepContent: true, Evaluate: true, NoACL: noAcl})
-	report9.TextOutput(io.Discard)
+	report9.TextOutput4Test(io.Discard)
 	rs9 := report9.GetStats()
 	if rs9.ErrNum != 0 || rs9.CreNum != 0 || rs9.UpdNum != 1 || rs9.RmvNum != 0 || rs9.KeptNum != 3 || rs9.MUpNum != 0 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs9)
 	}
 
 	report10 := Synchronize(nil, dssl, "", dssr, "step4", SyncOptions{InDepth: true, BiDir: true, Evaluate: true, NoACL: noAcl})
-	report10.TextOutput(io.Discard)
+	report10.TextOutput4Test(io.Discard)
 	rs10 := report10.GetStats()
 	if rs10.ErrNum != 0 || rs10.CreNum != 4 || rs10.UpdNum != 4 || rs10.RmvNum != 0 || rs10.KeptNum != 0 || rs10.MUpNum != 2 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs10)
 	}
 	report11 := Synchronize(nil, dssl, "", dssr, "step4", SyncOptions{InDepth: true, BiDir: true, NoACL: noAcl})
-	report11.TextOutput(io.Discard)
+	report11.TextOutput4Test(io.Discard)
 	rs11 := report11.GetStats()
 	if rs11.ErrNum != 0 || rs11.CreNum != 4 || rs11.UpdNum != 4 || rs11.RmvNum != 0 || rs11.KeptNum != 0 || rs11.MUpNum != 2 {
 		println("report10")
-		report10.TextOutput(os.Stdout)
+		report10.TextOutput4Test(os.Stdout)
 		println("report11")
-		report11.TextOutput(os.Stdout)
+		report11.TextOutput4Test(os.Stdout)
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs11)
 	}
 	report12 := Synchronize(nil, dssl, "", dssr, "step4", SyncOptions{InDepth: true, BiDir: true, Evaluate: true, NoACL: noAcl})
-	report12.TextOutput(io.Discard)
+	report12.TextOutput4Test(io.Discard)
 	rs12 := report12.GetStats()
 	if rs12.ErrNum != 0 || rs12.CreNum != 0 || rs12.UpdNum != 0 || rs12.RmvNum != 0 || rs12.KeptNum != 0 || rs12.MUpNum != 0 {
 		t.Fatalf("runTestSynchronizeBasic failed %+v", rs12)
@@ -822,7 +822,7 @@ func runTestSynchroInconsistentChildren(t *testing.T) error {
 	}
 	rp1 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{})
 	if rp1.HasErrors() || len(rp1.Entries) != 3 {
-		rp1.TextOutput(io.Discard)
+		rp1.TextOutput4Test(io.Discard)
 		t.Fatalf("%d", len(rp1.Entries))
 	}
 	des, _ := os.ReadDir(tfsm.Path())
@@ -833,18 +833,18 @@ func runTestSynchroInconsistentChildren(t *testing.T) error {
 	}
 	rp2r := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true, Evaluate: true})
 	if rp2r.HasErrors() || len(rp2r.Entries) != 16 {
-		rp2r.TextOutput(io.Discard)
+		rp2r.TextOutput4Test(io.Discard)
 		return fmt.Errorf("evaluate %d", len(rp2r.Entries))
 	}
 	rp2 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true})
 	if rp2.HasErrors() || len(rp2.Entries) != 16 {
-		rp2.TextOutput(io.Discard)
+		rp2.TextOutput4Test(io.Discard)
 		return fmt.Errorf("synchronize %d", len(rp2.Entries))
 	}
 	rp3 := Synchronize(nil, dssl, "", dssr, "", SyncOptions{InDepth: true, Evaluate: true})
 	s3 := rp3.GetStats()
 	if rp3.HasErrors() || len(rp3.Entries) != 16 || s3 != (SyncStats{}) {
-		rp3.TextOutput(io.Discard)
+		rp3.TextOutput4Test(io.Discard)
 		return fmt.Errorf("reevaluate %d %v", len(rp3.Entries), s3)
 	}
 	return nil
@@ -944,7 +944,7 @@ func TestMappedAcl(t *testing.T) {
 		dsu: {cabridss.ACLEntry{User: "u1", Rights: wr}, cabridss.ACLEntry{User: "u2", Rights: wr}},
 	}
 	report := Synchronize(nil, fsy, "d1", olf, "d1", SyncOptions{InDepth: true, LeftMapACL: lmacl1})
-	report.TextOutput(io.Discard)
+	report.TextOutput4Test(io.Discard)
 	rs := report.GetStats()
 	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedAcl failed %+v", rs)
@@ -1106,7 +1106,7 @@ func TestMappedAcl(t *testing.T) {
 	report = Synchronize(nil, olf, "d1", fsy1, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
 	rs = report.GetStats()
 	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
-		report.TextOutput(os.Stdout)
+		report.TextOutput4Test(os.Stdout)
 		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
 	}
 	report = Synchronize(nil, olf, "d2", fsy1, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1r})
@@ -1141,7 +1141,7 @@ func TestMappedAcl(t *testing.T) {
 	report = Synchronize(nil, olf, "d1", fsy2, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2r})
 	rs = report.GetStats()
 	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
-		report.TextOutput(os.Stdout)
+		report.TextOutput4Test(os.Stdout)
 		t.Fatalf("TestMappedAcl failed %+v %s", rs, report.GErr)
 	}
 	report = Synchronize(nil, olf, "d2", fsy2, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
@@ -1321,7 +1321,7 @@ func TestMappedEncryptedAcl(t *testing.T) {
 		dsu: {cabridss.ACLEntry{User: idpk1, Rights: wr}, cabridss.ACLEntry{User: idpk2, Rights: wr}},
 	}
 	report := Synchronize(nil, fsy, "d1", xolf1, "d1", SyncOptions{InDepth: true, LeftMapACL: lmacl1})
-	report.TextOutput(io.Discard)
+	report.TextOutput4Test(io.Discard)
 	rs := report.GetStats()
 	if report.HasErrors() || rs.CreNum != 1 || rs.UpdNum != 1 || rs.MUpNum != 0 {
 		t.Fatalf("TestMappedEncryptedAcl failed %+v %v", rs, report.GErr)
@@ -1490,7 +1490,7 @@ func TestMappedEncryptedAcl(t *testing.T) {
 	report = Synchronize(nil, xolf1, "d1", fsy1, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1})
 	rs = report.GetStats()
 	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
-		report.TextOutput(os.Stdout)
+		report.TextOutput4Test(os.Stdout)
 		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
 	}
 	report = Synchronize(nil, xolf1, "d2", fsy1, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl1r})
@@ -1523,7 +1523,7 @@ func TestMappedEncryptedAcl(t *testing.T) {
 	report = Synchronize(nil, xolf2, "d1", fsy2, "d1", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2r})
 	rs = report.GetStats()
 	if report.HasErrors() || rs.CreNum != 0 || rs.UpdNum != 0 || rs.MUpNum != 0 {
-		report.TextOutput(os.Stdout)
+		report.TextOutput4Test(os.Stdout)
 		t.Fatalf("TestMappedEncryptedAcl failed %+v %s", rs, report.GErr)
 	}
 	report = Synchronize(nil, xolf2, "d2", fsy2, "d2", SyncOptions{InDepth: true, Evaluate: true, LeftMapACL: rmacl2})
