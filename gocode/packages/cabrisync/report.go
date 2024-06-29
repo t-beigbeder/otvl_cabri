@@ -17,6 +17,7 @@ type SyncReportEntry struct {
 	Removed   bool   // content is removed on target
 	Kept      bool   // content is kept on target
 	MUpdated  bool   // meta data is updated on target
+	Excluded  bool   // content was excluded
 	Err       error  // if entry synchronization has errors
 }
 
@@ -87,7 +88,7 @@ func (sr SyncReport) SortByPath() (ssr SyncReport) {
 	return
 }
 
-func (sr SyncReport) doTextOutput(out io.Writer, summary bool) {
+func (sr SyncReport) doTextOutput(out io.Writer, summary, dispRight bool) {
 	for _, entry := range sr.Entries {
 		arrow := '>'
 		if entry.isRTL {
@@ -105,24 +106,35 @@ func (sr SyncReport) doTextOutput(out io.Writer, summary bool) {
 			c = 'x'
 		case entry.Kept:
 			c = '~'
+		case entry.Excluded:
+			c = ';'
 		}
-		if entry.Err == nil && (!summary || c != '.') {
-			out.Write([]byte(fmt.Sprintf("%c%c %s %s\n", arrow, c, entry.LPath, entry.RPath)))
+		rpathOmitIf := "-"
+		if entry.RPath != entry.LPath || dispRight {
+			rpathOmitIf = entry.RPath
+		}
+		if entry.Err == nil && (!summary || (c != '.' && c != ';')) {
+			out.Write([]byte(fmt.Sprintf("%c%c %s %s\n", arrow, c, entry.LPath, rpathOmitIf)))
 		} else if entry.Err != nil {
 			c = '?'
-			out.Write([]byte(fmt.Sprintf("%c%c %s %s %v\n", arrow, c, entry.LPath, entry.RPath, entry.Err)))
+			out.Write([]byte(fmt.Sprintf("%c%c %s %s %v\n", arrow, c, entry.LPath, rpathOmitIf, entry.Err)))
 		}
 	}
 }
 
 // TextOutput displays human readable report on given output
-func (sr SyncReport) TextOutput(out io.Writer) {
-	sr.doTextOutput(out, false)
+func (sr SyncReport) TextOutput(out io.Writer, dispRight bool) {
+	sr.doTextOutput(out, false, dispRight)
+}
+
+// TextOutput4Test displays human readable report on given output, legacy force right display
+func (sr SyncReport) TextOutput4Test(out io.Writer) {
+	sr.doTextOutput(out, false, true)
 }
 
 // SummaryOutput displays human readable summary report on given output: only differences are displayed
-func (sr SyncReport) SummaryOutput(out io.Writer) {
-	sr.doTextOutput(out, true)
+func (sr SyncReport) SummaryOutput(out io.Writer, dispRight bool) {
+	sr.doTextOutput(out, true, dispRight)
 }
 
 // SyncRefDiag provides a reference report indexed by left and right paths for diagnosis purpose

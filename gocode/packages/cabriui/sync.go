@@ -1,6 +1,7 @@
 package cabriui
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
@@ -8,6 +9,7 @@ import (
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/joule"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
 	"os"
+	"regexp"
 	"runtime/debug"
 	"strings"
 )
@@ -19,9 +21,12 @@ type SyncOptions struct {
 	BiDir        bool
 	KeepContent  bool
 	NoCh         bool
+	Exclude      []string
+	ExcludeFrom  []string
 	NoACL        bool
 	MapACL       []string
 	Summary      bool
+	DisplayRight bool
 	Verbose      bool
 	VerboseLevel int
 	LeftTime     string
@@ -200,6 +205,43 @@ func uiMapACL(opts SyncOptions, lure, rure UiRunEnv) (lmacl, rmacl map[string][]
 	return
 }
 
+func exclList(opts SyncOptions) ([]*regexp.Regexp, error) {
+	exclList := []string{}
+	appNodup := func(exc string) {
+		if exclList == nil {
+			exclList = []string{}
+		}
+		for _, cex := range exclList {
+			if cex == exc {
+				return
+			}
+		}
+		exclList = append(exclList, exc)
+	}
+	for _, exc := range opts.Exclude {
+		appNodup(exc)
+	}
+	for _, excf := range opts.ExcludeFrom {
+		f, err := os.Open(excf)
+		if err != nil {
+			return nil, err
+		}
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			appNodup(scanner.Text())
+		}
+	}
+	res := []*regexp.Regexp{}
+	for _, excl := range exclList {
+		re, err := regexp.Compile(excl)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, re)
+	}
+	return res, nil
+}
+
 func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 	var (
 		err error
@@ -224,6 +266,10 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 		rdss.Close()
 		return err
 	}
+	el, err := exclList(opts)
+	if err != nil {
+		return err
+	}
 	var beVerbose cabrisync.BeVerboseFunc
 	if opts.VerboseLevel >= 2 {
 		beVerbose = func(level int, line string) {
@@ -239,6 +285,7 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 		BiDir:       opts.BiDir,
 		KeepContent: opts.KeepContent,
 		NoCh:        opts.NoCh,
+		ExclList:    el,
 		NoACL:       opts.NoACL,
 		LeftMapACL:  lmacl,
 		RightMapACL: rmacl,
@@ -274,9 +321,9 @@ func synchronize(ctx context.Context, ldssPath, rdssPath string) error {
 		ssr := sr.SortByPath()
 		wrt := syncUow(ctx).UiOutWriter()
 		if opts.Summary {
-			ssr.SummaryOutput(wrt)
+			ssr.SummaryOutput(wrt, opts.DisplayRight)
 		} else {
-			ssr.TextOutput(wrt)
+			ssr.TextOutput(wrt, opts.DisplayRight)
 		}
 		syncOut(ctx, fmt.Sprintf(
 			"created: %d, updated %d, removed %d, kept %d, touched %d, error(s) %d\n",

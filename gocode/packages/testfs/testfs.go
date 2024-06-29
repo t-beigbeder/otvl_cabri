@@ -76,6 +76,19 @@ func (tfs *Fs) RandTextFile(path string, mxlines int) error {
 	return nil
 }
 
+func (tfs *Fs) TextAsFile(text, path string) error {
+	rtf, err := tfs.osCreate(ufpath.Join(tfs.path, path))
+	if err != nil {
+		return err
+	}
+	defer rtf.Close()
+	_, err = tfs.osFileWriteString(rtf, text)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (tfs *Fs) FileAsText(path string) (string, error) {
 	cont, err := tfs.ioutilReadFile(ufpath.Join(tfs.path, path))
 	if err != nil {

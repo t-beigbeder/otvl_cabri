@@ -64,12 +64,35 @@ func lrMetaErrs(outs []interface{}) (lErr, rErr error) {
 	return
 }
 
+func isExcluded(syc *syncCtx) bool {
+	lfp := syc.left.fullPath()
+	for _, re := range syc.options.ExclList {
+		if re.MatchString(lfp) {
+			return true
+		}
+	}
+	if syc.options.BiDir {
+		return false
+	}
+	rfp := syc.right.fullPath()
+	for _, re := range syc.options.ExclList {
+		if re.MatchString(rfp) {
+			return true
+		}
+	}
+	return false
+}
+
 func syncNs(ctx context.Context, syc *syncCtx) []SyncReportEntry {
 	syc.diagnose(">syncNs", false)
 	rent := SyncReportEntry{IsNs: true, LPath: syc.left.fullPath(), RPath: syc.right.fullPath()}
 	if syc.err != nil {
 		rent.Err = syc.err
 		syc.diagnose(fmt.Sprintf("<syncNs %v", syc.err), true)
+		return []SyncReportEntry{rent}
+	}
+	if isExcluded(syc) {
+		rent.Excluded = true
 		return []SyncReportEntry{rent}
 	}
 	iLrOuts := plumber.LaunchAndWait(ctx,
@@ -131,6 +154,10 @@ func syncContentOrSymLink(ctx context.Context, syc *syncCtx) []SyncReportEntry {
 	if syc.err != nil {
 		rent.Err = syc.err
 		syc.diagnose(fmt.Sprintf("<syncContentOrSymLink %v", syc.err), true)
+		return []SyncReportEntry{rent}
+	}
+	if isExcluded(syc) {
+		rent.Excluded = true
 		return []SyncReportEntry{rent}
 	}
 	iLrOuts := plumber.LaunchAndWait(ctx,

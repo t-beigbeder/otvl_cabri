@@ -147,43 +147,43 @@ func TestSynchronizeArboTiny(t *testing.T) {
 
 	rp := Synchronize(nil, fsy, "", olf, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", olf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", olf, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", olf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 }
@@ -223,22 +223,22 @@ func TestSynchronizeArboSmfPix(t *testing.T) {
 
 	rp := Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 }
@@ -281,22 +281,22 @@ func TestSynchronizeArboObsPix(t *testing.T) {
 
 	rp := Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 }
@@ -345,22 +345,22 @@ func TestSynchronizeArboWebDssClientOlf(t *testing.T) {
 
 	rp := Synchronize(nil, fsy, "", wolf, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wolf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wolf, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wolf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 }
@@ -415,22 +415,22 @@ func TestSynchronizeArboWebDssClientObs(t *testing.T) {
 
 	rp := Synchronize(nil, fsy, "", wobs, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wobs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wobs, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wobs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 }
@@ -481,22 +481,22 @@ func TestSynchronizeArboWebDssClientSmf(t *testing.T) {
 
 	rp := Synchronize(nil, fsy, "", wsmf, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wsmf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wsmf, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 375}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wsmf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 }
@@ -534,43 +534,43 @@ func TestSynchronizeArboBase(t *testing.T) {
 
 	rp := Synchronize(nil, fsy, "", olf, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", olf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 2836}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", olf, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 2836}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", olf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 2836}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 2836}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", obs, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 
@@ -608,22 +608,22 @@ func TestSynchronizeArboBase(t *testing.T) {
 
 	rp = Synchronize(nil, fsy, "", wsmf, "", SyncOptions{InDepth: true, Evaluate: true, NoACL: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wsmf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 2836}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wsmf, "", SyncOptions{InDepth: true})
 	if !(rp.GetStats() == SyncStats{MUpNum: 2836}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 	rp = Synchronize(nil, fsy, "", wsmf, "", SyncOptions{InDepth: true, Evaluate: true})
 	if !(rp.GetStats() == SyncStats{}) {
-		rp.TextOutput(os.Stdout)
+		rp.TextOutput4Test(os.Stdout)
 		t.Fatal(rp.GetStats())
 	}
 }
@@ -708,7 +708,7 @@ func TestSynchronizeArboNoFear(t *testing.T) {
 	rp = Synchronize(nil, bck, "0", olf, "", SyncOptions{InDepth: true, Evaluate: true})
 
 	if !(rp.GetStats() == SyncStats{MUpNum: 1477}) || len(rp.Entries) != 1477 {
-		rp.TextOutput(os.Stderr)
+		rp.TextOutput4Test(os.Stderr)
 		t.Fatal(rp.GetStats(), len(rp.Entries))
 	}
 
@@ -924,11 +924,11 @@ func TestLoopSynchronizeArboBiDirObs(t *testing.T) {
 	}
 	fmt.Printf("%d %d %d %d\n", len(rp2ok.Entries), len(rp4ok.Entries), len(rp2nok.Entries), len(rp4nok.Entries))
 	fmt.Println("RP2OK")
-	rp2ok.SortByPath().TextOutput(os.Stdout)
+	rp2ok.SortByPath().TextOutput4Test(os.Stdout)
 	fmt.Println("RP2NOK")
-	rp2nok.SortByPath().TextOutput(os.Stdout)
+	rp2nok.SortByPath().TextOutput4Test(os.Stdout)
 	fmt.Println("RP4OK")
-	rp4ok.SortByPath().TextOutput(os.Stdout)
+	rp4ok.SortByPath().TextOutput4Test(os.Stdout)
 	fmt.Println("RP4NOK")
-	rp4nok.SortByPath().TextOutput(os.Stdout)
+	rp4nok.SortByPath().TextOutput4Test(os.Stdout)
 }

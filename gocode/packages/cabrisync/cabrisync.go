@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/cabridss"
 	"github.com/t-beigbeder/otvl_cabri/gocode/packages/plumber"
+	"regexp"
 )
 
 type BeVerboseFunc func(level int, line string)
+
+var validID = regexp.MustCompile(`^[a-z]+\[[0-9]+\]$`)
 
 // SyncOptions indicate how the Synchronize function should behave
 type SyncOptions struct {
@@ -19,6 +22,7 @@ type SyncOptions struct {
 	// if false synchronization is done from left to right
 	KeepContent bool                           // don't remove content deleted from one side in other side
 	NoCh        bool                           // don't evaluate checksum when not available, compare content's size and modification time
+	ExclList    []*regexp.Regexp               // list of regular expression patterns to exclude from sync
 	NoACL       bool                           // don't check ACL
 	LeftMapACL  map[string][]cabridss.ACLEntry // left to right ACL user names mapping
 	RightMapACL map[string][]cabridss.ACLEntry // right to left ACL user names mapping
