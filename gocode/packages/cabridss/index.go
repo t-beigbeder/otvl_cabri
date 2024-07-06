@@ -339,18 +339,34 @@ func (pix *pIndex) removeMeta(npath string, time int64) error {
 }
 
 func (pix *pIndex) Close() error {
+	var shrinkErr, unlockErr error
+	closeErr := func() error {
+		clerr := pix.db.Close()
+		merr := ""
+		if shrinkErr != nil {
+			merr = fmt.Sprintf("shrink err: %v", shrinkErr)
+		}
+		if unlockErr != nil {
+			merr = merr + fmt.Sprintf(" - unlock err: %v", unlockErr)
+		}
+		if clerr != nil {
+			merr = merr + fmt.Sprintf(" - close err: %v", clerr)
+		}
+		if merr != "" {
+			return fmt.Errorf("in pIndex.Close: %s", merr)
+		}
+		return nil
+	}
 	if !pix.closed {
 		pix.closed = true
-		err := pix.db.Update(func(tx *buntdb.Tx) error {
+		shrinkErr = pix.db.Shrink()
+		unlockErr = pix.db.Update(func(tx *buntdb.Tx) error {
 			_, err := tx.Delete("g/lock")
 			return err
 		})
-		if err != nil {
-			pix.db.Close()
-			return fmt.Errorf("in pIndex.Close: %v", err)
-		}
+		return closeErr()
 	}
-	return pix.db.Close()
+	return closeErr()
 }
 
 func (pix *pIndex) IsPersistent() bool { return true }
