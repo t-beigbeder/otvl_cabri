@@ -1,5 +1,7 @@
 # Cabri Data Storage System
 
+Project has been archived. See https://github.com/t-beigbeder/vdasync as a possible alternative.
+
 Cabri enables fast and secure data synchronization between people, medias and places.
 
 It is mainly available as a command-line tool, but also provides an API (Golang or REST) for simple data storage.
